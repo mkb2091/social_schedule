@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::cmp::Ordering;
 extern crate rand;
 use rand::{thread_rng, Rng};
 
@@ -83,23 +84,51 @@ fn gen_layout() -> Vec<Vec<Vec<i32>>> {
     event
 }
 
-fn mutate(event: Vec<Vec<Vec<i32>>>) -> Vec<Vec<Vec<i32>>> {
+fn mutate(mut event: Vec<Vec<Vec<i32>>>) -> Vec<Vec<Vec<i32>>> {
     let mut rng = thread_rng();
-    let r: i32 = rng.gen_range(0, 6);
-    event
+    let r: usize = rng.gen_range(0, 6);
+    let t1: usize = rng.gen_range(0, 6);
+    let t2: usize = match t1.cmp(&0) {
+        Ordering::Greater => t1 - 1,
+        Ordering::Equal => 5,
+        Ordering::Less => 5,
+    };
+    let p1: usize = rng.gen_range(0, 4);
+    let p2: usize = rng.gen_range(0, 4);
+    let person1: i32 = event[r][t1][p1];
+    event[r][t1][p1] = event[r][t1][p2];
+    event[r][t2][p2] = person1;
+    //let mut event = &gen_layout();
+    event.to_vec()
 }
 
 fn main() {
     println!("Welcome to Social Scheduler");
-    let mut max: i32 = 0;
+    let mut event: Vec<Vec<Vec<i32>>> = gen_layout();
+    let mut score: i32 = get_score(event.clone());
+    let mut max: i32 = score;
     loop {
-        let mut event: Vec<Vec<Vec<i32>>> = gen_layout();
-        event = mutate(event.clone());
-        let score: i32 = get_score(event.clone());
-        if score > max {
-            max = score;
-            println!("{:?}", score);
-            println!("{:?}", event);
+        let mut new: Vec<Vec<Vec<i32>>> = Vec::new();
+        let mut changed: bool = false;
+        for _ in 0..100 {
+            let cevent = mutate(event.clone());
+            let cscore = get_score(cevent.clone());
+            if cscore > score {
+                score = cscore;
+                new = cevent.to_vec();
+                changed = true;
+            }
+        }
+        if changed {
+            event = new;
+            if score > max {
+                println!("{:?}", score);
+                println!("{:?}", event);
+                max = score;
+            }
+        } else {
+            event = gen_layout();
+            score = get_score(event.clone());
         }
     }
 }
