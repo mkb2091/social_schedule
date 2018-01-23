@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 extern crate rand;
-use rand::Rng;
+use rand::{thread_rng, Rng};
 
 fn get_score(event: Vec<Vec<Vec<i32>>>) -> i32 {
     let mut game: Vec<HashSet<i32>> = Vec::new();
@@ -84,6 +84,8 @@ fn gen_layout() -> Vec<Vec<Vec<i32>>> {
 }
 
 fn mutate(event: Vec<Vec<Vec<i32>>>) -> Vec<Vec<Vec<i32>>> {
+    let mut rng = thread_rng();
+    let r: i32 = rng.gen_range(0, 6);
     event
 }
 
@@ -91,7 +93,8 @@ fn main() {
     println!("Welcome to Social Scheduler");
     let mut max: i32 = 0;
     loop {
-        let event: Vec<Vec<Vec<i32>>> = gen_layout();
+        let mut event: Vec<Vec<Vec<i32>>> = gen_layout();
+        event = mutate(event.clone());
         let score: i32 = get_score(event.clone());
         if score > max {
             max = score;
