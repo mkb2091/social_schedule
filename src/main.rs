@@ -1,48 +1,50 @@
 use std::collections::HashSet;
-use std::cmp::Ordering;
 extern crate rand;
 use rand::{thread_rng, Rng};
 
-fn get_score(event: Vec<Vec<Vec<i32>>>) -> i32 {
-    let mut game: Vec<HashSet<i32>> = Vec::new();
-    let mut opponents: Vec<HashSet<i32>> = Vec::new();
+fn get_score(event: Vec<Vec<Vec<u32>>>) -> u32 {
+    let mut game: Vec<HashSet<u32>> = Vec::new();
+    let mut opponents: Vec<HashSet<u32>> = Vec::new();
     for _ in 0..24 {
         game.push(HashSet::new());
         opponents.push(HashSet::new())
     }
     for r in event {
-        let mut i: i32 = 0;
+        let mut i: u32 = 0;
         for table in r {
             i += 1;
-            let table2: Vec<i32> = table.clone();
+            let table2: Vec<u32> = table.clone();
             for player in table {
                 game[player as usize].insert(i);
                 for p in table2.iter() {
-                    opponents[player as usize].insert(*p);
+                    if player != *p {
+                        opponents[player as usize].insert(*p);
+                    }
                 }
             }
         }
     }
-    let mut score: i32 = 0;
+    let mut score: u32 = 0;
     for i in game {
-        score += i.len() as i32
+        score += i.len() as u32
     }
-    let mut min: i32 = 18;
-    //let mut total: i32 = 0;
+    let mut min: u32 = 18;
+    //let mut total: u32 = 0;
     for i in opponents {
-        let now: i32 = i.len() as i32;
+        let now: u32 = i.len() as u32;
         if now < min {
             min = now;
         }
         //total += i;
     }
-    score += min;
+    //score += min;
     //score += total / opponents.len();
     score
 }
 
-fn gen_layout() -> Vec<Vec<Vec<i32>>> {
-    let mut event: Vec<Vec<Vec<i32>>> = Vec::new();
+fn gen_layout() -> Vec<Vec<Vec<u32>>> {
+    let mut rng = thread_rng();
+    let mut event: Vec<Vec<Vec<u32>>> = Vec::new();
     let mut options = vec![
         0,
         1,
@@ -70,10 +72,10 @@ fn gen_layout() -> Vec<Vec<Vec<i32>>> {
         23,
     ];
     for _ in 0..6 {
-        let mut round: Vec<Vec<i32>> = Vec::new();
-        rand::thread_rng().shuffle(&mut options);
+        let mut round: Vec<Vec<u32>> = Vec::new();
+        rng.shuffle(&mut options);
         for t in 0..6 {
-            let mut table: Vec<i32> = Vec::new();
+            let mut table: Vec<u32> = Vec::new();
             for p in 0..4 {
                 table.push(options[4 * t + p])
             }
@@ -84,18 +86,17 @@ fn gen_layout() -> Vec<Vec<Vec<i32>>> {
     event
 }
 
-fn mutate(mut event: Vec<Vec<Vec<i32>>>) -> Vec<Vec<Vec<i32>>> {
+fn mutate(mut event: Vec<Vec<Vec<u32>>>) -> Vec<Vec<Vec<u32>>> {
     let mut rng = thread_rng();
     let r: usize = rng.gen_range(0, 6);
     let t1: usize = rng.gen_range(0, 6);
-    let t2: usize = match t1.cmp(&0) {
-        Ordering::Greater => t1 - 1,
-        Ordering::Equal => 5,
-        Ordering::Less => 5,
-    };
+    let mut t2: usize = rng.gen_range(0, 6);
+    while t1 == t2 {
+        t2 = rng.gen_range(0, 6);
+    }
     let p1: usize = rng.gen_range(0, 4);
     let p2: usize = rng.gen_range(0, 4);
-    let person1: i32 = event[r][t1][p1];
+    let person1: u32 = event[r][t1][p1];
     event[r][t1][p1] = event[r][t1][p2];
     event[r][t2][p2] = person1;
     //let mut event = &gen_layout();
@@ -104,29 +105,55 @@ fn mutate(mut event: Vec<Vec<Vec<i32>>>) -> Vec<Vec<Vec<i32>>> {
 
 fn main() {
     println!("Welcome to Social Scheduler");
-    let mut event: Vec<Vec<Vec<i32>>> = gen_layout();
-    let mut score: i32 = get_score(event.clone());
-    let mut max: i32 = score;
+    let mut event: Vec<Vec<Vec<u32>>> = gen_layout();
+    let mut score: u32 = get_score(event.clone());
+    let mut max: u32 = score;
+    let mut iterations: u32 = 0;
+    let mut calculations: u32 = 0;
     loop {
-        let mut new: Vec<Vec<Vec<i32>>> = Vec::new();
+        iterations += 1;
         let mut changed: bool = false;
-        for _ in 0..100 {
-            let cevent = mutate(event.clone());
-            let cscore = get_score(cevent.clone());
-            if cscore > score {
-                score = cscore;
-                new = cevent.to_vec();
-                changed = true;
+        let mut new: Vec<Vec<Vec<u32>>> = Vec::new();
+        for r in 0..6 {
+            for t1 in 0..6 {
+                for t2 in 0..6 {
+                    if t1 != t2 {
+                        for p1 in 0..4 {
+                            for p2 in 0..4 {
+                                calculations += 1;
+                                let mut cevent: Vec<Vec<Vec<u32>>> = event.clone();
+                                let person1: u32 = cevent[r][t1][p1];
+                                cevent[r][t1][p1] = cevent[r][t1][p2];
+                                cevent[r][t2][p2] = person1;
+                                let cscore: u32 = get_score(cevent.clone());
+                                if cscore > score {
+                                    score = cscore;
+                                    new = cevent;
+                                    changed = true;
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
         if changed {
             event = new;
+        } else {
             if score > max {
-                println!("{:?}", score);
-                println!("{:?}", event);
                 max = score;
             }
-        } else {
+            println!(
+                "Found local max: {:?} after {:?} iterations ({:?} attempts)",
+                score,
+                iterations,
+                calculations
+            );
+            iterations = 0;
+            calculations = 0;
+            if score == max {
+                println!("{:?}", event);
+            }
             event = gen_layout();
             score = get_score(event.clone());
         }
