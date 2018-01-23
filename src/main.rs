@@ -106,6 +106,7 @@ fn mutate(mut event: Vec<Vec<Vec<u32>>>) -> Vec<Vec<Vec<u32>>> {
 fn main() {
     println!("Welcome to Social Scheduler");
     let mut event: Vec<Vec<Vec<u32>>> = gen_layout();
+    let mut cevent: Vec<Vec<Vec<u32>>>;
     let mut score: u32 = get_score(event.clone());
     let mut max: u32 = score;
     let mut iterations: u32 = 0;
@@ -120,8 +121,7 @@ fn main() {
                     if t1 != t2 {
                         for p1 in 0..4 {
                             for p2 in 0..4 {
-                                calculations += 1;
-                                let mut cevent: Vec<Vec<Vec<u32>>> = event.clone();
+                                cevent = event.clone();
                                 let person1: u32 = cevent[r][t1][p1];
                                 cevent[r][t1][p1] = cevent[r][t1][p2];
                                 cevent[r][t2][p2] = person1;
@@ -137,23 +137,22 @@ fn main() {
                 }
             }
         }
+        calculations += 6 * 6 * 5 * 4 * 4;
         if changed {
             event = new;
         } else {
-            if score > max {
-                max = score;
-            }
             println!(
                 "Found local max: {:?} after {:?} iterations ({:?} attempts)",
                 score,
                 iterations,
                 calculations
             );
-            iterations = 0;
-            calculations = 0;
-            if score == max {
+            if score > max {
+                max = score;
                 println!("{:?}", event);
             }
+            iterations = 0;
+            calculations = 0;
             event = gen_layout();
             score = get_score(event.clone());
         }
