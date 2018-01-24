@@ -5,5 +5,3 @@ authors = ["Hugh Williams <hughaw64@gmail.com>"]
 
 [dependencies]
 rand = "0.4"
-json = "*"
-clap = "2.19"

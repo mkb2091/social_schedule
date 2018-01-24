@@ -3,21 +3,21 @@ extern crate rand;
 use rand::{thread_rng, Rng};
 
 fn get_score(event: Vec<Vec<Vec<u8>>>) -> f32 {
-    let mut game: Vec<HashSet<u8>> = Vec::new();
-    let mut opponents: Vec<HashSet<u8>> = Vec::new();
+    let mut game: Vec<HashSet<u8>> = Vec::with_capacity(24);
+    let mut opponents: Vec<HashSet<u8>> = Vec::with_capacity(24);
     for _ in 0..24 {
-        game.push(HashSet::new());
-        opponents.push(HashSet::new())
+        game.push(HashSet::with_capacity(6));
+        opponents.push(HashSet::with_capacity(19));
     }
     for r in event {
         let mut i: u8 = 0;
         for table in r {
             i += 1;
-            let table2: Vec<u8> = table.clone();
-            for player in table {
-                game[player as usize].insert(i);
-                for p in table2.iter() {
-                    opponents[player as usize].insert(*p);
+            for player in table.iter() {
+                let player: usize = *player as usize;
+                game[player].insert(i);
+                for p in table.iter() {
+                    opponents[player].insert(*p);
 
                 }
             }
@@ -43,7 +43,15 @@ fn get_score(event: Vec<Vec<Vec<u8>>>) -> f32 {
 
 fn gen_layout() -> Vec<Vec<Vec<u8>>> {
     let mut rng = thread_rng();
-    let mut event: Vec<Vec<Vec<u8>>> = Vec::new();
+    let mut event: Vec<Vec<Vec<u8>>> = Vec::with_capacity(6);
+    event.push(vec![
+        vec![0, 1, 2, 3],
+        vec![4, 5, 6, 7],
+        vec![8, 9, 10, 11],
+        vec![12, 13, 14, 15],
+        vec![16, 17, 18, 19],
+        vec![20, 21, 22, 23],
+    ]);
     let mut options = vec![
         0,
         1,
@@ -70,11 +78,11 @@ fn gen_layout() -> Vec<Vec<Vec<u8>>> {
         22,
         23,
     ];
-    for _ in 0..6 {
-        let mut round: Vec<Vec<u8>> = Vec::new();
+    for _ in 1..6 {
+        let mut round: Vec<Vec<u8>> = Vec::with_capacity(6);
         rng.shuffle(&mut options);
         for t in 0..6 {
-            let mut table: Vec<u8> = Vec::new();
+            let mut table: Vec<u8> = Vec::with_capacity(4);
             for p in 0..4 {
                 table.push(options[4 * t + p])
             }
@@ -85,21 +93,21 @@ fn gen_layout() -> Vec<Vec<Vec<u8>>> {
     event
 }
 
-fn mutate(mut event: Vec<Vec<Vec<u8>>>) -> Vec<Vec<Vec<u8>>> {
-    let mut rng = thread_rng();
-    let r: usize = rng.gen_range(0, 6);
-    let t1: usize = rng.gen_range(0, 6);
-    let mut t2: usize = rng.gen_range(0, 6);
-    while t1 == t2 {
-        t2 = rng.gen_range(0, 6);
-    }
-    let p1: usize = rng.gen_range(0, 4);
-    let p2: usize = rng.gen_range(0, 4);
-    let person1: u8 = event[r][t1][p1];
-    event[r][t1][p1] = event[r][t1][p2];
-    event[r][t2][p2] = person1;
-    event.to_vec()
-}
+//fn mutate(mut event: Vec<Vec<Vec<u8>>>) -> Vec<Vec<Vec<u8>>> {
+//    let mut rng = thread_rng();
+//    let r: usize = rng.gen_range(0, 6);
+//    let t1: usize = rng.gen_range(0, 6);
+//    let mut t2: usize = rng.gen_range(0, 6);
+//    while t1 == t2 {
+//        t2 = rng.gen_range(0, 6);
+//    }
+//    let p1: usize = rng.gen_range(0, 4);
+//    let p2: usize = rng.gen_range(0, 4);
+//    let person1: u8 = event[r][t1][p1];
+//    event[r][t1][p1] = event[r][t1][p2];
+//    event[r][t2][p2] = person1;
+//    event.to_vec()
+//}
 
 fn main() {
     println!("Welcome to Social Scheduler");
@@ -112,7 +120,7 @@ fn main() {
     loop {
         iterations += 1;
         let mut changed: bool = false;
-        let mut new: Vec<Vec<Vec<u8>>> = Vec::new();
+        let mut new: Vec<Vec<Vec<u8>>> = Vec::with_capacity(6);
         for r in 0..6 {
             for t1 in 0..6 {
                 for t2 in 0..6 {
