@@ -1,46 +1,49 @@
-use std::collections::HashSet;
 extern crate rand;
 use rand::{thread_rng, Rng};
 
 fn get_score(event: [u8; 144]) -> f32 {
-    let mut game: Vec<HashSet<u8>> = Vec::with_capacity(24);
-    let mut opponents: Vec<HashSet<u8>> = Vec::with_capacity(24);
-    for _ in 0..24 {
-        game.push(HashSet::with_capacity(6));
-        opponents.push(HashSet::with_capacity(19));
-    }
+    let mut game: [bool; 6 * 24] = [false; 6 * 24];
+    let mut opponents: [bool; 24 * 24] = [false; 24 * 24];
     for r in 0..6 {
         let r: usize = r * 24;
-        let mut i: u8 = 0;
+        let mut i: usize = 0;
         for t in 0..6 {
-            let t: usize = t * 4;
-            i += 1;
+            let t: usize = t * 4 + r;
             for player in 0..4 {
-                let player: usize = event[r + t + player] as usize;
-                game[player].insert(i);
+                let player: usize = event[t + player] as usize;
+                game[player * 6 + i] = true;
                 for p in 0..4 {
-                    let p: u8 = event[r + t + p];
-                    opponents[player].insert(p);
+                    let p: usize = event[t + p] as usize;
+                    //println!("{:?} {:?}", player, p);
+                    opponents[player * 24 + p] = true;
 
                 }
             }
+            i += 1;
         }
     }
     let mut score: f32 = 0.0;
-    for i in game {
-        score += i.len() as f32;
+    for i in game.iter() {
+        if *i {
+            score += 1.0;
+        }
     }
-    let mut min: f32 = 18.0;
+    let mut min: f32 = 19.0;
     let mut total: f32 = 0.0;
-    for i in opponents.iter() {
-        let now: f32 = i.len() as f32;
+    for p in 0..24 {
+        let mut now: f32 = 0.0;
+        for o in 0..24 {
+            if opponents[p * 24 + o] {
+                now += 1.0;
+            }
+        }
         if now < min {
             min = now;
         }
         total += now;
     }
     score += min;
-    score += total / opponents.len() as f32;
+    score += total / 24.0;
     score
 }
 
@@ -77,9 +80,10 @@ fn gen_layout() -> [u8; 144] {
         23,
     ];
     for r in 1..6 {
+        let r: usize = r * 24;
         rng.shuffle(&mut options);
         for pos in 0..24 {
-            event[r * 24 + pos as usize] = options[pos as usize];
+            event[r + pos as usize] = options[pos as usize];
         }
     }
     event
@@ -99,17 +103,15 @@ fn main() {
         for r in 0..6 {
             let r: usize = r * 24;
             for t1 in 0..6 {
-                let t1: usize = t1 * 4;
+                let t1: usize = r + t1 * 4;
                 for t2 in 0..6 {
-                    let t2: usize = t2 * 4;
+                    let t2: usize = r + t2 * 4;
                     if t1 != t2 {
                         for p1 in 0..4 {
                             for p2 in 0..4 {
                                 cevent = event.clone();
-                                let person1: u8 = cevent[r + t1 + p1];
-                                cevent[r + t1 + p1] = cevent[r + t2 + p2];
-                                cevent[r + t2 + p2] = person1;
-                                let cscore: f32 = get_score(cevent.clone());
+                                cevent.swap(t1 + p1, t2 + p2);
+                                let cscore: f32 = get_score(cevent);
                                 if cscore > score {
                                     score = cscore;
                                     new = cevent;
