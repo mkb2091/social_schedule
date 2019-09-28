@@ -5,3 +5,10 @@ authors = ["Hugh Williams <hughaw64@gmail.com>"]
 
 [dependencies]
 rand = "0.4"
+
+[profile.release]
+opt-level = 3
+debug = false
+rpath = false
+lto = true
+debug-assertions = false
