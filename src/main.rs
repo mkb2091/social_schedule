@@ -16,7 +16,6 @@ fn get_score(event: [u8; 144]) -> f32 {
                     let p: usize = event[t + p] as usize;
                     //println!("{:?} {:?}", player, p);
                     opponents[player * 24 + p] = true;
-
                 }
             }
             i += 1;
@@ -54,30 +53,7 @@ fn gen_layout() -> [u8; 144] {
         event[i as usize] = i;
     }
     let mut options = vec![
-        0,
-        1,
-        2,
-        3,
-        4,
-        5,
-        6,
-        7,
-        8,
-        9,
-        10,
-        11,
-        12,
-        13,
-        14,
-        15,
-        16,
-        17,
-        18,
-        19,
-        20,
-        21,
-        22,
-        23,
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
     ];
     for r in 1..6 {
         let r: usize = r * 24;
