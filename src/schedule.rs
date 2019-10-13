@@ -53,14 +53,13 @@ impl Schedule {
 
     pub fn unique_games_played(&self) -> u32 {
         let mut tables: Vec<u64> = Vec::with_capacity(self.tables);
-        for _ in 0..self.tables {
-            tables.push(0);
-        }
-
-        for round in 0..self.tables {
-            for table in 0..self.tables {
-                tables[table] |= self.get(round, table);
-            }
+        
+        for table in 0..self.tables {
+        	let mut total_table = 0;
+        	for round in 0..self.tables {
+        		total_table |= self.get(round, table);
+        	}
+        	tables.push(total_table);
         }
         let mut total: u32 = 0;
         for table in &tables {
