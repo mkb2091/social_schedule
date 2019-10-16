@@ -63,4 +63,8 @@ impl Schedule {
         }
         total
     }
+    
+    pub fn unique_opponents(&self) -> u32 {
+    	0
+    }
 }
