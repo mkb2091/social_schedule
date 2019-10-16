@@ -52,19 +52,19 @@ impl Schedule {
     }
 
     pub fn unique_games_played(&self) -> u32 {
-    	let mut total: u32 = 0;
-        
+        let mut total: u32 = 0;
+
         for table in 0..self.tables {
-        	let mut total_table = 0;
-        	for round in 0..self.tables {
-        		total_table |= self.get(round, table);
-        	}
-        	total += total_table.count_ones();
+            let mut total_table = 0;
+            for round in 0..self.tables {
+                total_table |= self.get(round, table);
+            }
+            total += total_table.count_ones();
         }
         total
     }
-    
+
     pub fn unique_opponents(&self) -> u32 {
-    	0
+        0
     }
 }

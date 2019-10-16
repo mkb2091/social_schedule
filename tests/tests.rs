@@ -20,8 +20,8 @@ mod tests {
             assert_eq!(24, schedule.unique_games_played());
         }
     }
-    
-        #[test]
+
+    #[test]
     fn unique_opponents_is_team_size_when_players_stay() {
         let round: Vec<Vec<usize>> = vec![
             vec![0, 1, 2, 3],

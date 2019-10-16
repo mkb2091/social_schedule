@@ -1,4 +1,9 @@
+extern crate azul;
 extern crate rand;
+use azul::{
+    prelude::*,
+    widgets::{button::Button, label::Label},
+};
 use rand::{thread_rng, Rng};
 
 fn get_score(event: [u8; 144]) -> f32 {
@@ -65,7 +70,70 @@ fn gen_layout() -> [u8; 144] {
     event
 }
 
+enum Page {
+    Generate,
+    ManagePlayers,
+}
+
+struct DataModel {
+    page: Page,
+}
+
+impl Layout for DataModel {
+    fn layout(&self, _info: LayoutInfo<Self>) -> Dom<Self> {
+        let goto_generate = Button::with_label("Generate").dom().with_callback(
+            On::MouseUp,
+            |cb_info: CallbackInfo<Self>| {
+                cb_info.state.data.page = Page::Generate;
+                Redraw
+            },
+        );
+
+        let goto_manage_players = Button::with_label("Manage Players").dom().with_callback(
+            On::MouseUp,
+            |cb_info: CallbackInfo<Self>| {
+                cb_info.state.data.page = Page::ManagePlayers;
+                Redraw
+            },
+        );
+
+        let header = Dom::div()
+            .with_id("header")
+            .with_child(goto_generate)
+            .with_child(goto_manage_players);
+
+        let body = match self.page {
+            Page::Generate => {
+                let label = Label::new("Generate page").dom();
+                label
+            }
+
+            Page::ManagePlayers => {
+                let label = Label::new("ManagePlayers page").dom();
+                label
+            }
+        };
+        let body = Dom::div().with_id("body").with_child(body);
+        let dom = Dom::div().with_child(header).with_child(body);
+        //println!("dom:\r\n{}", dom.debug_dump());
+        dom
+    }
+}
+
 fn main() {
+    let css = css::override_native(include_str!("style.css")).unwrap();
+
+    let mut app = App::new(
+        DataModel {
+            page: Page::Generate,
+        },
+        AppConfig::default(),
+    )
+    .unwrap();
+    let window = app
+        .create_window(WindowCreateOptions::default(), css.clone())
+        .unwrap();
+    app.run(window).unwrap();
     println!("Welcome to Social Scheduler");
     let mut event: [u8; 144] = gen_layout();
     let mut cevent: [u8; 144];
