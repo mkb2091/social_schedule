@@ -8,6 +8,7 @@ enum Page {
     GenerateSchedule,
     ManagePlayers,
     ManageGroups,
+    Preferences,
 }
 
 struct GenerateSchedule {
@@ -56,10 +57,23 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
 }
 
 fn view_generate_schedule(model: &Model) -> Node<Msg> {
+    let box_style = style![St::PaddingLeft => "15px";
+St::PaddingRight => "15px";
+St::FlexGrow=> "1";];
+
     div![
-        style![St::Display => "Flex";],
+        style![St::Display => "Flex";
+        St::FlexWrap => "Wrap"],
         div![
+            &box_style,
             h2!["Player list"],
+            p![
+                span!["Player Name: "],
+                input![input_ev(Ev::Input, Msg::GSAddPlayerInput)],
+                button![simple_ev(Ev::Click, Msg::GSAddPlayer), "Add"],
+            ],
+            p![span!["Group: "], select![], button!["Add"],],
+            p![span!["Individual: "], select![], button!["Add"],],
             ul![style![St::PaddingBottom => "5px";], {
                 let mut players_list: Vec<Node<Msg>> =
                     Vec::with_capacity(model.generate_schedule.players.len());
@@ -67,29 +81,31 @@ fn view_generate_schedule(model: &Model) -> Node<Msg> {
                     players_list.push(li![player, button!["Remove"]]);
                 }
                 players_list
-            }]
+            }],
         ],
         div![
-            style![St::PaddingLeft => "30px";],
+            &box_style,
             p![
-                span!["Player Name: "],
-                input![input_ev(Ev::Input, Msg::GSAddPlayerInput)],
-                button![simple_ev(Ev::Click, Msg::GSAddPlayer), "Add"],
+                span!["Players per table: "],
+                select![{
+                    let mut table_size_list: Vec<Node<Msg>> = Vec::with_capacity(42);
+                    for table_size in 2..43 {
+                        table_size_list.push(option![
+                            attrs! {At::Value => table_size},
+                            format!("{}", table_size)
+                        ]);
+                    }
+                    table_size_list
+                }],
             ],
             p![
-                span!["Group: "],
-                input![input_ev(Ev::Input, Msg::GSAddPlayerInput)],
-                button![simple_ev(Ev::Click, Msg::GSAddPlayer), "Add"],
-            ],
-            p![
-                span!["Individual: "],
-                input![input_ev(Ev::Input, Msg::GSAddPlayerInput)],
-                button![simple_ev(Ev::Click, Msg::GSAddPlayer), "Add"],
+                span!["Email Players: "],
+                input![attrs! {At::Type => "checkbox"}],
             ],
             button!["Generate"]
         ],
         div![
-            style![St::PaddingLeft => "30px";],
+            &box_style,
             p![
                 span!["Runtime Limit: "],
                 input![attrs! {At::Type => "checkbox"}],
@@ -124,11 +140,13 @@ fn view(model: &Model) -> impl View<Msg> {
             Page::GenerateSchedule => "Generate Schedule",
             Page::ManagePlayers => "Manage Players",
             Page::ManageGroups => "Manage Groups",
+            Page::Preferences => "Preferences",
         }],
         h1![match model.page {
             Page::GenerateSchedule => "Generate Schedule",
             Page::ManagePlayers => "Manage Players",
             Page::ManageGroups => "Manage Groups",
+            Page::Preferences => "Preferences",
         }],
         button![
             simple_ev(Ev::Click, Msg::ChangePage(Page::GenerateSchedule)),
@@ -141,6 +159,10 @@ fn view(model: &Model) -> impl View<Msg> {
         button![
             simple_ev(Ev::Click, Msg::ChangePage(Page::ManageGroups)),
             "Manage Groups"
+        ],
+        button![
+            simple_ev(Ev::Click, Msg::ChangePage(Page::Preferences)),
+            "Preferences"
         ],
         match model.page {
             Page::GenerateSchedule => view_generate_schedule(model),
