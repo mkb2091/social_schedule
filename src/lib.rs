@@ -56,20 +56,66 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
 }
 
 fn view_generate_schedule(model: &Model) -> Node<Msg> {
-    div![div![
-        h2!["Player list"],
-        ul![{
-            let mut players_list: Vec<Node<Msg>> =
-                Vec::with_capacity(model.generate_schedule.players.len());
-            for player in &model.generate_schedule.players {
-                players_list.push(li![player, button!["Remove"]]);
-            }
-            players_list
-        }],
-        span!["Player Name: "],
-        input![input_ev(Ev::Input, Msg::GSAddPlayerInput)],
-        button![simple_ev(Ev::Click, Msg::GSAddPlayer), "Add"],
-    ]]
+    div![
+        style![St::Display => "Flex";],
+        div![
+            h2!["Player list"],
+            ul![style![St::PaddingBottom => "5px";], {
+                let mut players_list: Vec<Node<Msg>> =
+                    Vec::with_capacity(model.generate_schedule.players.len());
+                for player in &model.generate_schedule.players {
+                    players_list.push(li![player, button!["Remove"]]);
+                }
+                players_list
+            }]
+        ],
+        div![
+            style![St::PaddingLeft => "30px";],
+            p![
+                span!["Player Name: "],
+                input![input_ev(Ev::Input, Msg::GSAddPlayerInput)],
+                button![simple_ev(Ev::Click, Msg::GSAddPlayer), "Add"],
+            ],
+            p![
+                span!["Group: "],
+                input![input_ev(Ev::Input, Msg::GSAddPlayerInput)],
+                button![simple_ev(Ev::Click, Msg::GSAddPlayer), "Add"],
+            ],
+            p![
+                span!["Individual: "],
+                input![input_ev(Ev::Input, Msg::GSAddPlayerInput)],
+                button![simple_ev(Ev::Click, Msg::GSAddPlayer), "Add"],
+            ],
+            button!["Generate"]
+        ],
+        div![
+            style![St::PaddingLeft => "30px";],
+            p![
+                span!["Runtime Limit: "],
+                input![attrs! {At::Type => "checkbox"}],
+                p![
+                    style![St::PaddingLeft => "30px";],
+                    span!["Max run time: "],
+                    input![],
+                    button!["Apply"]
+                ]
+            ],
+            p![
+                span!["Maximum CPU usage"],
+                select![attrs! {At::Value => "100"}, {
+                    let mut cpu_options: Vec<Node<Msg>> = Vec::with_capacity(100);
+                    for percent in 0..100 {
+                        let percent = 100 - percent;
+                        cpu_options.push(option![
+                            attrs! {At::Value => percent},
+                            format!("{}%", percent)
+                        ]);
+                    }
+                    cpu_options
+                }]
+            ],
+        ]
+    ]
 }
 
 fn view(model: &Model) -> impl View<Msg> {
