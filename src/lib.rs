@@ -102,7 +102,15 @@ St::FlexGrow=> "1";];
                 button![simple_ev(Ev::Click, Msg::GSAddPlayer), "Add"],
             ],
             p![span!["Group: "], select![], button!["Add"],],
-            p![span!["Individual: "], select![], button!["Add"],],
+            p![span!["Individual: "], select![{
+                let player_list = model.database.get_players();
+                let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(player_list.len());
+                for (id, player) in &player_list {
+                    node_list.push(option![attrs!{At::Value => id},
+                    format!("{}: ({})", player.name, id)]);
+                }
+                node_list
+            }], button!["Add"],],
             ul![style![St::PaddingBottom => "5px";], {
                 let mut players_list: Vec<Node<Msg>> =
                     Vec::with_capacity(model.generate_schedule.players.len());
