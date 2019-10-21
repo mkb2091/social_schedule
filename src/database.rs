@@ -20,14 +20,8 @@ impl Database {
             if let Ok(Some(loaded_serialized)) = storage.get_item("database") {
                 if let Ok(database) = serde_json::from_str(&loaded_serialized) {
                     return database;
-                } else {
-                	log!("Could not deserialize");
                 }
-            } else {
-            	log!("Could not load database");
             }
-        } else {
-        	log!("Could not get storage");
         }
         Database {
             players: std::collections::HashMap::new(),
@@ -39,15 +33,8 @@ impl Database {
         if let Ok(string_form) = serde_json::to_string(&self) {
             if let Some(storage) = seed::storage::get_storage() {
                 if let Ok(_) = storage.set_item("database", &string_form) {
-                	log!("Length: {}", storage.length());
-                } else {
-                	log!("Failed to set_item");
                 }
-            } else {
-            	log!("Failed to get storage");
             }
-        } else {
-        	log!("Failed to convert to string");
         }
     }
     pub fn add_player(&mut self, name: String) {
