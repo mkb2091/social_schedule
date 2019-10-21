@@ -1,13 +1,11 @@
-pub mod schedule;
 pub mod database;
+pub mod schedule;
 
 extern crate serde;
 extern crate serde_json;
 #[macro_use]
 extern crate seed;
 use seed::prelude::*;
-
-
 
 #[derive(Clone)]
 enum Page {
@@ -22,10 +20,15 @@ struct GenerateSchedule {
     pub add_player_input: String,
 }
 
+struct ManagePlayers {
+    pub add_player_name_input: String,
+}
+
 struct Model {
     pub page: Page,
     pub generate_schedule: GenerateSchedule,
-    database: database::Database
+    pub manage_players: ManagePlayers,
+    database: database::Database,
 }
 
 impl Default for Model {
@@ -36,7 +39,10 @@ impl Default for Model {
                 players: vec![],
                 add_player_input: String::new(),
             },
-            database: database::Database::load()
+            manage_players: ManagePlayers {
+            	add_player_name_input: String::new()
+            },
+            database: database::Database::load(),
         }
     }
 }
@@ -46,21 +52,36 @@ enum Msg {
     ChangePage(Page),
     GSAddPlayer,
     GSAddPlayerInput(String),
+    MPAddPlayer,
+    MPAddPlayerNameInput(String),
 }
 
 fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
     match msg {
-        Msg::ChangePage(page) => model.page = page,
+        Msg::ChangePage(page) => {
+            model.page = page;
+            model.generate_schedule.add_player_input = String::new();
+        },
         Msg::GSAddPlayerInput(player) => {
             model.generate_schedule.add_player_input = player;
-        }
+        },
         Msg::GSAddPlayer => {
             let player = &model.generate_schedule.add_player_input;
             if !player.is_empty() {
                 model.generate_schedule.players.push(player.clone());
                 model.generate_schedule.add_player_input = String::new();
             }
+        },
+        Msg::MPAddPlayerNameInput(player_name) => {
+            model.manage_players.add_player_name_input = player_name;
         }
+        Msg::MPAddPlayer => {
+            let player_name = &model.manage_players.add_player_name_input;
+            if !player_name.is_empty() {
+            	model.database.add_player(player_name.to_string());
+                model.manage_players.add_player_name_input = String::new();
+            }
+        },
     }
 }
 
@@ -74,7 +95,7 @@ St::FlexGrow=> "1";];
         St::FlexWrap => "Wrap"],
         div![
             &box_style,
-            h2!["Player list"],
+            h2!["Tournament Players"],
             p![
                 span!["Player Name: "],
                 input![input_ev(Ev::Input, Msg::GSAddPlayerInput)],
@@ -142,6 +163,37 @@ St::FlexGrow=> "1";];
     ]
 }
 
+fn view_manage_players(model: &Model) -> Node<Msg> {
+    let box_style = style![St::PaddingLeft => "15px";
+St::PaddingRight => "15px";
+St::FlexGrow=> "1";];
+
+    div![
+        style![St::Display => "Flex";
+        St::FlexWrap => "Wrap"],
+        div![
+            &box_style,
+            h2!["Player List"],
+            ul![style![St::PaddingBottom => "5px";], {
+                let player_list = model.database.get_players();
+                let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(player_list.len());
+                for (id, player) in &player_list {
+                    node_list.push(li![player.name]);
+                }
+                node_list
+            }],
+        ],
+        div![
+            &box_style,
+            p![
+            span!["Player Name: "],
+            input![input_ev(Ev::Input, Msg::MPAddPlayerNameInput)],],
+            button![simple_ev(Ev::Click, Msg::MPAddPlayer), "Add"],
+        ],
+        
+    ]
+}
+
 fn view(model: &Model) -> impl View<Msg> {
     vec![
         title![match model.page {
@@ -174,6 +226,7 @@ fn view(model: &Model) -> impl View<Msg> {
         ],
         match model.page {
             Page::GenerateSchedule => view_generate_schedule(model),
+            Page::ManagePlayers => view_manage_players(model),
             _ => div![],
         },
     ]
