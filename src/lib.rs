@@ -1,7 +1,13 @@
 pub mod schedule;
+pub mod database;
+
+extern crate serde;
+extern crate serde_json;
 #[macro_use]
 extern crate seed;
 use seed::prelude::*;
+
+
 
 #[derive(Clone)]
 enum Page {
@@ -19,6 +25,7 @@ struct GenerateSchedule {
 struct Model {
     pub page: Page,
     pub generate_schedule: GenerateSchedule,
+    database: database::Database
 }
 
 impl Default for Model {
@@ -29,6 +36,7 @@ impl Default for Model {
                 players: vec![],
                 add_player_input: String::new(),
             },
+            database: database::Database::load()
         }
     }
 }
