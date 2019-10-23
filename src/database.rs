@@ -32,8 +32,7 @@ impl Database {
     pub fn dump(&self) {
         if let Ok(string_form) = serde_json::to_string(&self) {
             if let Some(storage) = seed::storage::get_storage() {
-                if let Ok(_) = storage.set_item("database", &string_form) {
-                }
+                if let Ok(_) = storage.set_item("database", &string_form) {}
             }
         }
     }
@@ -41,7 +40,7 @@ impl Database {
         for id in 0..std::u32::MAX {
             if !self.players.contains_key(&id) {
                 self.players.insert(id, Player { name });
-        		self.dump();
+                self.dump();
                 return;
             }
         }
@@ -49,5 +48,22 @@ impl Database {
 
     pub fn get_players(&self) -> Vec<(&u32, &Player)> {
         self.players.iter().collect()
+    }
+
+    pub fn get_player(&self, id: u32) -> Option<&Player> {
+        self.players.get(&id)
+    }
+
+    pub fn contains_player(&self, id: u32) -> bool {
+        self.players.contains_key(&id)
+    }
+    
+    pub fn remove_player(&mut self, id: u32) -> Option<Player> {
+    	if let Some(player) = self.players.remove(&id) {
+    		self.dump();
+    		Some(player)
+    	} else {
+    		None
+    	}
     }
 }

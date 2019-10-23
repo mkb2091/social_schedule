@@ -16,8 +16,8 @@ enum Page {
 }
 
 struct GenerateSchedule {
-    pub players: Vec<String>,
-    pub add_player_input: String,
+    pub players: Vec<u32>,
+    pub add_player_select_box: String,
 }
 
 struct ManagePlayers {
@@ -36,11 +36,11 @@ impl Default for Model {
         Self {
             page: Page::GenerateSchedule,
             generate_schedule: GenerateSchedule {
-                players: vec![],
-                add_player_input: String::new(),
+                players: Vec::new(),
+                add_player_select_box: String::new(),
             },
             manage_players: ManagePlayers {
-            	add_player_name_input: String::new()
+                add_player_name_input: String::new(),
             },
             database: database::Database::load(),
         }
@@ -51,37 +51,62 @@ impl Default for Model {
 enum Msg {
     ChangePage(Page),
     GSAddPlayer,
-    GSAddPlayerInput(String),
+    GSAddPlayerSelectBoxInput(String),
+    GSRemovePlayer(u32),
     MPAddPlayer,
     MPAddPlayerNameInput(String),
+    MPRemovePlayer(u32)
 }
 
 fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
     match msg {
         Msg::ChangePage(page) => {
             model.page = page;
-            model.generate_schedule.add_player_input = String::new();
-        },
-        Msg::GSAddPlayerInput(player) => {
-            model.generate_schedule.add_player_input = player;
-        },
+            model.manage_players.add_player_name_input = String::new();
+        }
+        Msg::GSAddPlayerSelectBoxInput(id) => {
+            model.generate_schedule.add_player_select_box = id;
+        }
         Msg::GSAddPlayer => {
-            let player = &model.generate_schedule.add_player_input;
-            if !player.is_empty() {
-                model.generate_schedule.players.push(player.clone());
-                model.generate_schedule.add_player_input = String::new();
+            let player_id = &model.generate_schedule.add_player_select_box;
+            if !player_id.is_empty() {
+                if let Ok(id) = player_id.parse::<u32>() {
+                    if model.database.contains_player(id) {
+                        model.generate_schedule.players.push(id);
+                    } else {
+                        log!("Played with specified ID does not exist");
+                    }
+                } else {
+                    log!("Invalid ID of player");
+                }
             }
-        },
+        }
+        Msg::GSRemovePlayer(id) => {
+            if let Some((pos, player)) = model
+                .generate_schedule
+                .players
+                .iter()
+                .enumerate()
+                .find(|(_, &player_id)| id == player_id)
+            {
+                model.generate_schedule.players.remove(pos);
+            } else {
+                log!("Played with specified ID not in list");
+            }
+        }
         Msg::MPAddPlayerNameInput(player_name) => {
             model.manage_players.add_player_name_input = player_name;
         }
         Msg::MPAddPlayer => {
             let player_name = &model.manage_players.add_player_name_input;
             if !player_name.is_empty() {
-            	model.database.add_player(player_name.to_string());
+                model.database.add_player(player_name.to_string());
                 model.manage_players.add_player_name_input = String::new();
             }
-        },
+        }
+        Msg::MPRemovePlayer(id) => {
+        	model.database.remove_player(id);
+        }
     }
 }
 
@@ -96,26 +121,43 @@ St::FlexGrow=> "1";];
         div![
             &box_style,
             h2!["Tournament Players"],
+            p![span!["Group: "], select![], button!["Add"],],
             p![
-                span!["Player Name: "],
-                input![input_ev(Ev::Input, Msg::GSAddPlayerInput)],
+                span!["Individual: "],
+                select![
+                    attrs! {At::Value => ""},
+                    input_ev(Ev::Input, Msg::GSAddPlayerSelectBoxInput),
+                    {
+                        let player_list = model.database.get_players();
+                        let mut node_list: Vec<Node<Msg>> =
+                            Vec::with_capacity(player_list.len() + 1);
+                        node_list.push(option![attrs! {At::Value => ""}, ""]);
+                        for (id, player) in &player_list {
+                            node_list.push(option![
+                                attrs! {At::Value => id},
+                                format!("{}: ({})", player.name, id)
+                            ]);
+                        }
+                        node_list
+                    }
+                ],
                 button![simple_ev(Ev::Click, Msg::GSAddPlayer), "Add"],
             ],
-            p![span!["Group: "], select![], button!["Add"],],
-            p![span!["Individual: "], select![{
-                let player_list = model.database.get_players();
-                let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(player_list.len());
-                for (id, player) in &player_list {
-                    node_list.push(option![attrs!{At::Value => id},
-                    format!("{}: ({})", player.name, id)]);
-                }
-                node_list
-            }], button!["Add"],],
             ul![style![St::PaddingBottom => "5px";], {
                 let mut players_list: Vec<Node<Msg>> =
                     Vec::with_capacity(model.generate_schedule.players.len());
-                for player in &model.generate_schedule.players {
-                    players_list.push(li![player, button!["Remove"]]);
+                for &player_id in &model.generate_schedule.players {
+                    players_list.push(li![
+                        if let Some(player) = model.database.get_player(player_id) {
+                            &player.name
+                        } else {
+                            "Player does not exist"
+                        },
+                        button![
+                            raw_ev(Ev::Click, move |_| Msg::GSRemovePlayer(player_id)),
+                            "Remove"
+                        ]
+                    ]);
                 }
                 players_list
             }],
@@ -185,8 +227,11 @@ St::FlexGrow=> "1";];
             ul![style![St::PaddingBottom => "5px";], {
                 let player_list = model.database.get_players();
                 let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(player_list.len());
-                for (id, player) in &player_list {
-                    node_list.push(li![player.name]);
+                for (&id, player) in &player_list {
+                    node_list.push(li![player.name, button![
+                    	raw_ev(Ev::Click, move |_| Msg::MPRemovePlayer(id)),
+                            "Remove"
+                    ]]);
                 }
                 node_list
             }],
@@ -194,11 +239,11 @@ St::FlexGrow=> "1";];
         div![
             &box_style,
             p![
-            span!["Player Name: "],
-            input![input_ev(Ev::Input, Msg::MPAddPlayerNameInput)],],
+                span!["Player Name: "],
+                input![input_ev(Ev::Input, Msg::MPAddPlayerNameInput)],
+            ],
             button![simple_ev(Ev::Click, Msg::MPAddPlayer), "Add"],
         ],
-        
     ]
 }
 
