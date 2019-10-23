@@ -1,4 +1,3 @@
-import base64
 with open('src/index.html') as file:
     data = file.read()
 
