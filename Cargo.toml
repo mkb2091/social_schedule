@@ -31,4 +31,5 @@ harness = false
 
 [profile.release]  # Attempts to minimize file size
 lto = true
-opt-level = 'z'
+opt-level = 3
+debug = false
