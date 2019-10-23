@@ -82,7 +82,7 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
             }
         }
         Msg::GSRemovePlayer(id) => {
-            if let Some((pos, player)) = model
+            if let Some((pos, _)) = model
                 .generate_schedule
                 .players
                 .iter()
