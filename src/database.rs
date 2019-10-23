@@ -32,12 +32,14 @@ impl Database {
     pub fn dump(&self) {
         if let Ok(string_form) = serde_json::to_string(&self) {
             if let Some(storage) = seed::storage::get_storage() {
-                if let Ok(_) = storage.set_item("database", &string_form) {}
+                if storage.set_item("database", &string_form).is_err() {
+                	log!("Failed to dump database to disk");
+                }
             }
         }
     }
     pub fn add_player(&mut self, name: String) {
-        for id in 0..std::u32::MAX {
+        for id in (self.players.len() as u32)..std::u32::MAX {
             if !self.players.contains_key(&id) {
                 self.players.insert(id, Player { name });
                 self.dump();

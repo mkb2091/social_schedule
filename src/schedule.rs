@@ -9,7 +9,7 @@ pub struct Schedule {
 impl Schedule {
     pub fn new(player_count: usize, tables: usize) -> Result<Schedule, ()> {
         if tables > player_count {
-            return Err(());
+            Err(())
         } else {
             let mut matches: Vec<u64> = Vec::with_capacity(tables * tables);
             for _ in 0..(tables * tables) {
@@ -33,7 +33,7 @@ impl Schedule {
             for (round_number, round) in data.iter().enumerate() {
                 for (table_number, table) in round.iter().enumerate() {
                     for player in table.iter() {
-                        *new.get_mut(round_number, table_number) |= (2_u64.pow(*player as u32));
+                        *new.get_mut(round_number, table_number) |= 2_u64.pow(*player as u32);
                     }
                 }
             }
