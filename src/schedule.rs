@@ -96,7 +96,7 @@ impl Schedule {
             }
             total += opponents.count_ones();
         }
-        return total;
+        total
     }
 
     pub fn get_tables(&self) -> usize {
