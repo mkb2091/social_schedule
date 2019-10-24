@@ -65,7 +65,22 @@ impl Schedule {
     }
 
     pub fn unique_opponents(&self) -> u32 {
-        0
+        let mut total: u32 = 0;
+        for player in 0..self.player_count {
+        	let mut opponents: u64 = 0;
+        	let player = 1 << player;
+        	for round in 0..self.tables {
+        		for table in 0..self.tables {
+        			let game = self.get(round, table);
+        			if game & player != 0 {
+        				opponents |= game;
+        				break
+        			}
+        		}
+        	}
+        	total += opponents.count_ones(); 
+        }
+        return total;
     }
 }
 
@@ -107,7 +122,7 @@ mod tests {
             game.push(round.clone());
         }
         if let Ok(mut schedule) = Schedule::from_vec(24, 6, game) {
-            assert_eq!(4, schedule.unique_opponents());
+            assert_eq!(4 * 24, schedule.unique_opponents());
         }
     }
 }
