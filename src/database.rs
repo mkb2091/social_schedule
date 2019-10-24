@@ -33,7 +33,7 @@ impl Database {
         if let Ok(string_form) = serde_json::to_string(&self) {
             if let Some(storage) = seed::storage::get_storage() {
                 if storage.set_item("database", &string_form).is_err() {
-                	log!("Failed to dump database to disk");
+                    log!("Failed to dump database to disk");
                 }
             }
         }
@@ -59,13 +59,13 @@ impl Database {
     pub fn contains_player(&self, id: u32) -> bool {
         self.players.contains_key(&id)
     }
-    
+
     pub fn remove_player(&mut self, id: u32) -> Option<Player> {
-    	if let Some(player) = self.players.remove(&id) {
-    		self.dump();
-    		Some(player)
-    	} else {
-    		None
-    	}
+        if let Some(player) = self.players.remove(&id) {
+            self.dump();
+            Some(player)
+        } else {
+            None
+        }
     }
 }

@@ -1,11 +1,27 @@
 pub mod database;
 pub mod schedule;
 
+extern crate rand_core;
+extern crate rand_xorshift;
+use rand_core::{RngCore, SeedableRng};
+extern crate rand;
+use rand::Rng;
+extern crate getrandom;
+
 extern crate serde;
 extern crate serde_json;
+
 #[macro_use]
 extern crate seed;
 use seed::prelude::*;
+
+extern crate wasm_bindgen;
+use wasm_bindgen::prelude::*;
+
+#[wasm_bindgen]
+extern "C" {
+    fn alert(s: &str);
+}
 
 #[derive(Clone)]
 enum Page {
@@ -18,6 +34,9 @@ enum Page {
 struct GenerateSchedule {
     pub players: Vec<u32>,
     pub add_player_select_box: String,
+    pub tables: usize,
+    schedule: schedule::Schedule,
+    display_schedule: bool,
 }
 
 struct ManagePlayers {
@@ -29,6 +48,7 @@ struct Model {
     pub generate_schedule: GenerateSchedule,
     pub manage_players: ManagePlayers,
     database: database::Database,
+    rng: rand_xorshift::XorShiftRng,
 }
 
 impl Default for Model {
@@ -38,11 +58,21 @@ impl Default for Model {
             generate_schedule: GenerateSchedule {
                 players: Vec::new(),
                 add_player_select_box: String::new(),
+                tables: 2,
+                schedule: schedule::Schedule::new(1, 1),
+                display_schedule: false,
             },
             manage_players: ManagePlayers {
                 add_player_name_input: String::new(),
             },
             database: database::Database::load(),
+            rng: {
+                let mut seed: [u8; 16] = [0; 16];
+                if getrandom::getrandom(&mut seed).is_err() {
+                    alert("Failed to seed RNG");
+                };
+                rand_xorshift::XorShiftRng::from_seed(seed)
+            },
         }
     }
 }
@@ -53,9 +83,11 @@ enum Msg {
     GSAddPlayer,
     GSAddPlayerSelectBoxInput(String),
     GSRemovePlayer(u32),
+    GSSetTables(String),
+    GSGenerate,
     MPAddPlayer,
     MPAddPlayerNameInput(String),
-    MPRemovePlayer(u32)
+    MPRemovePlayer(u32),
 }
 
 fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
@@ -74,10 +106,10 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
                     if model.database.contains_player(id) {
                         model.generate_schedule.players.push(id);
                     } else {
-                        log!("Played with specified ID does not exist");
+                        alert("Played with specified ID does not exist");
                     }
                 } else {
-                    log!("Invalid ID of player");
+                    alert("Invalid ID of player");
                 }
             }
         }
@@ -91,8 +123,26 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
             {
                 model.generate_schedule.players.remove(pos);
             } else {
-                log!("Played with specified ID not in list");
+                alert("Played with specified ID not in list");
             }
+        }
+        Msg::GSSetTables(tables) => {
+            if let Ok(tables) = tables.parse::<usize>() {
+                model.generate_schedule.tables = tables;
+            } else {
+                alert("Invalid player count");
+            }
+        }
+        Msg::GSGenerate => {
+            model.generate_schedule.schedule = schedule::Schedule::new(
+                model.generate_schedule.players.len(),
+                model.generate_schedule.tables,
+            );
+            model
+                .generate_schedule
+                .schedule
+                .generate_random(&mut model.rng);
+            model.generate_schedule.display_schedule = true;
         }
         Msg::MPAddPlayerNameInput(player_name) => {
             model.manage_players.add_player_name_input = player_name;
@@ -105,7 +155,7 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
             }
         }
         Msg::MPRemovePlayer(id) => {
-        	model.database.remove_player(id);
+            model.database.remove_player(id);
         }
     }
 }
@@ -165,8 +215,8 @@ St::FlexGrow=> "1";];
         div![
             &box_style,
             p![
-                span!["Players per table: "],
-                select![{
+                span!["Tables: "],
+                select![input_ev(Ev::Input, Msg::GSSetTables), {
                     let mut table_size_list: Vec<Node<Msg>> = Vec::with_capacity(42);
                     for table_size in 2..43 {
                         table_size_list.push(option![
@@ -181,7 +231,41 @@ St::FlexGrow=> "1";];
                 span!["Email Players: "],
                 input![attrs! {At::Type => "checkbox"}],
             ],
-            button!["Generate"]
+            button![simple_ev(Ev::Click, Msg::GSGenerate), "Generate"],
+            if model.generate_schedule.display_schedule {
+                p![
+                    p![format!(
+                        "Total unique games played(ideally players * games): {}",
+                        model.generate_schedule.schedule.unique_games_played()
+                    )],
+                    p![format!(
+                        "Total unique opponents/teammates played(higher is better): {}",
+                        model.generate_schedule.schedule.unique_opponents()
+                    )],
+                    table![{
+                        let tables = model.generate_schedule.schedule.get_tables();
+
+                        let mut table: Vec<Node<Msg>> = Vec::with_capacity(tables);
+                        for round in 0..tables {
+                            table.push(tr![{
+                                let mut row: Vec<Node<Msg>> = Vec::with_capacity(tables);
+                                for table in 0..tables {
+                                    row.push(td![{
+                                        format!(
+                                            "{:?}",
+                                            model.generate_schedule.schedule.get_game(round, table)
+                                        )
+                                    }]);
+                                }
+                                row
+                            }]);
+                        }
+                        table
+                    }],
+                ]
+            } else {
+                p![]
+            }
         ],
         div![
             &box_style,
@@ -228,10 +312,13 @@ St::FlexGrow=> "1";];
                 let player_list = model.database.get_players();
                 let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(player_list.len());
                 for (&id, player) in &player_list {
-                    node_list.push(li![player.name, button![
-                    	raw_ev(Ev::Click, move |_| Msg::MPRemovePlayer(id)),
+                    node_list.push(li![
+                        player.name,
+                        button![
+                            raw_ev(Ev::Click, move |_| Msg::MPRemovePlayer(id)),
                             "Remove"
-                    ]]);
+                        ]
+                    ]);
                 }
                 node_list
             }],
