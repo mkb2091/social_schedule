@@ -8,4 +8,4 @@ with open('pkg/package_bg.wasm', 'rb') as file:
     wasm = file.read()
 
 with open('index.html', 'w') as file:
-    file.write(data.format(js=js, wasm=str(list(wasm))).replace(' ', ''))
+    file.write(data.format(js=js, wasm=str(list(wasm)).replace(' ', '')))
