@@ -18,14 +18,13 @@ jobs:
         - npm install terser -g
         - git clone --depth=1 https://github.com/WebAssembly/binaryen && cd binaryen && cmake . && ccache make && sudo ccache make install && cd ../
         - sh build.sh
-       rust: stable
-       deploy: 
-         provider: releases
-         api_key: $GITHUB_OAUTH_TOKEN
-         file: "index.html"
-         skip_cleanup: true
-         on:
-           tags: false
+      deploy: 
+        provider: releases
+        api_key: $GITHUB_OAUTH_TOKEN
+        file: "index.html"
+        skip_cleanup: true
+        on:
+          tags: false
 
 stages:
   - build_and_test
