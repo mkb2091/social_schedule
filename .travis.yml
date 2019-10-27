@@ -21,9 +21,9 @@ jobs:
  		- npm install terser -g
         - git clone --depth=1 https://github.com/WebAssembly/binaryen && cd binaryen && cmake . && ccache make
       rust: stable
-     - stage: build_and_test
-       script:
-         - alias wasm-opt=binaryen/bin/wasm-opt
-         - sh build.sh
-         - cargo test --release --verbose
+    - stage: build_and_test
+      script:
+        - alias wasm-opt=binaryen/bin/wasm-opt
+        - sh build.sh
+        - cargo test --release --verbose
       
