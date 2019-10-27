@@ -16,9 +16,9 @@ jobs:
     - stage: dependencies
       script:
         - rustup target add wasm32-unknown-unknown
- 		- cargo install --force cargo-make
- 		- sudo apt-get install npm cmake
- 		- npm install terser -g
+        - cargo install --force cargo-make
+        - sudo apt-get install npm cmake
+        - npm install terser -g
         - git clone --depth=1 https://github.com/WebAssembly/binaryen && cd binaryen && cmake . && ccache make
       rust: stable
     - stage: build_and_test
