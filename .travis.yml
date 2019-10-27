@@ -5,12 +5,9 @@ rust:
   - nightly
 os:
   - linux
-matrix:
-  fast_finish: true
 cache:
   - cargo
-  - ccache
- 
+  - ccache 
 jobs:
   include:
     - stage: dependencies
