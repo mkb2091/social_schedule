@@ -20,7 +20,10 @@ jobs:
       rust: stable
     - stage: build_and_test
       script:
+        - git clone --depth=1 https://github.com/WebAssembly/binaryen && cd binaryen && cmake . && ccache make
         - alias wasm-opt=binaryen/bin/wasm-opt
         - sh build.sh
         - cargo test --release --verbose
-      
+stages:
+  - dependencies
+  - build_and_test
