@@ -5,6 +5,7 @@ cache:
   directories:
     - binaryen
     - target
+    - ~/.cargo/bin
 deploy:
   api_key: $GITHUB_OAUTH_TOKEN
   file: index.html
@@ -15,12 +16,9 @@ deploy:
 script:
   - "cargo test --release"
   - "rustup target add wasm32-unknown-unknown"
-  - "cargo install --force cargo-make"
+  - "cargo install cargo-make||true"
   - "sudo apt-get install npm cmake"
-  - "cd ~binaryen && git pull || cd && git clone --depth=1 https://github.com/WebAssembly/binaryen"
-  - "cd ~/binaryen && cmake . && ccache make && sudo ccache make install && cd ../"
+  - "cd binaryen && bash -c 'git pull&&cd ../' || cd ../ && git clone --depth=1 https://github.com/WebAssembly/binaryen"
+  - "cd binaryen && cmake . && ccache make && sudo ccache make install && cd ../"
   - "npm install terser -g"
-  - "cd && sh build.sh"
-
-stages:
-  - build_and_test
+  - "sh build.sh"
