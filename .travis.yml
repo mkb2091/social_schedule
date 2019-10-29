@@ -17,10 +17,10 @@ script:
   - "rustup target add wasm32-unknown-unknown"
   - "cargo install --force cargo-make"
   - "sudo apt-get install npm cmake"
-  - "cd binaryen && git pull || cd && git clone --depth=1 https://github.com/WebAssembly/binaryen"
-  - "cd binaryen && cmake . && ccache make && sudo ccache make install && cd ../"
+  - "cd ~binaryen && git pull || cd && git clone --depth=1 https://github.com/WebAssembly/binaryen"
+  - "cd ~/binaryen && cmake . && ccache make && sudo ccache make install && cd ../"
   - "npm install terser -g"
-  - "sh build.sh"
+  - "cd && sh build.sh"
 
 stages:
   - build_and_test
