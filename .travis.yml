@@ -18,7 +18,7 @@ jobs:
         - cargo install --force cargo-make
         - sudo apt-get install npm cmake
         - npm install terser -g
-        - if [ ! -d "binaryen" ]; then bash -c "git clone --depth=1 https://github.com/WebAssembly/binaryen && cd binaryen && cmake . && ccache make && sudo ccache make install && cd ../"; fi;
+        - bash -c 'if [ ! -d "binaryen" ]; then git clone --depth=1 https://github.com/WebAssembly/binaryen && cd binaryen && cmake . && ccache make && sudo ccache make install && cd ../; fi;'
         - sh build.sh
       deploy: 
         provider: releases
