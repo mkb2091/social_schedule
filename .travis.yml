@@ -1,32 +1,31 @@
+cache: 
+  directories: 
+    - binaryen
+    - target
+jobs: 
+  include: 
+    - 
+      deploy: 
+        api_key: $GITHUB_OAUTH_TOKEN
+        file: index.html
+        provider: releases
+        skip_cleanup: true
+        true: 
+          tags: false
+      script: 
+        - "rustup target add wasm32-unknown-unknown"
+        - "cargo install --force cargo-make"
+        - "sudo apt-get install npm cmake"
+        - "if [ ! -d \"binaryen\" ]; then git clone --depth=1 https://github.com/WebAssembly/binaryen && cd binaryen && cmake . && ccache make && sudo ccache make install && cd ../; fi"
+        - "npm install terser -g"
+        - "sh build.sh"
+      stage: build_and_deploy
 language: rust
-rust:
+os: 
+  - linux
+rust: 
   - stable
   - beta
   - nightly
-os:
-  - linux
-cache:
-  - cargo
-  - ccache
-  directories:
-    - binaryen
-jobs:
-  include:
-    - stage: build_and_deploy
-      script:
-        - rustup target add wasm32-unknown-unknown
-        - cargo install --force cargo-make
-        - sudo apt-get install npm cmake
-        - npm install terser -g
-        - bash -c 'if [ ! -d "binaryen" ]; then git clone --depth=1 https://github.com/WebAssembly/binaryen && cd binaryen && cmake . && ccache make && sudo ccache make install && cd ../; fi;'
-        - sh build.sh
-      deploy: 
-        provider: releases
-        api_key: $GITHUB_OAUTH_TOKEN
-        file: "index.html"
-        skip_cleanup: true
-        on:
-          tags: false
-
-stages:
+stages: 
   - build_and_test
