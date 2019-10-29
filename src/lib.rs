@@ -329,6 +329,10 @@ St::FlexGrow=> "1";];
                 span!["Player Name: "],
                 input![input_ev(Ev::Input, Msg::MPAddPlayerNameInput)],
             ],
+            p![
+                span!["Email: "],
+                input![],
+            ],
             button![simple_ev(Ev::Click, Msg::MPAddPlayer), "Add"],
         ],
     ]
