@@ -184,7 +184,8 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         Msg::MGAddPlayerInput(group_id, player_id) => {
             if let Ok(player_id) = player_id.parse::<u32>() {
             model.manage_groups.add_player_to_group_input.insert(group_id, player_id);} else {
-                alert(format!("Failed to parse {} as u32", &player_id));
+                let player_id: &str = &player_id;
+                alert(format!("Failed to parse {} as u32", player_id));
             }
         }
         Msg::MGAddPlayer(id) => {}
