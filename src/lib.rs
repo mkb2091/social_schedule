@@ -182,6 +182,22 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
     }
 }
 
+fn player_select_box(database: database::Database) -> Vec<Node<Msg>>
+
+{
+                        let player_list = model.database.get_players();
+                        let mut node_list: Vec<Node<Msg>> =
+                            Vec::with_capacity(player_list.len() + 1);
+                        node_list.push(option![attrs! {At::Value => ""}, ""]);
+                        for (id, player) in &player_list {
+                            node_list.push(option![
+                                attrs! {At::Value => id},
+                                format!("{}: ({})", player.name, id)
+                            ]);
+                        }
+                        node_list
+                    }
+
 fn view_generate_schedule(model: &Model) -> Node<Msg> {
     let box_style = style![St::PaddingLeft => "15px";
 St::PaddingRight => "15px";
@@ -388,10 +404,14 @@ St::FlexGrow=> "1";];
                 let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(group_list.len());
                 for (&id, group) in &group_list {
                     let mut group_node: Vec<Node<Msg>> = Vec::new();
-                    group_node.push(button![
+                    group_node.push(p![
+                        select![
+                        player_select_box(&model.database)
+                            ], group_node.push(button![
                             raw_ev(Ev::Click, move |_| Msg::MGAddPlayer(id)),
                             "Add Player"
                         ]);
+                    ]);
                     node_list.push(li![group.name, button!["Remove"], p!(group_node)]);
                 }
                 node_list
