@@ -386,6 +386,7 @@ St::FlexGrow=> "1";];
                 for (&id, group) in &group_list {
                     node_list.push(li![group.name, button!["Remove"]]);
                 }
+                node_list.push(option![attrs! {At::Value => ""}, ""]);
                 node_list
             }],
         ],
