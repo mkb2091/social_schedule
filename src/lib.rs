@@ -98,6 +98,7 @@ enum Msg {
     MPRemovePlayer(u32),
     MGAddGroup,
     MGAddGroupNameInput(String),
+    MGAddPlayer(u32),
 }
 
 fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
@@ -177,6 +178,7 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         Msg::MGAddGroupNameInput(group_name) => {
             model.manage_groups.add_group_name_input = group_name;
         }
+        Msg::MGAddPlayer(id) => {}
     }
 }
 
@@ -385,7 +387,12 @@ St::FlexGrow=> "1";];
                 let group_list = model.database.get_groups();
                 let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(group_list.len());
                 for (&id, group) in &group_list {
-                    node_list.push(li![group.name, button!["Remove"]]);
+                    let mut group_node: Vec<Node<Msg>> = Vec::new();
+                    group_node.push(button![
+                            raw_ev(Ev::Click, move |_| Msg::MGAddPlayer(id)),
+                            "Add Player"
+                        ]);
+                    node_list.push(li![group.name, button!["Remove"], p!(group_node)]);
                 }
                 node_list
             }],
