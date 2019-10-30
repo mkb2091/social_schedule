@@ -185,7 +185,7 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
 fn player_select_box(database: database::Database) -> Vec<Node<Msg>>
 
 {
-                        let player_list = model.database.get_players();
+                        let player_list = database.get_players();
                         let mut node_list: Vec<Node<Msg>> =
                             Vec::with_capacity(player_list.len() + 1);
                         node_list.push(option![attrs! {At::Value => ""}, ""]);
@@ -407,10 +407,11 @@ St::FlexGrow=> "1";];
                     group_node.push(p![
                         select![
                         player_select_box(&model.database)
-                            ], group_node.push(button![
+                            ],
+                        button![
                             raw_ev(Ev::Click, move |_| Msg::MGAddPlayer(id)),
                             "Add Player"
-                        ]);
+                        ]
                     ]);
                     node_list.push(li![group.name, button!["Remove"], p!(group_node)]);
                 }
