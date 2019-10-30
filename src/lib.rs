@@ -45,6 +45,7 @@ struct ManagePlayers {
 
 struct ManageGroups {
     add_group_name_input: String,
+    add_player_to_group_input: std::containers::HashMap<u32, u32>,
 }
 
 struct Model {
@@ -72,6 +73,7 @@ impl Default for Model {
             },
             manage_groups: ManageGroups {
                 add_group_name_input: String::new(),
+                add_player_to_group_input: std::containers::HashMap::new(),
             },
             database: database::Database::load(),
             rng: {
@@ -98,6 +100,7 @@ enum Msg {
     MPRemovePlayer(u32),
     MGAddGroup,
     MGAddGroupNameInput(String),
+    MGAddPlayerInput(u32, u32),
     MGAddPlayer(u32),
 }
 
@@ -177,6 +180,9 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         }
         Msg::MGAddGroupNameInput(group_name) => {
             model.manage_groups.add_group_name_input = group_name;
+        }
+        Msg::MGAddPlayerInput(group_id, player_id) => {
+            model.manage_groups.add_player_to_group_input.insert(group_id, player_id);
         }
         Msg::MGAddPlayer(id) => {}
     }
@@ -406,6 +412,7 @@ St::FlexGrow=> "1";];
                     let mut group_node: Vec<Node<Msg>> = Vec::new();
                     group_node.push(p![
                         select![
+                            raw_ev(Ev::Input, move |event| Msg::MGAddPlayerInput(id, event)),
                         player_select_box(&model.database)
                             ],
                         button![
