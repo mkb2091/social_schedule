@@ -195,7 +195,8 @@ St::FlexGrow=> "1";];
                 span!["Group: "],
                 select![attrs! {At::Value => ""}, {
                     let group_list = model.database.get_groups();
-                    let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(group_list.len());
+                    let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(group_list.len() + 1);
+                    node_list.push(option![attrs! {At::Value => ""}, ""]);
                     for (&id, group) in &group_list {
                         node_list.push(option![
                             attrs! {At::Value => id},
@@ -386,7 +387,6 @@ St::FlexGrow=> "1";];
                 for (&id, group) in &group_list {
                     node_list.push(li![group.name, button!["Remove"]]);
                 }
-                node_list.push(option![attrs! {At::Value => ""}, ""]);
                 node_list
             }],
         ],
