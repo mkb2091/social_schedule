@@ -4,8 +4,8 @@ pub struct Player {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
-struct Group {
-    name: String,
+pub struct Group {
+    pub name: String,
     players: Vec<u32>,
 }
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
@@ -67,5 +67,25 @@ impl Database {
         } else {
             None
         }
+    }
+
+    pub fn add_group(&mut self, name: String) {
+        for id in (self.groups.len() as u32)..std::u32::MAX {
+            if !self.groups.contains_key(&id) {
+                self.groups.insert(
+                    id,
+                    Group {
+                        name,
+                        players: Vec::new(),
+                    },
+                );
+                self.dump();
+                return;
+            }
+        }
+    }
+
+    pub fn get_groups(&self) -> Vec<(&u32, &Group)> {
+        self.groups.iter().collect()
     }
 }

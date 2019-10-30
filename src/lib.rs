@@ -43,10 +43,15 @@ struct ManagePlayers {
     pub add_player_name_input: String,
 }
 
+struct ManageGroups {
+    add_group_name_input: String,
+}
+
 struct Model {
     pub page: Page,
     pub generate_schedule: GenerateSchedule,
     pub manage_players: ManagePlayers,
+    manage_groups: ManageGroups,
     database: database::Database,
     rng: rand_xorshift::XorShiftRng,
 }
@@ -64,6 +69,9 @@ impl Default for Model {
             },
             manage_players: ManagePlayers {
                 add_player_name_input: String::new(),
+            },
+            manage_groups: ManageGroups {
+                add_group_name_input: String::new(),
             },
             database: database::Database::load(),
             rng: {
@@ -88,6 +96,8 @@ enum Msg {
     MPAddPlayer,
     MPAddPlayerNameInput(String),
     MPRemovePlayer(u32),
+    MGAddGroup,
+    MGAddGroupNameInput(String),
 }
 
 fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
@@ -156,6 +166,16 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         }
         Msg::MPRemovePlayer(id) => {
             model.database.remove_player(id);
+        }
+        Msg::MGAddGroup => {
+            let group_name = &model.manage_groups.add_group_name_input;
+            if !group_name.is_empty() {
+                model.database.add_group(group_name.to_string());
+                model.manage_groups.add_group_name_input = String::new();
+            }
+        }
+        Msg::MGAddGroupNameInput(group_name) => {
+            model.manage_groups.add_group_name_input = group_name;
         }
     }
 }
@@ -329,11 +349,39 @@ St::FlexGrow=> "1";];
                 span!["Player Name: "],
                 input![input_ev(Ev::Input, Msg::MPAddPlayerNameInput)],
             ],
-            p![
-                span!["Email: "],
-                input![],
-            ],
+            p![span!["Email: "], input![],],
             button![simple_ev(Ev::Click, Msg::MPAddPlayer), "Add"],
+        ],
+    ]
+}
+
+fn view_manage_groups(model: &Model) -> Node<Msg> {
+    let box_style = style![St::PaddingLeft => "15px";
+St::PaddingRight => "15px";
+St::FlexGrow=> "1";];
+
+    div![
+        style![St::Display => "Flex";
+        St::FlexWrap => "Wrap"],
+        div![
+            &box_style,
+            h2!["Group List"],
+            ul![style![St::PaddingBottom => "5px";], {
+                let group_list = model.database.get_groups();
+                let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(0);
+                for (&id, group) in &group_list {
+                    node_list.push(li![group.name, button!["Remove"]]);
+                }
+                node_list
+            }],
+        ],
+        div![
+            &box_style,
+            p![
+                span!["Group Name: "],
+                input![input_ev(Ev::Input, Msg::MGAddGroupNameInput)],
+            ],
+            button![simple_ev(Ev::Click, Msg::MGAddGroup), "Add"],
         ],
     ]
 }
@@ -371,6 +419,7 @@ fn view(model: &Model) -> impl View<Msg> {
         match model.page {
             Page::GenerateSchedule => view_generate_schedule(model),
             Page::ManagePlayers => view_manage_players(model),
+            Page::ManageGroups => view_manage_groups(model),
             _ => div![],
         },
     ]
