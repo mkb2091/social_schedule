@@ -45,7 +45,7 @@ struct ManagePlayers {
 
 struct ManageGroups {
     add_group_name_input: String,
-    add_player_to_group_input: std::containers::HashMap<u32, u32>,
+    add_player_to_group_input: std::collections::HashMap<u32, u32>,
 }
 
 struct Model {
@@ -73,7 +73,7 @@ impl Default for Model {
             },
             manage_groups: ManageGroups {
                 add_group_name_input: String::new(),
-                add_player_to_group_input: std::containers::HashMap::new(),
+                add_player_to_group_input: std::collections::HashMap::new(),
             },
             database: database::Database::load(),
             rng: {
@@ -183,30 +183,30 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         }
         Msg::MGAddPlayerInput(group_id, player_id) => {
             if let Ok(player_id) = player_id.parse::<u32>() {
-            model.manage_groups.add_player_to_group_input.insert(group_id, player_id);} else {
-                let player_id: &str = &player_id;
-                alert(format!("Failed to parse {} as u32", player_id));
+                model
+                    .manage_groups
+                    .add_player_to_group_input
+                    .insert(group_id, player_id);
+            } else {
+                alert(&format!("Failed to parse {} as u32", player_id));
             }
         }
         Msg::MGAddPlayer(id) => {}
     }
 }
 
-fn player_select_box(database: &database::Database) -> Vec<Node<Msg>>
-
-{
-                        let player_list = database.get_players();
-                        let mut node_list: Vec<Node<Msg>> =
-                            Vec::with_capacity(player_list.len() + 1);
-                        node_list.push(option![attrs! {At::Value => ""}, ""]);
-                        for (id, player) in &player_list {
-                            node_list.push(option![
-                                attrs! {At::Value => id},
-                                format!("{}: ({})", player.name, id)
-                            ]);
-                        }
-                        node_list
-                    }
+fn player_select_box(database: &database::Database) -> Vec<Node<Msg>> {
+    let player_list = database.get_players();
+    let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(player_list.len() + 1);
+    node_list.push(option![attrs! {At::Value => ""}, ""]);
+    for (id, player) in &player_list {
+        node_list.push(option![
+            attrs! {At::Value => id},
+            format!("{}: ({})", player.name, id)
+        ]);
+    }
+    node_list
+}
 
 fn view_generate_schedule(model: &Model) -> Node<Msg> {
     let box_style = style![St::PaddingLeft => "15px";
@@ -416,9 +416,11 @@ St::FlexGrow=> "1";];
                     let mut group_node: Vec<Node<Msg>> = Vec::new();
                     group_node.push(p![
                         select![
-                            input_ev("input", move |player_id| Msg::MGAddPlayerInput(id, player_id)),
-                        player_select_box(&model.database)
-                            ],
+                            input_ev("input", move |player_id| Msg::MGAddPlayerInput(
+                                id, player_id
+                            )),
+                            player_select_box(&model.database)
+                        ],
                         button![
                             raw_ev(Ev::Click, move |_| Msg::MGAddPlayer(id)),
                             "Add Player"
