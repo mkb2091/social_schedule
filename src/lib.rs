@@ -182,7 +182,7 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
     }
 }
 
-fn player_select_box(database: database::Database) -> Vec<Node<Msg>>
+fn player_select_box(database: &database::Database) -> Vec<Node<Msg>>
 
 {
                         let player_list = database.get_players();
