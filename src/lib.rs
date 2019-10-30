@@ -412,7 +412,7 @@ St::FlexGrow=> "1";];
                     let mut group_node: Vec<Node<Msg>> = Vec::new();
                     group_node.push(p![
                         select![
-                            raw_ev(Ev::Input, move |event| Msg::MGAddPlayerInput(id, event)),
+                            input_ev("input", move |player_id| Msg::MGAddPlayerInput(id, player_id)),
                         player_select_box(&model.database)
                             ],
                         button![
