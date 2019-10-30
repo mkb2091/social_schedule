@@ -100,7 +100,7 @@ enum Msg {
     MPRemovePlayer(u32),
     MGAddGroup,
     MGAddGroupNameInput(String),
-    MGAddPlayerInput(u32, u32),
+    MGAddPlayerInput(u32, String),
     MGAddPlayer(u32),
 }
 
@@ -182,7 +182,10 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
             model.manage_groups.add_group_name_input = group_name;
         }
         Msg::MGAddPlayerInput(group_id, player_id) => {
-            model.manage_groups.add_player_to_group_input.insert(group_id, player_id);
+            if let Ok(player_id) = player_id.parse::<u32>() {
+            model.manage_groups.add_player_to_group_input.insert(group_id, player_id);} else {
+                alert(format!("Failed to parse {} as u32", player_id));
+            }
         }
         Msg::MGAddPlayer(id) => {}
     }
