@@ -191,7 +191,21 @@ St::FlexGrow=> "1";];
         div![
             &box_style,
             h2!["Tournament Players"],
-            p![span!["Group: "], select![], button!["Add"],],
+            p![
+                span!["Group: "],
+                select![attrs! {At::Value => ""}, {
+                    let group_list = model.database.get_groups();
+                    let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(group_list.len());
+                    for (&id, group) in &group_list {
+                        node_list.push(option![
+                            attrs! {At::Value => id},
+                            format!("{}: ({})", group.name, id)
+                        ]);
+                    }
+                    node_list
+                }],
+                button!["Add"],
+            ],
             p![
                 span!["Individual: "],
                 select![
@@ -368,7 +382,7 @@ St::FlexGrow=> "1";];
             h2!["Group List"],
             ul![style![St::PaddingBottom => "5px";], {
                 let group_list = model.database.get_groups();
-                let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(0);
+                let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(group_list.len());
                 for (&id, group) in &group_list {
                     node_list.push(li![group.name, button!["Remove"]]);
                 }
