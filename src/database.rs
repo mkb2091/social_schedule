@@ -6,7 +6,13 @@ pub struct Player {
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct Group {
     pub name: String,
-    players: Vec<u32>,
+    players: std::collections::HashSet<u32>,
+}
+
+impl Group {
+    pub fn get_players(&self) -> std::collections::hash_set::Iter<u32> {
+        self.players.iter()
+    }
 }
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct Database {
@@ -76,7 +82,7 @@ impl Database {
                     id,
                     Group {
                         name,
-                        players: Vec::new(),
+                        players: std::collections::HashSet::new(),
                     },
                 );
                 self.dump();
@@ -87,5 +93,14 @@ impl Database {
 
     pub fn get_groups(&self) -> Vec<(&u32, &Group)> {
         self.groups.iter().collect()
+    }
+
+    pub fn add_player_to_group(&mut self, group_id: u32, player_id: u32) {
+        if self.players.contains_key(&player_id) {
+            if let Some(group) = self.groups.get_mut(&group_id) {
+                group.players.insert(player_id);
+                self.dump();
+            }
+        }
     }
 }

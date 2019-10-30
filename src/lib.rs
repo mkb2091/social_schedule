@@ -191,7 +191,11 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
                 alert(&format!("Failed to parse {} as u32", player_id));
             }
         }
-        Msg::MGAddPlayer(id) => {}
+        Msg::MGAddPlayer(id) => {
+            if let Some(player_id) = model.manage_groups.add_player_to_group_input.get(&id) {
+                model.database.add_player_to_group(id, *player_id);
+            }
+        }
     }
 }
 
@@ -240,19 +244,7 @@ St::FlexGrow=> "1";];
                 select![
                     attrs! {At::Value => ""},
                     input_ev(Ev::Input, Msg::GSAddPlayerSelectBoxInput),
-                    {
-                        let player_list = model.database.get_players();
-                        let mut node_list: Vec<Node<Msg>> =
-                            Vec::with_capacity(player_list.len() + 1);
-                        node_list.push(option![attrs! {At::Value => ""}, ""]);
-                        for (id, player) in &player_list {
-                            node_list.push(option![
-                                attrs! {At::Value => id},
-                                format!("{}: ({})", player.name, id)
-                            ]);
-                        }
-                        node_list
-                    }
+                    player_select_box(&model.database),
                 ],
                 button![simple_ev(Ev::Click, Msg::GSAddPlayer), "Add"],
             ],
@@ -414,7 +406,7 @@ St::FlexGrow=> "1";];
                 let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(group_list.len());
                 for (&id, group) in &group_list {
                     let mut group_node: Vec<Node<Msg>> = Vec::new();
-                    group_node.push(p![
+                    group_node.push(li![
                         select![
                             input_ev("input", move |player_id| Msg::MGAddPlayerInput(
                                 id, player_id
@@ -426,7 +418,12 @@ St::FlexGrow=> "1";];
                             "Add Player"
                         ]
                     ]);
-                    node_list.push(li![group.name, button!["Remove"], p!(group_node)]);
+                    for player_id in group.get_players() {
+                        if let Some(player) = model.database.get_player(*player_id) {
+                            group_node.push(li![format!("{}: ({})", player.name, player_id)]);
+                        }
+                    }
+                    node_list.push(li![group.name, button!["Remove"], ul!(group_node)]);
                 }
                 node_list
             }],
