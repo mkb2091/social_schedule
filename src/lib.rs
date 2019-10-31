@@ -4,8 +4,8 @@ pub mod schedule;
 extern crate rand_core;
 extern crate rand_xorshift;
 use rand_core::SeedableRng;
-extern crate rand;
 extern crate getrandom;
+extern crate rand;
 
 extern crate serde;
 extern crate serde_json;
