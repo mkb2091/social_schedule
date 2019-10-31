@@ -16,22 +16,12 @@ getrandom = {version = "0.1", features = ['wasm-bindgen']}
 seed = "0.4"
 wasm-bindgen = "0.2"
 web-sys = "0.3"
-
-# For serialization, eg sending requests to a server. Otherwise, not required.
+ 
 serde = { version = "1.0", features = ['derive'] }
 serde_json = "1.0"
 futures = "0.1"
 
-
-[dev-dependencies]
-criterion = "0.2"
-
-[[bench]]
-name = "benchmarks"
-harness = false
-
-
-[profile.release]  # Attempts to minimize file size
+[profile.release]
 lto = true
 opt-level = 3
 debug = false

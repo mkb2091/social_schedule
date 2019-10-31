@@ -3,9 +3,8 @@ pub mod schedule;
 
 extern crate rand_core;
 extern crate rand_xorshift;
-use rand_core::{RngCore, SeedableRng};
+use rand_core::SeedableRng;
 extern crate rand;
-use rand::Rng;
 extern crate getrandom;
 
 extern crate serde;
@@ -16,7 +15,6 @@ extern crate seed;
 use seed::prelude::*;
 
 extern crate wasm_bindgen;
-use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 extern "C" {
