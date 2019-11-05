@@ -90,6 +90,8 @@ enum Msg {
     ChangePage(Page),
     GSAddPlayer,
     GSAddPlayerSelectBoxInput(String),
+    GSAddGroup,
+    GSAddGroupSelectBoxInput(String),
     GSRemovePlayer(u32),
     GSSetTables(String),
     GSGenerate,
@@ -125,6 +127,10 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
                 }
             }
         }
+        Msg::GSAddGroupSelectBoxInput(id) => {
+            
+        }
+        Msg::GSAddGroup => {}        
         Msg::GSRemovePlayer(id) => {
             if let Some((pos, _)) = model
                 .generate_schedule
@@ -223,7 +229,9 @@ St::FlexGrow=> "1";];
             h2!["Tournament Players"],
             p![
                 span!["Group: "],
-                select![attrs! {At::Value => ""}, {
+                select![attrs! {At::Value => ""}, 
+                    input_ev(Ev::Input, Msg::GSAddGroupSelectBoxInput),
+                    {
                     let group_list = model.database.get_groups();
                     let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(group_list.len() + 1);
                     node_list.push(option![attrs! {At::Value => ""}, ""]);
@@ -235,7 +243,7 @@ St::FlexGrow=> "1";];
                     }
                     node_list
                 }],
-                button!["Add"],
+                button![simple_ev(Ev::Click, Msg::GSAddGroup), "Add"],
             ],
             p![
                 span!["Individual: "],
