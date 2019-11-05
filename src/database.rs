@@ -95,6 +95,10 @@ impl Database {
         self.groups.iter().collect()
     }
 
+    pub fn get_group(&self, id: u32) -> Option<&Group> {
+        self.groups.get(&id)
+    }
+
     pub fn add_player_to_group(&mut self, group_id: u32, player_id: u32) {
         if self.players.contains_key(&player_id) {
             if let Some(group) = self.groups.get_mut(&group_id) {

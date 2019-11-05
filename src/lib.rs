@@ -32,18 +32,49 @@ enum Page {
 struct GenerateSchedule {
     pub players: Vec<u32>,
     pub add_player_select_box: String,
+    pub add_group_select_box: String,
     pub tables: usize,
     schedule: schedule::Schedule,
     display_schedule: bool,
+}
+
+impl GenerateSchedule {
+    fn new() -> GenerateSchedule {
+        GenerateSchedule {
+            players: Vec::new(),
+            add_player_select_box: String::new(),
+            add_group_select_box: String::new(),
+            tables: 2,
+            schedule: schedule::Schedule::new(1, 1),
+            display_schedule: false,
+        }
+    }
 }
 
 struct ManagePlayers {
     pub add_player_name_input: String,
 }
 
+impl ManagePlayers {
+    fn new() -> ManagePlayers {
+        ManagePlayers {
+            add_player_name_input: String::new(),
+        }
+    }
+}
+
 struct ManageGroups {
     add_group_name_input: String,
     add_player_to_group_input: std::collections::HashMap<u32, u32>,
+}
+
+impl ManageGroups {
+    fn new() -> ManageGroups {
+        ManageGroups {
+            add_group_name_input: String::new(),
+            add_player_to_group_input: std::collections::HashMap::new(),
+        }
+    }
 }
 
 struct Model {
@@ -59,20 +90,9 @@ impl Default for Model {
     fn default() -> Self {
         Self {
             page: Page::GenerateSchedule,
-            generate_schedule: GenerateSchedule {
-                players: Vec::new(),
-                add_player_select_box: String::new(),
-                tables: 2,
-                schedule: schedule::Schedule::new(1, 1),
-                display_schedule: false,
-            },
-            manage_players: ManagePlayers {
-                add_player_name_input: String::new(),
-            },
-            manage_groups: ManageGroups {
-                add_group_name_input: String::new(),
-                add_player_to_group_input: std::collections::HashMap::new(),
-            },
+            generate_schedule: GenerateSchedule::new(),
+            manage_players: ManagePlayers::new(),
+            manage_groups: ManageGroups::new(),
             database: database::Database::load(),
             rng: {
                 let mut seed: [u8; 16] = [0; 16];
@@ -128,9 +148,24 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
             }
         }
         Msg::GSAddGroupSelectBoxInput(id) => {
-            
+            model.generate_schedule.add_group_select_box = id;
         }
-        Msg::GSAddGroup => {}        
+        Msg::GSAddGroup => {
+            let group_id = &model.generate_schedule.add_group_select_box;
+            if !group_id.is_empty() {
+                if let Ok(id) = group_id.parse::<u32>() {
+                    if let Some(group) = model.database.get_group(id) {
+                        for player in group.get_players() {
+                            model.generate_schedule.players.push(*player);
+                        }
+                    } else {
+                        alert("Played does not exist");
+                    }
+                } else {
+                    alert("Failed to convert ID to integer");
+                }
+            }
+        }
         Msg::GSRemovePlayer(id) => {
             if let Some((pos, _)) = model
                 .generate_schedule
@@ -229,20 +264,23 @@ St::FlexGrow=> "1";];
             h2!["Tournament Players"],
             p![
                 span!["Group: "],
-                select![attrs! {At::Value => ""}, 
+                select![
+                    attrs! {At::Value => ""},
                     input_ev(Ev::Input, Msg::GSAddGroupSelectBoxInput),
                     {
-                    let group_list = model.database.get_groups();
-                    let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(group_list.len() + 1);
-                    node_list.push(option![attrs! {At::Value => ""}, ""]);
-                    for (&id, group) in &group_list {
-                        node_list.push(option![
-                            attrs! {At::Value => id},
-                            format!("{}: ({})", group.name, id)
-                        ]);
+                        let group_list = model.database.get_groups();
+                        let mut node_list: Vec<Node<Msg>> =
+                            Vec::with_capacity(group_list.len() + 1);
+                        node_list.push(option![attrs! {At::Value => ""}, ""]);
+                        for (&id, group) in &group_list {
+                            node_list.push(option![
+                                attrs! {At::Value => id},
+                                format!("{}: ({})", group.name, id)
+                            ]);
+                        }
+                        node_list
                     }
-                    node_list
-                }],
+                ],
                 button![simple_ev(Ev::Click, Msg::GSAddGroup), "Add"],
             ],
             p![
