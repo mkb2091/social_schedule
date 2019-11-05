@@ -36,7 +36,7 @@ impl GenerateSchedule {
                 if database.contains_player(id) {
                     self.players.push(id);
                 } else {
-                    alert("Played with specified ID does not exist");
+                    alert("Player with specified ID does not exist");
                 }
             } else {
                 alert("Invalid ID of player");
@@ -57,7 +57,7 @@ impl GenerateSchedule {
                         self.players.push(*player);
                     }
                 } else {
-                    alert("Played does not exist");
+                    alert("Player does not exist");
                 }
             } else {
                 alert("Failed to convert ID to integer");
@@ -74,7 +74,7 @@ impl GenerateSchedule {
         {
             self.players.remove(pos);
         } else {
-            alert("Played with specified ID not in list");
+            alert("Player with specified ID not in list");
         }
     }
 
