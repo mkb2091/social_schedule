@@ -118,7 +118,7 @@ fn player_select_box(database: &database::Database) -> Vec<Node<Msg>> {
     for (id, player) in &player_list {
         node_list.push(option![
             attrs! {At::Value => id},
-            format!("{}: ({})", player.name, id)
+            format!("{} (ID: {})", player.name, id)
         ]);
     }
     node_list
