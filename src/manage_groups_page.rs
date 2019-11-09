@@ -1,6 +1,6 @@
 use seed::prelude::*;
 
-use crate::{alert, database, player_select_box, Msg};
+use crate::{alert, button_style, database, player_select_box, Msg};
 
 pub struct ManageGroups {
     pub add_group_name_input: String,
@@ -55,29 +55,41 @@ St::FlexGrow=> "1";];
         div![
             &box_style,
             h2!["Group List"],
-            ul![style![St::PaddingBottom => "5px";], {
+            table![style![St::PaddingBottom => "5px";], {
                 let group_list = database.get_groups();
                 let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(group_list.len());
                 for (&id, group) in &group_list {
-                    let mut group_node: Vec<Node<Msg>> = Vec::new();
-                    group_node.push(li![
+                    node_list.push(tr![
+                        td![h3![group.name]],
+                        td![button![button_style(), "Remove"]]
+                    ]);
+
+                    node_list.push(tr![td![
+                        attrs! {At::ColSpan => 2},
                         select![
+                            button_style(),
                             input_ev("input", move |player_id| Msg::MGAddPlayerInput(
                                 id, player_id
                             )),
                             player_select_box(&database)
                         ],
                         button![
+                            button_style(),
                             raw_ev(Ev::Click, move |_| Msg::MGAddPlayer(id)),
                             "Add Player"
                         ]
-                    ]);
+                    ]]);
+                    let mut group_node: Vec<Node<Msg>> = Vec::new();
                     for player_id in group.get_players() {
                         if let Some(player) = database.get_player(*player_id) {
-                            group_node.push(li![format!("{}: ({})", player.name, player_id)]);
+                            group_node.push(tr![
+                                td![format!("{}: ({})", player.name, player_id)],
+                                td![button![button_style(), "Remove"]]
+                            ]);
                         }
                     }
-                    node_list.push(li![group.name, button!["Remove"], ul!(group_node)]);
+
+                    node_list.push(tr![td![attrs! {At::ColSpan => 2}, table![group_node]]]);
                 }
                 node_list
             }],
@@ -88,7 +100,7 @@ St::FlexGrow=> "1";];
                 span!["Group Name: "],
                 input![input_ev(Ev::Input, Msg::MGAddGroupNameInput)],
             ],
-            button![simple_ev(Ev::Click, Msg::MGAddGroup), "Add"],
+            button![button_style(), simple_ev(Ev::Click, Msg::MGAddGroup), "Add"],
         ],
     ]
 }

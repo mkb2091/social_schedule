@@ -1,6 +1,6 @@
 use seed::prelude::*;
 
-use crate::{alert, database, player_select_box, schedule, Msg};
+use crate::{alert, button_style, database, player_select_box, schedule, Msg};
 
 pub struct GenerateSchedule {
     players: Vec<u32>,
@@ -110,6 +110,7 @@ St::FlexGrow=> "1";];
             p![
                 span!["Group: "],
                 select![
+                    button_style(),
                     attrs! {At::Value => ""},
                     input_ev(Ev::Input, Msg::GSAddGroupSelectBoxInput),
                     {
@@ -127,16 +128,21 @@ St::FlexGrow=> "1";];
                         node_list
                     }
                 ],
-                button![simple_ev(Ev::Click, Msg::GSAddGroup), "Add"],
+                button![button_style(), simple_ev(Ev::Click, Msg::GSAddGroup), "Add"],
             ],
             p![
                 span!["Individual: "],
                 select![
+                    button_style(),
                     attrs! {At::Value => ""},
                     input_ev(Ev::Input, Msg::GSAddPlayerSelectBoxInput),
                     player_select_box(&database),
                 ],
-                button![simple_ev(Ev::Click, Msg::GSAddPlayer), "Add"],
+                button![
+                    button_style(),
+                    simple_ev(Ev::Click, Msg::GSAddPlayer),
+                    "Add"
+                ],
             ],
             table![style![St::PaddingBottom => "5px";], {
                 let mut players_list: Vec<Node<Msg>> = Vec::with_capacity(model.players.len());
@@ -148,6 +154,7 @@ St::FlexGrow=> "1";];
                             "Player does not exist"
                         }],
                         td![button![
+                            button_style(),
                             raw_ev(Ev::Click, move |_| Msg::GSRemovePlayer(player_id)),
                             "Remove"
                         ]]
@@ -160,7 +167,7 @@ St::FlexGrow=> "1";];
             &box_style,
             p![
                 span!["Tables: "],
-                select![input_ev(Ev::Input, Msg::GSSetTables), {
+                select![button_style(), input_ev(Ev::Input, Msg::GSSetTables), {
                     let mut table_size_list: Vec<Node<Msg>> = Vec::with_capacity(42);
                     for table_size in 2..43 {
                         table_size_list.push(option![
@@ -175,7 +182,11 @@ St::FlexGrow=> "1";];
                 span!["Email Players: "],
                 input![attrs! {At::Type => "checkbox"}],
             ],
-            button![simple_ev(Ev::Click, Msg::GSGenerate), "Generate"],
+            button![
+                button_style(),
+                simple_ev(Ev::Click, Msg::GSGenerate),
+                "Generate"
+            ],
             if model.display_schedule {
                 p![
                     p![format!(
@@ -217,12 +228,12 @@ St::FlexGrow=> "1";];
                     style![St::PaddingLeft => "30px";],
                     span!["Max run time: "],
                     input![],
-                    button!["Apply"]
+                    button![button_style(), "Apply"]
                 ]
             ],
             p![
-                span!["Maximum CPU usage"],
-                select![attrs! {At::Value => "100"}, {
+                span!["Maximum CPU usage: "],
+                select![button_style(), attrs! {At::Value => "100"}, {
                     let mut cpu_options: Vec<Node<Msg>> = Vec::with_capacity(100);
                     for percent in 0..100 {
                         let percent = 100 - percent;

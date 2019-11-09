@@ -124,6 +124,15 @@ fn player_select_box(database: &database::Database) -> Vec<Node<Msg>> {
     node_list
 }
 
+#[inline(always)]
+fn button_style() -> seed::dom_types::Style {
+    style![St::Border => "1px solid #CCCCCC";
+    St::BorderRadius => "3px";
+    St::Padding => "5px 10px 5px 10px";
+    St::BackgroundImage => "linear-gradient(to bottom, #F7F5F6, #DDDDDD)";
+    ]
+}
+
 fn view(model: &Model) -> impl View<Msg> {
     vec![
         title![match model.page {
@@ -139,18 +148,22 @@ fn view(model: &Model) -> impl View<Msg> {
             Page::Preferences => "Preferences",
         }],
         button![
+            button_style(),
             simple_ev(Ev::Click, Msg::ChangePage(Page::GenerateSchedule)),
             "Generate Schedule"
         ],
         button![
+            button_style(),
             simple_ev(Ev::Click, Msg::ChangePage(Page::ManagePlayers)),
             "Manage Players"
         ],
         button![
+            button_style(),
             simple_ev(Ev::Click, Msg::ChangePage(Page::ManageGroups)),
             "Manage Groups"
         ],
         button![
+            button_style(),
             simple_ev(Ev::Click, Msg::ChangePage(Page::Preferences)),
             "Preferences"
         ],

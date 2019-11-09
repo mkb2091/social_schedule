@@ -1,6 +1,6 @@
 use seed::prelude::*;
 
-use crate::{database, Msg};
+use crate::{button_style, database, Msg};
 
 pub struct ManagePlayers {
     add_player_name_input: String,
@@ -48,6 +48,7 @@ St::FlexGrow=> "1";];
                     node_list.push(tr![
                         td![player.name],
                         td![button![
+                            button_style(),
                             raw_ev(Ev::Click, move |_| Msg::MPRemovePlayer(id)),
                             "Remove"
                         ]]
@@ -63,7 +64,11 @@ St::FlexGrow=> "1";];
                 input![input_ev(Ev::Input, Msg::MPAddPlayerNameInput)],
             ],
             p![span!["Email: "], input![],],
-            button![simple_ev(Ev::Click, Msg::MPAddPlayer), "Add"],
+            button![
+                button_style(),
+                simple_ev(Ev::Click, Msg::MPAddPlayer),
+                "Add"
+            ],
         ],
     ]
 }
