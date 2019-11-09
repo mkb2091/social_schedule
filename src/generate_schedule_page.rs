@@ -138,19 +138,19 @@ St::FlexGrow=> "1";];
                 ],
                 button![simple_ev(Ev::Click, Msg::GSAddPlayer), "Add"],
             ],
-            ul![style![St::PaddingBottom => "5px";], {
+            table![style![St::PaddingBottom => "5px";], {
                 let mut players_list: Vec<Node<Msg>> = Vec::with_capacity(model.players.len());
                 for &player_id in &model.players {
-                    players_list.push(li![
-                        if let Some(player) = database.get_player(player_id) {
+                    players_list.push(tr![
+                        td![if let Some(player) = database.get_player(player_id) {
                             &player.name
                         } else {
                             "Player does not exist"
-                        },
-                        button![
+                        }],
+                        td![button![
                             raw_ev(Ev::Click, move |_| Msg::GSRemovePlayer(player_id)),
                             "Remove"
-                        ]
+                        ]]
                     ]);
                 }
                 players_list

@@ -41,16 +41,16 @@ St::FlexGrow=> "1";];
         div![
             &box_style,
             h2!["Player List"],
-            ul![style![St::PaddingBottom => "5px";], {
+            table![style![St::PaddingBottom => "5px";], {
                 let player_list = database.get_players();
                 let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(player_list.len());
                 for (&id, player) in &player_list {
-                    node_list.push(li![
-                        player.name,
-                        button![
+                    node_list.push(tr![
+                        td![player.name],
+                        td![button![
                             raw_ev(Ev::Click, move |_| Msg::MPRemovePlayer(id)),
                             "Remove"
-                        ]
+                        ]]
                     ]);
                 }
                 node_list
