@@ -118,9 +118,10 @@ St::FlexGrow=> "1";];
                             Vec::with_capacity(group_list.len() + 1);
                         node_list.push(option![attrs! {At::Value => ""}, ""]);
                         for (&id, group) in &group_list {
+                            let player_count = group.get_players().len();
                             node_list.push(option![
                                 attrs! {At::Value => id},
-                                format!("{}: ({})", group.name, id)
+                                format!("{} ({})", group.name, player_count)
                             ]);
                         }
                         node_list
