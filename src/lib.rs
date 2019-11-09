@@ -134,6 +134,7 @@ fn button_style() -> seed::dom_types::Style {
 }
 
 fn view(model: &Model) -> impl View<Msg> {
+    let tab_style = style![St::FlexGrow => "1";];
     vec![
         title![match model.page {
             Page::GenerateSchedule => "Generate Schedule",
@@ -147,25 +148,33 @@ fn view(model: &Model) -> impl View<Msg> {
             Page::ManageGroups => "Manage Groups",
             Page::Preferences => "Preferences",
         }],
-        button![
-            button_style(),
-            simple_ev(Ev::Click, Msg::ChangePage(Page::GenerateSchedule)),
-            "Generate Schedule"
-        ],
-        button![
-            button_style(),
-            simple_ev(Ev::Click, Msg::ChangePage(Page::ManagePlayers)),
-            "Manage Players"
-        ],
-        button![
-            button_style(),
-            simple_ev(Ev::Click, Msg::ChangePage(Page::ManageGroups)),
-            "Manage Groups"
-        ],
-        button![
-            button_style(),
-            simple_ev(Ev::Click, Msg::ChangePage(Page::Preferences)),
-            "Preferences"
+        div![
+            style![St::Display => "Flex";
+		St::FlexWrap => "Wrap";],
+            button![
+                button_style(),
+                &tab_style,
+                simple_ev(Ev::Click, Msg::ChangePage(Page::GenerateSchedule)),
+                "Generate Schedule"
+            ],
+            button![
+                button_style(),
+                &tab_style,
+                simple_ev(Ev::Click, Msg::ChangePage(Page::ManagePlayers)),
+                "Manage Players"
+            ],
+            button![
+                button_style(),
+                &tab_style,
+                simple_ev(Ev::Click, Msg::ChangePage(Page::ManageGroups)),
+                "Manage Groups"
+            ],
+            button![
+                button_style(),
+                &tab_style,
+                simple_ev(Ev::Click, Msg::ChangePage(Page::Preferences)),
+                "Preferences"
+            ]
         ],
         match model.page {
             Page::GenerateSchedule => generate_schedule_page::view_generate_schedule(
