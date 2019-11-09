@@ -233,10 +233,10 @@ St::FlexGrow=> "1";];
             ],
             p![
                 span!["Maximum CPU usage: "],
-                select![button_style(), attrs! {At::Value => "100"}, {
+                select![button_style(), attrs! {At::Value => "99"}, {
                     let mut cpu_options: Vec<Node<Msg>> = Vec::with_capacity(100);
-                    for percent in 0..100 {
-                        let percent = 100 - percent;
+                    for percent in 0..99 {
+                        let percent = 99 - percent;
                         cpu_options.push(option![
                             attrs! {At::Value => percent},
                             format!("{}%", percent)
