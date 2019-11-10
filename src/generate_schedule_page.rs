@@ -78,6 +78,10 @@ impl GenerateSchedule {
         }
     }
 
+    pub fn remove_all_players(&mut self) {
+        self.players = Vec::new();
+    }
+
     pub fn set_tables(&mut self, tables: String) {
         if let Ok(tables) = tables.parse::<usize>() {
             self.tables = tables;
@@ -144,6 +148,11 @@ St::FlexGrow=> "1";];
                     "Add"
                 ],
             ],
+            p![button![
+                button_style(),
+                simple_ev(Ev::Click, Msg::GSRemoveAllPlayers),
+                "Remove All"
+            ]],
             table![style![St::PaddingBottom => "5px";], {
                 let mut players_list: Vec<Node<Msg>> = Vec::with_capacity(model.players.len());
                 for &player_id in &model.players {

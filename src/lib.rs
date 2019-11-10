@@ -68,6 +68,7 @@ pub enum Msg {
     GSAddGroup,
     GSAddGroupSelectBoxInput(String),
     GSRemovePlayer(u32),
+    GSRemoveAllPlayers,
     GSSetTables(String),
     GSGenerate,
     MPAddPlayer,
@@ -93,6 +94,7 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         }
         Msg::GSAddGroup => model.generate_schedule.add_group(&model.database),
         Msg::GSRemovePlayer(id) => model.generate_schedule.remove_player(id),
+        Msg::GSRemoveAllPlayers => model.generate_schedule.remove_all_players(),
         Msg::GSSetTables(tables) => model.generate_schedule.set_tables(tables),
         Msg::GSGenerate => model.generate_schedule.generate(&mut model.rng),
         Msg::MPAddPlayerNameInput(player_name) => {
