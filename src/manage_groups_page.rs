@@ -30,10 +30,12 @@ impl ManageGroups {
     }
 
     pub fn set_add_player_to_group_input(&mut self, group_id: u32, player_id: String) {
-        if let Ok(player_id) = player_id.parse::<u32>() {
-            self.add_player_to_group_input.insert(group_id, player_id);
-        } else {
-            alert(&format!("Failed to parse {} as u32", player_id));
+        if !player_id.is_empty() {
+            if let Ok(player_id) = player_id.parse::<u32>() {
+                self.add_player_to_group_input.insert(group_id, player_id);
+            } else {
+                alert(&format!("Failed to parse {} as u32", player_id));
+            }
         }
     }
 
