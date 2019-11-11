@@ -1,6 +1,6 @@
 use seed::prelude::*;
 
-use crate::{button_style, database, Msg};
+use crate::{database, style_control, Msg};
 
 pub struct ManagePlayers {
     add_player_name_input: String,
@@ -30,7 +30,11 @@ impl ManagePlayers {
     }
 }
 
-pub fn view_manage_players(_model: &ManagePlayers, database: &database::Database) -> Node<Msg> {
+pub fn view_manage_players(
+    _model: &ManagePlayers,
+    database: &database::Database,
+    style: &style_control::StyleControl,
+) -> Node<Msg> {
     let box_style = style![St::PaddingLeft => "15px";
 St::PaddingRight => "15px";
 St::FlexGrow=> "1";];
@@ -48,7 +52,7 @@ St::FlexGrow=> "1";];
                     node_list.push(tr![
                         td![player.name],
                         td![button![
-                            button_style(),
+                            style.button_style(),
                             raw_ev(Ev::Click, move |_| Msg::MPRemovePlayer(id)),
                             "Remove"
                         ]]
@@ -65,7 +69,7 @@ St::FlexGrow=> "1";];
             ],
             p![span!["Email: "], input![],],
             button![
-                button_style(),
+                style.button_style(),
                 simple_ev(Ev::Click, Msg::MPAddPlayer),
                 "Add"
             ],

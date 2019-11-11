@@ -2,7 +2,9 @@ pub mod database;
 pub mod generate_schedule_page;
 pub mod manage_groups_page;
 pub mod manage_players_page;
+pub mod preferences_page;
 pub mod schedule;
+pub mod style_control;
 
 extern crate rand_core;
 extern crate rand_xorshift;
@@ -37,6 +39,8 @@ struct Model {
     pub generate_schedule: generate_schedule_page::GenerateSchedule,
     pub manage_players: manage_players_page::ManagePlayers,
     manage_groups: manage_groups_page::ManageGroups,
+    preferences: preferences_page::Preferences,
+    style_control: style_control::StyleControl,
     database: database::Database,
     rng: rand_xorshift::XorShiftRng,
 }
@@ -48,6 +52,8 @@ impl Default for Model {
             generate_schedule: generate_schedule_page::GenerateSchedule::default(),
             manage_players: manage_players_page::ManagePlayers::default(),
             manage_groups: manage_groups_page::ManageGroups::default(),
+            preferences: preferences_page::Preferences::default(),
+            style_control: style_control::StyleControl::default(),
             database: database::Database::load(),
             rng: {
                 let mut seed: [u8; 16] = [0; 16];
@@ -78,6 +84,8 @@ pub enum Msg {
     MGAddGroupNameInput(String),
     MGAddPlayerInput(u32, String),
     MGAddPlayer(u32),
+    PSetThemeInput(String),
+    PSetTheme,
 }
 
 fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
@@ -110,15 +118,21 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
             .manage_groups
             .set_add_player_to_group_input(group_id, player_id),
         Msg::MGAddPlayer(id) => model.manage_groups.add_player(&mut model.database, id),
+        Msg::PSetThemeInput(theme) => model.preferences.set_theme_input(theme),
+        Msg::PSetTheme => model.preferences.set_theme(&mut model.style_control),
     }
 }
 
-fn player_select_box(database: &database::Database) -> Vec<Node<Msg>> {
+fn player_select_box(
+    database: &database::Database,
+    style: &style_control::StyleControl,
+) -> Vec<Node<Msg>> {
     let player_list = database.get_players();
     let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(player_list.len() + 1);
-    node_list.push(option![attrs! {At::Value => ""}, ""]);
+    node_list.push(option![style.option_style(), attrs! {At::Value => ""}, ""]);
     for (id, player) in &player_list {
         node_list.push(option![
+            style.option_style(),
             attrs! {At::Value => id},
             format!("{} (ID: {})", player.name, id)
         ]);
@@ -126,24 +140,12 @@ fn player_select_box(database: &database::Database) -> Vec<Node<Msg>> {
     node_list
 }
 
-#[inline(always)]
-fn button_style() -> seed::dom_types::Style {
-    style![St::Border => "1px solid #CCCCCC";
-    St::BorderRadius => "3px";
-    St::Padding => "5px 10px 5px 10px";
-    St::BackgroundImage => "linear-gradient(to bottom, #F7F5F6, #DDDDDD)";
-    ]
-}
-
 fn view(model: &Model) -> impl View<Msg> {
     let tab_style = style![St::FlexGrow => "1";];
-    vec![
-        title![match model.page {
-            Page::GenerateSchedule => "Generate Schedule",
-            Page::ManagePlayers => "Manage Players",
-            Page::ManageGroups => "Manage Groups",
-            Page::Preferences => "Preferences",
-        }],
+    div![
+        model.style_control.base_style(),
+        style![St::Flex => "1";
+St::Overflow => "auto";],
         h1![match model.page {
             Page::GenerateSchedule => "Generate Schedule",
             Page::ManagePlayers => "Manage Players",
@@ -154,25 +156,25 @@ fn view(model: &Model) -> impl View<Msg> {
             style![St::Display => "Flex";
 		St::FlexWrap => "Wrap";],
             button![
-                button_style(),
+                model.style_control.button_style(),
                 &tab_style,
                 simple_ev(Ev::Click, Msg::ChangePage(Page::GenerateSchedule)),
                 "Generate Schedule"
             ],
             button![
-                button_style(),
+                model.style_control.button_style(),
                 &tab_style,
                 simple_ev(Ev::Click, Msg::ChangePage(Page::ManagePlayers)),
                 "Manage Players"
             ],
             button![
-                button_style(),
+                model.style_control.button_style(),
                 &tab_style,
                 simple_ev(Ev::Click, Msg::ChangePage(Page::ManageGroups)),
                 "Manage Groups"
             ],
             button![
-                button_style(),
+                model.style_control.button_style(),
                 &tab_style,
                 simple_ev(Ev::Click, Msg::ChangePage(Page::Preferences)),
                 "Preferences"
@@ -182,14 +184,21 @@ fn view(model: &Model) -> impl View<Msg> {
             Page::GenerateSchedule => generate_schedule_page::view_generate_schedule(
                 &model.generate_schedule,
                 &model.database,
+                &model.style_control,
             ),
-            Page::ManagePlayers => {
-                manage_players_page::view_manage_players(&model.manage_players, &model.database)
+            Page::ManagePlayers => manage_players_page::view_manage_players(
+                &model.manage_players,
+                &model.database,
+                &model.style_control,
+            ),
+            Page::ManageGroups => manage_groups_page::view_manage_groups(
+                &model.manage_groups,
+                &model.database,
+                &model.style_control,
+            ),
+            Page::Preferences => {
+                preferences_page::view_preferences(&model.preferences, &model.style_control)
             }
-            Page::ManageGroups => {
-                manage_groups_page::view_manage_groups(&model.manage_groups, &model.database)
-            }
-            _ => div![],
         },
     ]
 }

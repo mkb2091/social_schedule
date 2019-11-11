@@ -1,6 +1,6 @@
 use seed::prelude::*;
 
-use crate::{alert, button_style, database, player_select_box, Msg};
+use crate::{alert, database, player_select_box, style_control, Msg};
 
 pub struct ManageGroups {
     pub add_group_name_input: String,
@@ -46,7 +46,11 @@ impl ManageGroups {
     }
 }
 
-pub fn view_manage_groups(_model: &ManageGroups, database: &database::Database) -> Node<Msg> {
+pub fn view_manage_groups(
+    _model: &ManageGroups,
+    database: &database::Database,
+    style: &style_control::StyleControl,
+) -> Node<Msg> {
     let box_style = style![St::PaddingLeft => "15px";
 St::PaddingRight => "15px";
 St::FlexGrow=> "1";];
@@ -63,20 +67,20 @@ St::FlexGrow=> "1";];
                 for (&id, group) in &group_list {
                     node_list.push(tr![
                         td![h3![group.name]],
-                        td![button![button_style(), "Remove"]]
+                        td![button![style.button_style(), "Remove"]]
                     ]);
 
                     node_list.push(tr![td![
                         attrs! {At::ColSpan => 2},
                         select![
-                            button_style(),
+                            style.button_style(),
                             input_ev("input", move |player_id| Msg::MGAddPlayerInput(
                                 id, player_id
                             )),
-                            player_select_box(&database)
+                            player_select_box(&database, style)
                         ],
                         button![
-                            button_style(),
+                            style.button_style(),
                             raw_ev(Ev::Click, move |_| Msg::MGAddPlayer(id)),
                             "Add Player"
                         ]
@@ -86,7 +90,7 @@ St::FlexGrow=> "1";];
                         if let Some(player) = database.get_player(*player_id) {
                             group_node.push(tr![
                                 td![format!("{}: ({})", player.name, player_id)],
-                                td![button![button_style(), "Remove"]]
+                                td![button![style.button_style(), "Remove"]]
                             ]);
                         }
                     }
@@ -102,7 +106,11 @@ St::FlexGrow=> "1";];
                 span!["Group Name: "],
                 input![input_ev(Ev::Input, Msg::MGAddGroupNameInput)],
             ],
-            button![button_style(), simple_ev(Ev::Click, Msg::MGAddGroup), "Add"],
+            button![
+                style.button_style(),
+                simple_ev(Ev::Click, Msg::MGAddGroup),
+                "Add"
+            ],
         ],
     ]
 }
