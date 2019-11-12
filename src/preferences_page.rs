@@ -35,9 +35,9 @@ pub fn view_preferences(_model: &Preferences, style: &style_control::StyleContro
         select![
             style.button_style(),
             input_ev(Ev::Input, Msg::PSetThemeInput),
-            option![""],
-            option!["Light"],
-            option!["Dark"]
+            option![style.option_style(), ""],
+            option![style.option_style(), "Light"],
+            option![style.option_style(), "Dark"]
         ],
         button![
             style.button_style(),
