@@ -1,20 +1,12 @@
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
-pub struct Email {
-    pub username: String,
-    pub domain: String
-}
 
-impl Email {
-    pub fn from(email: &str) -> Option<Email> {
-        if let Some(at_index) = email.find('@') {
-            Some(Email {username: email[..at_index], domain: [..at_index]})
-        } else {None}
-    }
-}
+use validators::ValidatorOption;
+use validators::email::{Email, EmailValidator};
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct Player {
-    pub name: String
+    pub name: String,
+    pub email: Email
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
@@ -58,14 +50,15 @@ impl Database {
             }
         }
     }
-    pub fn add_player(&mut self, name: String) {
+    pub fn add_player(&mut self, name: String, email: String) {
+        if let Ok(email) = EmailValidator.parse_string(email) {
         for id in (self.players.len() as u32)..std::u32::MAX {
             if !self.players.contains_key(&id) {
-                self.players.insert(id, Player { name });
+                self.players.insert(id, Player { name, email });
                 self.dump();
                 return;
             }
-        }
+        }}
     }
 
     pub fn get_players(&self) -> Vec<(&u32, &Player)> {
