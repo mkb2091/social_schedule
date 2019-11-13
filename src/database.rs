@@ -48,7 +48,7 @@ impl Database {
             }
         }
     }
-    pub fn add_player(&mut self, name: String, email: Email) 
+    pub fn add_player(&mut self, name: String, email: Email) {
         for id in (self.players.len() as u32)..std::u32::MAX {
             if !self.players.contains_key(&id) {
                 self.players.insert(id, Player { name, email });
