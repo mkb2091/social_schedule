@@ -12,6 +12,8 @@ use rand_core::SeedableRng;
 extern crate getrandom;
 extern crate rand;
 
+extern crate validators;
+
 extern crate serde;
 extern crate serde_json;
 
@@ -81,6 +83,7 @@ pub enum Msg {
     GSGenerate,
     MPAddPlayer,
     MPAddPlayerNameInput(String),
+    MPAddPlayerEmailInput(String),
     MPRemovePlayer(u32),
     MGAddGroup,
     MGAddGroupNameInput(String),
@@ -110,6 +113,9 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         Msg::MPAddPlayerNameInput(player_name) => {
             model.manage_players.set_player_name_input(player_name)
         }
+        Msg::MPAddPlayerEmailInput(player_email) => {
+	    model.manage_players.set_player_email_input(player_email)
+	    }
         Msg::MPAddPlayer => model.manage_players.add_player(&mut model.database),
         Msg::MPRemovePlayer(id) => model.manage_players.remove_player(&mut model.database, id),
         Msg::MGAddGroup => model.manage_groups.add_group(&mut model.database),
