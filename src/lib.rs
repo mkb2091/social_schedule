@@ -12,6 +12,8 @@ use rand_core::SeedableRng;
 extern crate getrandom;
 extern crate rand;
 
+extern crate validators;
+
 extern crate serde;
 extern crate serde_json;
 
