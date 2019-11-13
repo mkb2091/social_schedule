@@ -28,7 +28,7 @@ impl ManagePlayers {
         let player_name = &self.add_player_name_input;
         let player_email = &self.add_player_email_input;
         if !player_name.is_empty() {
-            if let Ok(email) = EmailValidator.parse_string(email) {
+            if let Ok(email) = EmailValidator::parse_string(player_email) {
                  database.add_player(player_name.to_string(), email);
                  self.add_player_name_input = String::new();
                  self.add_player_email_input = String::new();
