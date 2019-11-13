@@ -1,7 +1,7 @@
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 
 use validators::ValidatorOption;
-use validators::email::{Email, EmailValidator};
+use validators::email::Email;
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct Player {
@@ -50,15 +50,14 @@ impl Database {
             }
         }
     }
-    pub fn add_player(&mut self, name: String, email: String) {
-        if let Ok(email) = EmailValidator.parse_string(email) {
+    pub fn add_player(&mut self, name: String, email: Email) 
         for id in (self.players.len() as u32)..std::u32::MAX {
             if !self.players.contains_key(&id) {
                 self.players.insert(id, Player { name, email });
                 self.dump();
                 return;
             }
-        }}
+        }
     }
 
     pub fn get_players(&self) -> Vec<(&u32, &Player)> {
