@@ -1,6 +1,20 @@
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
+pub struct Email {
+    pub username: String,
+    pub domain: String
+}
+
+impl Email {
+    pub fn from(email: &str) -> Option<Email> {
+        if let Some(at_index) = email.find('@') {
+            Some(Email {username: email[..at_index], domain: [..at_index]})
+        } else {None}
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct Player {
-    pub name: String,
+    pub name: String
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
