@@ -1,5 +1,3 @@
-#[derive(serde::Serialize, serde::Deserialize, Clone)]
-
 use validators::ValidatorOption;
 use validators::email::Email;
 
