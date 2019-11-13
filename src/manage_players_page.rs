@@ -77,7 +77,7 @@ St::FlexGrow=> "1";];
                 span!["Player Name: "],
                 input![input_ev(Ev::Input, Msg::MPAddPlayerNameInput)],
             ],
-            p![span!["Email: "], input![input_ev(Ev::Input, Msg::MPAddPlayerEmailInput]],
+            p![span!["Email: "], input![input_ev(Ev::Input, Msg::MPAddPlayerEmailInput)]],
             button![
                 style.button_style(),
                 simple_ev(Ev::Click, Msg::MPAddPlayer),
