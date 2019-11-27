@@ -15,8 +15,6 @@ extern crate rand;
 extern crate serde;
 extern crate serde_json;
 
-extern crate validators;
-
 #[macro_use]
 extern crate seed;
 use seed::prelude::*;
