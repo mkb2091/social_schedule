@@ -1,7 +1,7 @@
 set -e
 cargo make build_release
 echo "Optimising WASM"
-wasm-opt -O3 pkg/package_bg.wasm -o pkg/package_bg.wasm
+./wasm-opt -O3 pkg/package_bg.wasm -o pkg/package_bg.wasm
 echo "Optimising JavaScript"
 sed -i '/export default init;/d' pkg/package.js
 python3 -c "with open('pkg/package_bg.wasm', 'rb') as file:print('init(Uint8Array.from(%s));' % list(file.read()))" >> pkg/package.js

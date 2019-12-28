@@ -3,7 +3,6 @@ os:
   - linux
 cache:
   directories:
-    - binaryen
     - target
     - ~/.cargo/bin
 deploy:
@@ -17,9 +16,6 @@ script:
   - "cargo test --release"
   - "rustup target add wasm32-unknown-unknown"
   - "cargo install cargo-make||true"
-  - "sudo apt update"
-  - "sudo apt-get install npm cmake gcc g++"
-  - "git clone --depth=1 https://github.com/WebAssembly/binaryen||(cd binaryen; git pull; cd ../)"
-  - "cd binaryen && cmake . && make && sudo make install && cd ../"
+  - "sudo apt-get install npm"
   - "npm install terser -g"
   - "sh build.sh"
