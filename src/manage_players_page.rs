@@ -1,6 +1,6 @@
 use seed::prelude::*;
 
-use crate::{database, style_control, Msg};
+use crate::{alert, database, style_control, Msg};
 
 pub struct ManagePlayers {
     add_player_name_input: String,
@@ -31,6 +31,8 @@ impl ManagePlayers {
                 database.add_player(player_name.to_string(), email);
                 self.add_player_name_input = String::new();
                 self.add_player_email_input = String::new();
+            } else {
+                alert(&format!("Failed to parse {:} as email", player_email));
             }
         }
     }
