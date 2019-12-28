@@ -18,4 +18,5 @@ script:
   - "cargo install cargo-make||true"
   - "sudo apt-get install npm"
   - "npm install terser -g"
+  - "chmod +x wasm-opt"
   - "sh build.sh"
