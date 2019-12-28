@@ -1,5 +1,3 @@
-use validators::email::EmailValidator;
-
 use seed::prelude::*;
 
 use crate::{database, style_control, Msg};
@@ -13,6 +11,7 @@ impl Default for ManagePlayers {
     fn default() -> Self {
         Self {
             add_player_name_input: String::new(),
+            add_player_email_input: String::new(),
         }
     }
 }
@@ -28,10 +27,10 @@ impl ManagePlayers {
         let player_name = &self.add_player_name_input;
         let player_email = &self.add_player_email_input;
         if !player_name.is_empty() {
-            if let Ok(email) = EmailValidator::parse_string(player_email) {
-                 database.add_player(player_name.to_string(), email);
-                 self.add_player_name_input = String::new();
-                 self.add_player_email_input = String::new();
+            if let Ok(email) = database::Email::parse_string(player_email) {
+                database.add_player(player_name.to_string(), email);
+                self.add_player_name_input = String::new();
+                self.add_player_email_input = String::new();
             }
         }
     }
@@ -77,7 +76,10 @@ St::FlexGrow=> "1";];
                 span!["Player Name: "],
                 input![input_ev(Ev::Input, Msg::MPAddPlayerNameInput)],
             ],
-            p![span!["Email: "], input![input_ev(Ev::Input, Msg::MPAddPlayerEmailInput)]],
+            p![
+                span!["Email: "],
+                input![input_ev(Ev::Input, Msg::MPAddPlayerEmailInput)]
+            ],
             button![
                 style.button_style(),
                 simple_ev(Ev::Click, Msg::MPAddPlayer),

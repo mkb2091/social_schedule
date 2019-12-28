@@ -1,10 +1,22 @@
-use validators::ValidatorOption;
-use validators::email::Email;
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+pub struct Email {
+    pub username: String,
+    pub host: String,
+}
+
+impl Email {
+    pub fn parse_string(email_string: &str) -> Result<Email, ()> {
+        Ok(Email {
+            username: String::new(),
+            host: String::new(),
+        })
+    }
+}
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct Player {
     pub name: String,
-    pub email: Email
+    pub email: Email,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
