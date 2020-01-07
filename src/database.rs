@@ -154,4 +154,11 @@ impl Database {
             }
         }
     }
+    pub fn remove_player_from_group(&mut self, group_id: u32, player_id: u32) {
+        if let Some(mut group) = self.groups.get_mut(&group_id) {
+            if group.players.remove(&player_id) {
+                self.dump();
+            };
+        }
+    }
 }

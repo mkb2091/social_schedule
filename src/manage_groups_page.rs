@@ -70,7 +70,11 @@ St::FlexGrow=> "1";];
                 for (&id, group) in &group_list {
                     node_list.push(tr![
                         td![h3![group.name]],
-                        td![button![style.button_style(), raw_ev(Ev::Click, move |_| Msg::MGRemoveGroup(id)), "Remove"]]
+                        td![button![
+                            style.button_style(),
+                            raw_ev(Ev::Click, move |_| Msg::MGRemoveGroup(id)),
+                            "Remove"
+                        ]]
                     ]);
 
                     node_list.push(tr![td![
@@ -90,10 +94,17 @@ St::FlexGrow=> "1";];
                     ]]);
                     let mut group_node: Vec<Node<Msg>> = Vec::new();
                     for player_id in group.get_players() {
-                        if let Some(player) = database.get_player(*player_id) {
+                        let player_id = *player_id;
+                        if let Some(player) = database.get_player(player_id) {
                             group_node.push(tr![
                                 td![format!("{}: ({})", player.name, player_id)],
-                                td![button![style.button_style(), "Remove"]]
+                                td![button![
+                                    style.button_style(),
+                                    raw_ev(Ev::Click, move |_| Msg::MGRemovePlayerFromGroup(
+                                        id, player_id
+                                    )),
+                                    "Remove"
+                                ]]
                             ]);
                         }
                     }
