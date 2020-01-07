@@ -66,7 +66,8 @@ St::FlexGrow=> "1";];
                             style.button_style(),
                             raw_ev(Ev::Click, move |_| Msg::MPRemovePlayer(id)),
                             "Remove"
-                        ]]
+                        ]],
+                        td![player.email.to_string()]
                     ]);
                 }
                 node_list

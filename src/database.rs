@@ -1,15 +1,37 @@
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct Email {
-    pub username: String,
-    pub host: String,
+    username: String,
+    host: String,
 }
 
 impl Email {
     pub fn parse_string(email_string: &str) -> Result<Email, ()> {
-        Ok(Email {
-            username: String::new(),
-            host: String::new(),
-        })
+        let mut username: String = String::new();
+        let mut host: String = String::new();
+        let mut found_at: bool = false;
+        for c in email_string.chars() {
+            if !found_at {
+                if c != '@' {
+                    username.push(c);
+                } else {
+                    found_at = true;
+                }
+            } else {
+                if c != '@' {
+                    host.push(c);
+                } else {
+                    return Err(());
+                }
+            }
+        }
+        if !found_at || username.len() == 0 || host.len() == 0 {
+            return Err(());
+        }
+        Ok(Email { username, host })
+    }
+
+    pub fn to_string(&self) -> String {
+        format!("{:}@{:}", self.username, self.host)
     }
 }
 
