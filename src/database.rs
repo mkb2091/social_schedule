@@ -129,6 +129,15 @@ impl Database {
         }
     }
 
+    pub fn remove_group(&mut self, id: u32) -> Option<Group> {
+        if let Some(group) = self.groups.remove(&id) {
+            self.dump();
+            Some(group)
+        } else {
+            None
+        }
+    }
+
     pub fn get_groups(&self) -> Vec<(&u32, &Group)> {
         self.groups.iter().collect()
     }

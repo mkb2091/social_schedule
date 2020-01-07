@@ -44,6 +44,9 @@ impl ManageGroups {
             database.add_player_to_group(id, *player_id);
         }
     }
+    pub fn remove_group(&self, database: &mut database::Database, id: u32) {
+        database.remove_group(id);
+    }
 }
 
 pub fn view_manage_groups(
@@ -67,7 +70,7 @@ St::FlexGrow=> "1";];
                 for (&id, group) in &group_list {
                     node_list.push(tr![
                         td![h3![group.name]],
-                        td![button![style.button_style(), "Remove"]]
+                        td![button![style.button_style(), raw_ev(Ev::Click, move |_| Msg::MGRemoveGroup(id)), "Remove"]]
                     ]);
 
                     node_list.push(tr![td![
