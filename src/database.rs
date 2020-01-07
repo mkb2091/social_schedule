@@ -106,6 +106,10 @@ impl Database {
 
     pub fn remove_player(&mut self, id: u32) -> Option<Player> {
         if let Some(player) = self.players.remove(&id) {
+            let group_ids: Vec<u32> = self.groups.iter().map(|(&id, _)| id).collect();
+            for group_id in group_ids {
+                self.remove_player_from_group(group_id, id);
+            }
             self.dump();
             Some(player)
         } else {
@@ -155,7 +159,7 @@ impl Database {
         }
     }
     pub fn remove_player_from_group(&mut self, group_id: u32, player_id: u32) {
-        if let Some(mut group) = self.groups.get_mut(&group_id) {
+        if let Some(group) = self.groups.get_mut(&group_id) {
             if group.players.remove(&player_id) {
                 self.dump();
             };
