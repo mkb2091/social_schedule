@@ -179,4 +179,10 @@ impl Database {
             };
         }
     }
+    pub fn change_group_name(&mut self, group_id: u32, new_name: String) {
+        if let Some(group) = self.groups.get_mut(&group_id) {
+            group.name = new_name;
+            self.dump();
+        }
+    }
 }

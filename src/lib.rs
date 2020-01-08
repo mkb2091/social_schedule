@@ -94,6 +94,7 @@ pub enum Msg {
     MGAddPlayerInput(u32, String),
     MGAddPlayer(u32),
     MGRemovePlayerFromGroup(u32, u32),
+    MGChangeName(u32),
     PSetThemeInput(String),
     PSetTheme,
 }
@@ -137,6 +138,9 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         Msg::MGRemovePlayerFromGroup(group_id, player_id) => {
             model.database.remove_player_from_group(group_id, player_id)
         }
+        Msg::MGChangeName(group_id) => model
+            .manage_groups
+            .change_name(&mut model.database, group_id),
         Msg::PSetThemeInput(theme) => model.preferences.set_theme_input(theme),
         Msg::PSetTheme => model.preferences.set_theme(&mut model.style_control),
     }

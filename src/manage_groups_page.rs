@@ -1,6 +1,6 @@
 use seed::prelude::*;
 
-use crate::{alert, database, player_select_box, style_control, Msg};
+use crate::{alert, database, player_select_box, prompt, style_control, Msg};
 
 pub struct ManageGroups {
     pub add_group_name_input: String,
@@ -47,6 +47,13 @@ impl ManageGroups {
     pub fn remove_group(&self, database: &mut database::Database, id: u32) {
         database.remove_group(id);
     }
+    pub fn change_name(&self, database: &mut database::Database, id: u32) {
+        if let Some(new_name) = prompt() {
+            if new_name != "" {
+                database.change_group_name(id, new_name);
+            }
+        }
+    }
 }
 
 pub fn view_manage_groups(
@@ -72,13 +79,18 @@ St::FlexGrow=> "1";];
                         td![h3![group.name]],
                         td![button![
                             style.button_style(),
+                            raw_ev(Ev::Click, move |_| Msg::MGChangeName(id)),
+                            "Change Name"
+                        ]],
+                        td![button![
+                            style.button_style(),
                             raw_ev(Ev::Click, move |_| Msg::MGRemoveGroup(id)),
                             "Remove"
                         ]]
                     ]);
 
                     node_list.push(tr![td![
-                        attrs! {At::ColSpan => 2},
+                        attrs! {At::ColSpan => 3},
                         select![
                             style.button_style(),
                             input_ev("input", move |player_id| Msg::MGAddPlayerInput(
@@ -109,7 +121,7 @@ St::FlexGrow=> "1";];
                         }
                     }
 
-                    node_list.push(tr![td![attrs! {At::ColSpan => 2}, table![group_node]]]);
+                    node_list.push(tr![td![attrs! {At::ColSpan => 3}, table![group_node]]]);
                 }
                 node_list
             }],
