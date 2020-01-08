@@ -78,6 +78,7 @@ St::FlexGrow=> "1";];
                 let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(player_list.len());
                 for (&id, player) in &player_list {
                     node_list.push(tr![
+                        td![id.to_string()],
                         td![player.name],
                         td![player.email.to_string()],
                         td![button![
