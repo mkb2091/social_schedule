@@ -67,7 +67,12 @@ St::FlexGrow=> "1";];
                             raw_ev(Ev::Click, move |_| Msg::MPRemovePlayer(id)),
                             "Remove"
                         ]],
-                        td![player.email.to_string()]
+                        td![player.email.to_string()],
+                        td![button![
+                            style.button_style(),
+                            raw_ev(Ev::Click, move |_| Msg::MPChangeName(id)),
+                            "ChangeName"
+                        ]],
                     ]);
                 }
                 node_list

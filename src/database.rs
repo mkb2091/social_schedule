@@ -117,6 +117,12 @@ impl Database {
         }
     }
 
+    pub fn change_player_name(&mut self, id: u32, new_name: String) {
+        if let Some(player) = self.players.get_mut(&id) {
+            player.name = new_name;
+        }
+    }
+
     pub fn add_group(&mut self, name: String) {
         for id in (self.groups.len() as u32)..std::u32::MAX {
             if !self.groups.contains_key(&id) {
