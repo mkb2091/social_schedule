@@ -120,6 +120,14 @@ impl Database {
     pub fn change_player_name(&mut self, id: u32, new_name: String) {
         if let Some(player) = self.players.get_mut(&id) {
             player.name = new_name;
+            self.dump();
+        }
+    }
+
+    pub fn change_player_email(&mut self, id: u32, new_email: Email) {
+        if let Some(player) = self.players.get_mut(&id) {
+            player.email = new_email;
+            self.dump();
         }
     }
 

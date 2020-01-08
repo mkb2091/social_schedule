@@ -28,7 +28,7 @@ extern "C" {
 
 #[wasm_bindgen]
 extern "C" {
-    fn prompt() -> String;
+    fn prompt() -> Option<String>;
 }
 
 #[derive(Clone)]
@@ -87,6 +87,7 @@ pub enum Msg {
     MPAddPlayerEmailInput(String),
     MPRemovePlayer(u32),
     MPChangeName(u32),
+    MPChangeEmail(u32),
     MGAddGroup,
     MGRemoveGroup(u32),
     MGAddGroupNameInput(String),
@@ -122,10 +123,8 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         }
         Msg::MPAddPlayer => model.manage_players.add_player(&mut model.database),
         Msg::MPRemovePlayer(id) => model.manage_players.remove_player(&mut model.database, id),
-        Msg::MPChangeName(id) => {
-            let new_name = prompt();
-            model.database.change_player_name(id, new_name);
-        }
+        Msg::MPChangeName(id) => model.manage_players.change_name(&mut model.database, id),
+        Msg::MPChangeEmail(id) => model.manage_players.change_email(&mut model.database, id),
         Msg::MGAddGroup => model.manage_groups.add_group(&mut model.database),
         Msg::MGRemoveGroup(id) => model.manage_groups.remove_group(&mut model.database, id),
         Msg::MGAddGroupNameInput(group_name) => {

@@ -1,6 +1,6 @@
 use seed::prelude::*;
 
-use crate::{alert, database, style_control, Msg};
+use crate::{alert, database, prompt, style_control, Msg};
 
 pub struct ManagePlayers {
     add_player_name_input: String,
@@ -39,6 +39,23 @@ impl ManagePlayers {
     pub fn remove_player(&self, database: &mut database::Database, id: u32) {
         database.remove_player(id);
     }
+
+    pub fn change_name(&self, database: &mut database::Database, id: u32) {
+        if let Some(new_name) = prompt() {
+            if new_name != "" {
+                database.change_player_name(id, new_name);
+            }
+        }
+    }
+    pub fn change_email(&self, database: &mut database::Database, id: u32) {
+        if let Some(new_email) = prompt() {
+            if let Ok(email) = database::Email::parse_string(&new_email) {
+                database.change_player_email(id, email)
+            } else {
+                alert(&format!("Failed to parse {:} as email", new_email));
+            }
+        }
+    }
 }
 
 pub fn view_manage_players(
@@ -62,16 +79,21 @@ St::FlexGrow=> "1";];
                 for (&id, player) in &player_list {
                     node_list.push(tr![
                         td![player.name],
-                        td![button![
-                            style.button_style(),
-                            raw_ev(Ev::Click, move |_| Msg::MPRemovePlayer(id)),
-                            "Remove"
-                        ]],
                         td![player.email.to_string()],
                         td![button![
                             style.button_style(),
                             raw_ev(Ev::Click, move |_| Msg::MPChangeName(id)),
-                            "ChangeName"
+                            "Change Name"
+                        ]],
+                        td![button![
+                            style.button_style(),
+                            raw_ev(Ev::Click, move |_| Msg::MPChangeEmail(id)),
+                            "Change Email"
+                        ]],
+                        td![button![
+                            style.button_style(),
+                            raw_ev(Ev::Click, move |_| Msg::MPRemovePlayer(id)),
+                            "Remove"
                         ]],
                     ]);
                 }
