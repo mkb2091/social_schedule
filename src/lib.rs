@@ -2,6 +2,7 @@ pub mod database;
 pub mod generate_schedule_page;
 pub mod manage_groups_page;
 pub mod manage_players_page;
+pub mod manage_tournaments_page;
 pub mod preferences_page;
 pub mod schedule;
 pub mod style_control;
@@ -36,6 +37,7 @@ pub enum Page {
     GenerateSchedule,
     ManagePlayers,
     ManageGroups,
+    AddTournament,
     Preferences,
 }
 
@@ -44,6 +46,7 @@ struct Model {
     pub generate_schedule: generate_schedule_page::GenerateSchedule,
     pub manage_players: manage_players_page::ManagePlayers,
     manage_groups: manage_groups_page::ManageGroups,
+    manage_tournaments: manage_tournaments_page::ManageTournaments,
     preferences: preferences_page::Preferences,
     style_control: style_control::StyleControl,
     database: database::Database,
@@ -57,6 +60,7 @@ impl Default for Model {
             generate_schedule: generate_schedule_page::GenerateSchedule::default(),
             manage_players: manage_players_page::ManagePlayers::default(),
             manage_groups: manage_groups_page::ManageGroups::default(),
+            manage_tournaments: manage_tournaments_page::ManageTournaments::default(),
             preferences: preferences_page::Preferences::default(),
             style_control: style_control::StyleControl::default(),
             database: database::Database::load(),
@@ -173,6 +177,7 @@ St::Overflow => "auto";],
             Page::GenerateSchedule => "Generate Schedule",
             Page::ManagePlayers => "Manage Players",
             Page::ManageGroups => "Manage Groups",
+            Page::AddTournament => "Add Tournament",
             Page::Preferences => "Preferences",
         }],
         div![
@@ -199,6 +204,12 @@ St::Overflow => "auto";],
             button![
                 model.style_control.button_style(),
                 &tab_style,
+                simple_ev(Ev::Click, Msg::ChangePage(Page::AddTournament)),
+                "Add Tournament"
+            ],
+            button![
+                model.style_control.button_style(),
+                &tab_style,
                 simple_ev(Ev::Click, Msg::ChangePage(Page::Preferences)),
                 "Preferences"
             ]
@@ -216,6 +227,11 @@ St::Overflow => "auto";],
             ),
             Page::ManageGroups => manage_groups_page::view_manage_groups(
                 &model.manage_groups,
+                &model.database,
+                &model.style_control,
+            ),
+            Page::AddTournament => manage_tournaments_page::view_add_tournament(
+                &model.manage_tournaments,
                 &model.database,
                 &model.style_control,
             ),
