@@ -16,15 +16,13 @@ impl Email {
                 } else {
                     found_at = true;
                 }
+            } else if c != '@' {
+                host.push(c);
             } else {
-                if c != '@' {
-                    host.push(c);
-                } else {
-                    return Err(());
-                }
+                return Err(());
             }
         }
-        if !found_at || username.len() == 0 || host.len() == 0 {
+        if !found_at || username.is_empty() || host.is_empty() {
             return Err(());
         }
         Ok(Email { username, host })
