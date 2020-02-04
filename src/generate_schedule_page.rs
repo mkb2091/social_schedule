@@ -1,3 +1,4 @@
+use rand_core::SeedableRng;
 use seed::prelude::*;
 
 use crate::{alert, database, player_select_box, schedule, style_control, Msg};
@@ -7,8 +8,8 @@ pub struct GenerateSchedule {
     add_player_select_box: String,
     add_group_select_box: String,
     tables: usize,
-    schedule: schedule::Schedule,
-    display_schedule: bool,
+    schedule: Option<schedule::ScheduleGenerator<rand_xorshift::XorShiftRng>>,
+    rng: rand_xorshift::XorShiftRng,
 }
 
 impl Default for GenerateSchedule {
@@ -18,8 +19,14 @@ impl Default for GenerateSchedule {
             add_player_select_box: String::new(),
             add_group_select_box: String::new(),
             tables: 2,
-            schedule: schedule::Schedule::new(1, 1),
-            display_schedule: false,
+            schedule: None,
+            rng: {
+                let mut seed: [u8; 16] = [0; 16];
+                if getrandom::getrandom(&mut seed).is_err() {
+                    alert("Failed to seed RNG");
+                };
+                rand_xorshift::XorShiftRng::from_seed(seed)
+            },
         }
     }
 }
@@ -90,10 +97,20 @@ impl GenerateSchedule {
         }
     }
 
-    pub fn generate(&mut self, rng: &mut rand_xorshift::XorShiftRng) {
-        self.schedule = schedule::Schedule::new(self.players.len(), self.tables);
-        self.schedule.generate_random(rng);
-        self.display_schedule = true;
+    pub fn apply(&mut self) {
+        if let Ok(rng) = rand_xorshift::XorShiftRng::from_rng(&mut self.rng) {
+            self.schedule = Some(schedule::ScheduleGenerator::new(
+                rng,
+                self.players.len(),
+                self.tables,
+            ));
+        }
+    }
+
+    pub fn generate(&mut self) {
+        if let Some(schedule) = &mut self.schedule {
+            schedule.process();
+        }
     }
 }
 
@@ -204,30 +221,34 @@ St::FlexGrow=> "1";];
             ],
             button![
                 style.button_style(),
+                simple_ev(Ev::Click, Msg::GSApply),
+                "Apply parameters"
+            ],
+            button![
+                style.button_style(),
                 simple_ev(Ev::Click, Msg::GSGenerate),
                 "Generate"
             ],
-            if model.display_schedule {
+            if let Some(schedule) = &model.schedule {
+                let best = &schedule.best;
                 p![
                     p![format!(
                         "Total unique games played(ideally players * games): {}",
-                        model.schedule.unique_games_played()
+                        best.unique_games_played()
                     )],
                     p![format!(
                         "Total unique opponents/teammates played(higher is better): {}",
-                        model.schedule.unique_opponents()
+                        best.unique_opponents()
                     )],
                     table![{
-                        let tables = model.schedule.get_tables();
+                        let tables = best.get_tables();
 
                         let mut table: Vec<Node<Msg>> = Vec::with_capacity(tables);
                         for round in 0..tables {
                             table.push(tr![{
                                 let mut row: Vec<Node<Msg>> = Vec::with_capacity(tables);
                                 for table in 0..tables {
-                                    row.push(td![{
-                                        format!("{:?}", model.schedule.get_game(round, table))
-                                    }]);
+                                    row.push(td![{ format!("{:?}", best.get_game(round, table)) }]);
                                 }
                                 row
                             }]);

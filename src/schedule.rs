@@ -1,6 +1,7 @@
 use rand::seq::SliceRandom;
 use std::ops::IndexMut;
 
+#[derive(Clone)]
 pub struct Schedule {
     player_count: usize,
     tables: usize,
@@ -40,12 +41,12 @@ impl Schedule {
         }
     }
 
-    pub fn generate_random<T: rand::Rng + rand_core::RngCore>(&mut self, mut rng: T) {
+    pub fn generate_random<T: rand::Rng + rand_core::RngCore>(&mut self, rng: &mut T) {
         let players: Vec<usize> = (0..self.player_count).collect();
         let mut game: Vec<Vec<Vec<usize>>> = Vec::new();
         for _round in 0..self.tables {
             let mut player_list = players.clone();
-            player_list.shuffle(&mut rng);
+            player_list.shuffle(rng);
             let mut round: Vec<Vec<usize>> = Vec::new();
             for _ in 0..self.tables {
                 round.push(Vec::new());
@@ -112,6 +113,41 @@ impl Schedule {
             }
         }
         players
+    }
+    pub fn generate_score(&self) -> u32 {
+        self.unique_games_played() * 100 + self.unique_opponents()
+    }
+}
+
+pub struct ScheduleGenerator<T: rand::Rng + rand_core::RngCore> {
+    player_count: usize,
+    tables: usize,
+    pub best: Schedule,
+    pub best_score: u32,
+    current: Vec<Schedule>,
+    rng: T,
+}
+
+impl<T: rand::Rng + rand_core::RngCore> ScheduleGenerator<T> {
+    pub fn new(mut rng: T, player_count: usize, tables: usize) -> ScheduleGenerator<T> {
+        let mut best = Schedule::new(player_count, tables);
+        best.generate_random(&mut rng);
+        ScheduleGenerator {
+            player_count,
+            tables,
+            best: best.clone(),
+            best_score: best.generate_score(),
+            current: vec![best],
+            rng,
+        }
+    }
+    pub fn process(&mut self) {
+        let mut new = Schedule::new(self.player_count, self.tables);
+        new.generate_random(&mut self.rng);
+        if new.generate_score() > self.best_score {
+            self.best_score = new.generate_score();
+            self.best = new;
+        }
     }
 }
 

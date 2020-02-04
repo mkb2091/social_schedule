@@ -9,7 +9,6 @@ pub mod style_control;
 
 extern crate rand_core;
 extern crate rand_xorshift;
-use rand_core::SeedableRng;
 extern crate getrandom;
 extern crate rand;
 
@@ -50,7 +49,6 @@ struct Model {
     preferences: preferences_page::Preferences,
     style_control: style_control::StyleControl,
     database: database::Database,
-    rng: rand_xorshift::XorShiftRng,
 }
 
 impl Default for Model {
@@ -64,13 +62,6 @@ impl Default for Model {
             preferences: preferences_page::Preferences::default(),
             style_control: style_control::StyleControl::default(),
             database: database::Database::load(),
-            rng: {
-                let mut seed: [u8; 16] = [0; 16];
-                if getrandom::getrandom(&mut seed).is_err() {
-                    alert("Failed to seed RNG");
-                };
-                rand_xorshift::XorShiftRng::from_seed(seed)
-            },
         }
     }
 }
@@ -85,6 +76,7 @@ pub enum Msg {
     GSRemovePlayer(u32),
     GSRemoveAllPlayers,
     GSSetTables(String),
+    GSApply,
     GSGenerate,
     MPAddPlayer,
     MPAddPlayerNameInput(String),
@@ -119,7 +111,8 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         Msg::GSRemovePlayer(id) => model.generate_schedule.remove_player(id),
         Msg::GSRemoveAllPlayers => model.generate_schedule.remove_all_players(),
         Msg::GSSetTables(tables) => model.generate_schedule.set_tables(tables),
-        Msg::GSGenerate => model.generate_schedule.generate(&mut model.rng),
+        Msg::GSApply => model.generate_schedule.apply(),
+        Msg::GSGenerate => model.generate_schedule.generate(),
         Msg::MPAddPlayerNameInput(player_name) => {
             model.manage_players.set_player_name_input(player_name)
         }
