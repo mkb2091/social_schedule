@@ -109,7 +109,9 @@ impl GenerateSchedule {
 
     pub fn generate(&mut self) {
         if let Some(schedule) = &mut self.schedule {
-            schedule.process();
+            for _ in 0..10000 {
+                schedule.process();
+            }
         }
     }
 }
@@ -243,10 +245,17 @@ St::FlexGrow=> "1";];
                     table![{
                         let tables = best.get_tables();
 
-                        let mut table: Vec<Node<Msg>> = Vec::with_capacity(tables);
+                        let mut table: Vec<Node<Msg>> = Vec::with_capacity(tables + 1);
+                        let mut heading: Vec<Node<Msg>> = Vec::with_capacity(tables + 1);
+                        heading.push(td![]);
+                        for game in 1..=tables {
+                            heading.push(td![format!("Table {:}", game)]);
+                        }
+                        table.push(tr![heading]);
                         for round in 0..tables {
                             table.push(tr![{
-                                let mut row: Vec<Node<Msg>> = Vec::with_capacity(tables);
+                                let mut row: Vec<Node<Msg>> = Vec::with_capacity(tables + 1);
+                                row.push(td![format!("Round {:}", round + 1)]);
                                 for table in 0..tables {
                                     row.push(td![{ format!("{:?}", best.get_game(round, table)) }]);
                                 }

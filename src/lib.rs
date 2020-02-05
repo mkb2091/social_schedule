@@ -7,10 +7,10 @@ pub mod preferences_page;
 pub mod schedule;
 pub mod style_control;
 
-extern crate rand_core;
-extern crate rand_xorshift;
 extern crate getrandom;
 extern crate rand;
+extern crate rand_core;
+extern crate rand_xorshift;
 
 extern crate serde;
 extern crate serde_json;

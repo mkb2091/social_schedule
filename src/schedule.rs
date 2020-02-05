@@ -141,6 +141,7 @@ impl<T: rand::Rng + rand_core::RngCore> ScheduleGenerator<T> {
             rng,
         }
     }
+
     pub fn process(&mut self) {
         let mut new = Schedule::new(self.player_count, self.tables);
         new.generate_random(&mut self.rng);
