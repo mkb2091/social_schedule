@@ -109,7 +109,7 @@ impl GenerateSchedule {
 
     pub fn generate(&mut self) {
         if let Some(schedule) = &mut self.schedule {
-            for _ in 0..10000 {
+            for _ in 0..100 {
                 schedule.process();
             }
         }
@@ -137,7 +137,7 @@ St::FlexGrow=> "1";];
         St::FlexWrap => "Wrap"],
         div![
             &box_style,
-            h2!["Tournament Players"],
+            h2!["Event Players"],
             p![
                 span!["Group: "],
                 select![
@@ -242,11 +242,13 @@ St::FlexGrow=> "1";];
                 let best = &schedule.best;
                 p![
                     p![format!(
-                        "Total unique games played(ideally players * games): {}",
+                        "Total unique games played(ideally {}): {}",
+                        best.get_player_count() * best.get_tables(),
                         best.unique_games_played()
                     )],
                     p![format!(
-                        "Total unique opponents/teammates played(higher is better): {}",
+                        "Total unique opponents/teammates played(ideally {}): {}",
+                        best.get_player_count() * (best.get_player_count() - best.get_tables()),
                         best.unique_opponents()
                     )],
                     table![{
