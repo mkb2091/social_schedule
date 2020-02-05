@@ -41,14 +41,14 @@ impl ManagePlayers {
     }
 
     pub fn change_name(&self, database: &mut database::Database, id: u32) {
-        if let Some(new_name) = prompt() {
+        if let Some(new_name) = prompt("New name") {
             if new_name != "" {
                 database.change_player_name(id, new_name);
             }
         }
     }
     pub fn change_email(&self, database: &mut database::Database, id: u32) {
-        if let Some(new_email) = prompt() {
+        if let Some(new_email) = prompt("New email") {
             if let Ok(email) = database::Email::parse_string(&new_email) {
                 database.change_player_email(id, email)
             } else {

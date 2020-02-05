@@ -1,7 +1,15 @@
+use crate::schedule;
+
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct Email {
     username: String,
     host: String,
+}
+
+impl std::fmt::Display for Email {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:}@{:}", self.username, self.host)
+    }
 }
 
 impl Email {
@@ -27,10 +35,6 @@ impl Email {
         }
         Ok(Email { username, host })
     }
-
-    pub fn to_string(&self) -> String {
-        format!("{:}@{:}", self.username, self.host)
-    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
@@ -45,15 +49,34 @@ pub struct Group {
     players: std::collections::HashSet<u32>,
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+pub struct Event {
+    pub name: String,
+    schedule: schedule::Schedule,
+    pub players: Vec<u32>,
+}
+
 impl Group {
     pub fn get_players(&self) -> std::collections::hash_set::Iter<u32> {
         self.players.iter()
     }
 }
+
+impl Event {
+    pub fn from(name: String, schedule: schedule::Schedule, players: Vec<u32>) -> Option<Event> {
+        Some(Event {
+            name,
+            schedule,
+            players,
+        })
+    }
+}
+
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct Database {
     players: std::collections::HashMap<u32, Player>,
     groups: std::collections::HashMap<u32, Group>,
+    events: std::collections::HashMap<u32, Event>,
 }
 
 impl Database {
@@ -68,6 +91,7 @@ impl Database {
         Database {
             players: std::collections::HashMap::new(),
             groups: std::collections::HashMap::new(),
+            events: std::collections::HashMap::new(),
         }
     }
 
@@ -182,5 +206,24 @@ impl Database {
             group.name = new_name;
             self.dump();
         }
+    }
+    pub fn add_event(
+        &mut self,
+        name: String,
+        event_schedule: schedule::Schedule,
+        players: Vec<u32>,
+    ) {
+        if let Some(event) = Event::from(name, event_schedule, players) {
+            for id in (self.events.len() as u32)..std::u32::MAX {
+                if !self.events.contains_key(&id) {
+                    self.events.insert(id, event);
+                    self.dump();
+                    return;
+                }
+            }
+        }
+    }
+    pub fn get_events(&self) -> Vec<(&u32, &Event)> {
+        self.events.iter().collect()
     }
 }

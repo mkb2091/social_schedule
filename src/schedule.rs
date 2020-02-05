@@ -1,7 +1,7 @@
 use rand::seq::SliceRandom;
 use std::ops::IndexMut;
 
-#[derive(Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct Schedule {
     player_count: usize,
     tables: usize,
@@ -124,7 +124,6 @@ pub struct ScheduleGenerator<T: rand::Rng + rand_core::RngCore> {
     tables: usize,
     pub best: Schedule,
     pub best_score: u32,
-    current: Vec<Schedule>,
     rng: T,
 }
 
@@ -137,7 +136,6 @@ impl<T: rand::Rng + rand_core::RngCore> ScheduleGenerator<T> {
             tables,
             best: best.clone(),
             best_score: best.generate_score(),
-            current: vec![best],
             rng,
         }
     }

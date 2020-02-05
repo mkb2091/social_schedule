@@ -1,7 +1,7 @@
 use rand_core::SeedableRng;
 use seed::prelude::*;
 
-use crate::{alert, database, player_select_box, schedule, style_control, Msg};
+use crate::{alert, database, player_select_box, prompt, schedule, style_control, Msg};
 
 pub struct GenerateSchedule {
     players: Vec<u32>,
@@ -111,6 +111,13 @@ impl GenerateSchedule {
         if let Some(schedule) = &mut self.schedule {
             for _ in 0..10000 {
                 schedule.process();
+            }
+        }
+    }
+    pub fn make_event(&self, database: &mut database::Database) {
+        if let Some(schedule) = &self.schedule {
+            if let Some(name) = prompt("Event name") {
+                database.add_event(name, schedule.best.clone(), self.players.clone());
             }
         }
     }
@@ -264,6 +271,11 @@ St::FlexGrow=> "1";];
                         }
                         table
                     }],
+                    button![
+                        style.button_style(),
+                        simple_ev(Ev::Click, Msg::GSMakeEvent),
+                        "Make event with schedule"
+                    ]
                 ]
             } else {
                 p![]

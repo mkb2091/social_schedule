@@ -48,7 +48,7 @@ impl ManageGroups {
         database.remove_group(id);
     }
     pub fn change_name(&self, database: &mut database::Database, id: u32) {
-        if let Some(new_name) = prompt() {
+        if let Some(new_name) = prompt("New name") {
             if new_name != "" {
                 database.change_group_name(id, new_name);
             }

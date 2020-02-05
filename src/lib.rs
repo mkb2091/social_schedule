@@ -1,8 +1,8 @@
 pub mod database;
 pub mod generate_schedule_page;
+pub mod manage_events_page;
 pub mod manage_groups_page;
 pub mod manage_players_page;
-pub mod manage_tournaments_page;
 pub mod preferences_page;
 pub mod schedule;
 pub mod style_control;
@@ -28,7 +28,7 @@ extern "C" {
 
 #[wasm_bindgen]
 extern "C" {
-    fn prompt() -> Option<String>;
+    fn prompt(text: &str) -> Option<String>;
 }
 
 #[derive(Clone)]
@@ -36,7 +36,7 @@ pub enum Page {
     GenerateSchedule,
     ManagePlayers,
     ManageGroups,
-    AddTournament,
+    ManageEvents,
     Preferences,
 }
 
@@ -45,7 +45,7 @@ struct Model {
     pub generate_schedule: generate_schedule_page::GenerateSchedule,
     pub manage_players: manage_players_page::ManagePlayers,
     manage_groups: manage_groups_page::ManageGroups,
-    manage_tournaments: manage_tournaments_page::ManageTournaments,
+    manage_events: manage_events_page::ManageEvents,
     preferences: preferences_page::Preferences,
     style_control: style_control::StyleControl,
     database: database::Database,
@@ -58,7 +58,7 @@ impl Default for Model {
             generate_schedule: generate_schedule_page::GenerateSchedule::default(),
             manage_players: manage_players_page::ManagePlayers::default(),
             manage_groups: manage_groups_page::ManageGroups::default(),
-            manage_tournaments: manage_tournaments_page::ManageTournaments::default(),
+            manage_events: manage_events_page::ManageEvents::default(),
             preferences: preferences_page::Preferences::default(),
             style_control: style_control::StyleControl::default(),
             database: database::Database::load(),
@@ -78,6 +78,7 @@ pub enum Msg {
     GSSetTables(String),
     GSApply,
     GSGenerate,
+    GSMakeEvent,
     MPAddPlayer,
     MPAddPlayerNameInput(String),
     MPAddPlayerEmailInput(String),
@@ -113,6 +114,7 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         Msg::GSSetTables(tables) => model.generate_schedule.set_tables(tables),
         Msg::GSApply => model.generate_schedule.apply(),
         Msg::GSGenerate => model.generate_schedule.generate(),
+        Msg::GSMakeEvent => model.generate_schedule.make_event(&mut model.database),
         Msg::MPAddPlayerNameInput(player_name) => {
             model.manage_players.set_player_name_input(player_name)
         }
@@ -170,7 +172,7 @@ St::Overflow => "auto";],
             Page::GenerateSchedule => "Generate Schedule",
             Page::ManagePlayers => "Manage Players",
             Page::ManageGroups => "Manage Groups",
-            Page::AddTournament => "Add Tournament",
+            Page::ManageEvents => "Manage Events",
             Page::Preferences => "Preferences",
         }],
         div![
@@ -197,8 +199,8 @@ St::Overflow => "auto";],
             button![
                 model.style_control.button_style(),
                 &tab_style,
-                simple_ev(Ev::Click, Msg::ChangePage(Page::AddTournament)),
-                "Add Tournament"
+                simple_ev(Ev::Click, Msg::ChangePage(Page::ManageEvents)),
+                "Manage Events"
             ],
             button![
                 model.style_control.button_style(),
@@ -223,8 +225,8 @@ St::Overflow => "auto";],
                 &model.database,
                 &model.style_control,
             ),
-            Page::AddTournament => manage_tournaments_page::view_add_tournament(
-                &model.manage_tournaments,
+            Page::ManageEvents => manage_events_page::view_manage_events(
+                &model.manage_events,
                 &model.database,
                 &model.style_control,
             ),
