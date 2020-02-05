@@ -1,7 +1,7 @@
 use rand_core::SeedableRng;
 use seed::prelude::*;
 
-use crate::{alert, database, player_select_box, prompt, schedule, style_control, Msg};
+use crate::{alert, database, next_tick, player_select_box, prompt, schedule, style_control, Msg};
 
 pub struct GenerateSchedule {
     players: Vec<u32>,
@@ -14,6 +14,7 @@ pub struct GenerateSchedule {
 
 impl Default for GenerateSchedule {
     fn default() -> Self {
+        next_tick();
         Self {
             players: Vec::new(),
             add_player_select_box: String::new(),
@@ -109,10 +110,9 @@ impl GenerateSchedule {
 
     pub fn generate(&mut self) {
         if let Some(schedule) = &mut self.schedule {
-            for _ in 0..100 {
-                schedule.process();
-            }
+            schedule.process()
         }
+        next_tick();
     }
     pub fn make_event(&self, database: &mut database::Database) {
         if let Some(schedule) = &self.schedule {
@@ -232,11 +232,6 @@ St::FlexGrow=> "1";];
                 style.button_style(),
                 simple_ev(Ev::Click, Msg::GSApply),
                 "Apply parameters"
-            ],
-            button![
-                style.button_style(),
-                simple_ev(Ev::Click, Msg::GSGenerate),
-                "Generate"
             ],
             if let Some(schedule) = &model.schedule {
                 let best = &schedule.best;

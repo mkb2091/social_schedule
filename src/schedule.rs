@@ -211,7 +211,7 @@ impl<T: rand::Rng + rand_core::RngCore> ScheduleGenerator<T> {
         }
         self.current = Schedule::new(self.player_count, self.tables);
         self.current.generate_random(&mut self.rng);
-	self.current_score = self.current.generate_score();
+        self.current_score = self.current.generate_score();
         if self.current_score > self.best_score {
             self.best_score = self.current_score;
             self.best = self.current.clone();

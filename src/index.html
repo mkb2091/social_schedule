@@ -10,6 +10,19 @@
    <body>
       <section id="app" style="position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: flex;"></section>
       <script type="module">
+function trigger_event() {{
+	var event = new CustomEvent('playing', {{
+    view: window,
+    bubbles: true,
+    cancelable: true
+  }});
+window.dispatchEvent(event);
+
+}}
+
+function next_tick() {{
+  setTimeout(trigger_event, 0);
+}}
          {js}
       </script>
    </body>

@@ -31,6 +31,11 @@ extern "C" {
     fn prompt(text: &str) -> Option<String>;
 }
 
+#[wasm_bindgen]
+extern "C" {
+    fn next_tick();
+}
+
 #[derive(Clone)]
 pub enum Page {
     GenerateSchedule,
@@ -237,7 +242,15 @@ St::Overflow => "auto";],
     ]
 }
 
+fn window_events(model: &Model) -> Vec<seed::events::Listener<Msg>> {
+    let mut result = Vec::new();
+    result.push(simple_ev(Ev::Playing, Msg::GSGenerate));
+    result
+}
+
 #[wasm_bindgen(start)]
 pub fn render() {
-    seed::App::build(|_, _| Init::new(Model::default()), update, view).build_and_start();
+    seed::App::build(|_, _| Init::new(Model::default()), update, view)
+        .window_events(window_events)
+        .build_and_start();
 }
