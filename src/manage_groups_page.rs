@@ -128,6 +128,7 @@ St::FlexGrow=> "1";];
         ],
         div![
             &box_style,
+            h2!["Create New Group"],
             p![
                 span!["Group Name: "],
                 input![input_ev(Ev::Input, Msg::MGAddGroupNameInput)],

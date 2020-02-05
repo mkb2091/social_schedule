@@ -13,7 +13,10 @@ impl std::fmt::Display for Email {
 }
 
 impl Email {
-    pub fn parse_string(email_string: &str) -> Result<Email, ()> {
+    pub fn parse_string(email_string: &str) -> Result<Option<Email>, ()> {
+        if email_string.is_empty() {
+            return Ok(None);
+        }
         let mut username: String = String::new();
         let mut host: String = String::new();
         let mut found_at: bool = false;
@@ -33,14 +36,14 @@ impl Email {
         if !found_at || username.is_empty() || host.is_empty() {
             return Err(());
         }
-        Ok(Email { username, host })
+        Ok(Some(Email { username, host }))
     }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct Player {
     pub name: String,
-    pub email: Email,
+    pub email: Option<Email>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
@@ -104,7 +107,7 @@ impl Database {
             }
         }
     }
-    pub fn add_player(&mut self, name: String, email: Email) {
+    pub fn add_player(&mut self, name: String, email: Option<Email>) {
         for id in (self.players.len() as u32)..std::u32::MAX {
             if !self.players.contains_key(&id) {
                 self.players.insert(id, Player { name, email });
@@ -146,7 +149,7 @@ impl Database {
         }
     }
 
-    pub fn change_player_email(&mut self, id: u32, new_email: Email) {
+    pub fn change_player_email(&mut self, id: u32, new_email: Option<Email>) {
         if let Some(player) = self.players.get_mut(&id) {
             player.email = new_email;
             self.dump();

@@ -75,16 +75,23 @@ St::FlexGrow=> "1";];
             h2!["Player List"],
             table![style![St::PaddingBottom => "5px";], {
                 let player_list = database.get_players();
-                let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(player_list.len());
+                let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(player_list.len() + 1);
+                if !player_list.is_empty() {
+                    node_list.push(tr![td!["ID"], td!["Name"], td!["Email"]])
+                }
                 for (&id, player) in &player_list {
                     node_list.push(tr![
                         td![id.to_string()],
                         td![player.name],
-                        td![player.email.to_string()],
+                        td![if let Some(email) = &player.email {
+                            email.to_string()
+                        } else {
+                            String::new()
+                        }],
                         td![button![
                             style.button_style(),
                             raw_ev(Ev::Click, move |_| Msg::MPChangeName(id)),
-                            "Change Name"
+                            "Edit Name"
                         ]],
                         td![button![
                             style.button_style(),
@@ -94,7 +101,7 @@ St::FlexGrow=> "1";];
                         td![button![
                             style.button_style(),
                             raw_ev(Ev::Click, move |_| Msg::MPRemovePlayer(id)),
-                            "Remove"
+                            "Delete from database"
                         ]],
                     ]);
                 }
@@ -103,6 +110,7 @@ St::FlexGrow=> "1";];
         ],
         div![
             &box_style,
+            h2!["Add new player"],
             p![
                 span!["Player Name: "],
                 input![input_ev(Ev::Input, Msg::MPAddPlayerNameInput)],
