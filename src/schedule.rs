@@ -19,7 +19,7 @@ impl Schedule {
             player_count,
             tables,
             matches,
-            score_multiplier: (player_count.pow(2) - player_count * tables) as u32,
+            score_multiplier: 2 * (player_count - tables) as u32,
         }
     }
 
@@ -37,7 +37,7 @@ impl Schedule {
         for (round_number, round) in data.iter().enumerate() {
             for (table_number, table) in round.iter().enumerate() {
                 for player in table.iter() {
-                    *self.get_mut(round_number, table_number) |= 2_u64.pow(*player as u32);
+                    *self.get_mut(round_number, table_number) |= 1u64 << player;
                 }
             }
         }
@@ -121,7 +121,8 @@ impl Schedule {
         players
     }
     pub fn generate_score(&self) -> u32 {
-        self.unique_opponents() + self.unique_games_played() * self.score_multiplier
+        self.unique_opponents() * (self.tables as u32)
+            + self.unique_games_played() * self.score_multiplier
     }
     pub fn improve_table(
         &mut self,
@@ -237,7 +238,6 @@ impl<T: rand::Rng + rand_core::RngCore> ScheduleGenerator<T> {
                 }
             }
         }
-
         let new_score = self.current.improve_table(
             self.current_score,
             self.round,
