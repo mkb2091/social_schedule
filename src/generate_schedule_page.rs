@@ -13,7 +13,6 @@ pub struct GenerateSchedule {
     tables: usize,
     schedule: Option<schedule::ScheduleGenerator<rand_xorshift::XorShiftRng>>,
     rng: rand_xorshift::XorShiftRng,
-    last_run: f64,
     cpu_usage: f64,
 }
 
@@ -33,7 +32,6 @@ impl Default for GenerateSchedule {
                 };
                 rand_xorshift::XorShiftRng::from_seed(seed)
             },
-            last_run: 0.0,
             cpu_usage: 50.0,
         }
     }
@@ -126,18 +124,14 @@ impl GenerateSchedule {
     pub fn generate(&mut self) {
         if let Some(schedule) = &mut self.schedule {
             let now = performance_now();
-
-            let since_last = now - self.last_run;
-            let ideal = now + since_last * (self.cpu_usage / (100.0 - self.cpu_usage));
+            let ideal = now + self.cpu_usage;
             while performance_now() < ideal {
                 schedule.process();
             }
-            let actual = performance_now() - now;
-            next_tick(actual - ideal);
+            next_tick(100.0 - self.cpu_usage);
         } else {
             next_tick(10.0);
         }
-        self.last_run = performance_now();
     }
     pub fn make_event(&self, database: &mut database::Database) {
         if let Some(schedule) = &self.schedule {
