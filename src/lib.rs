@@ -33,7 +33,12 @@ extern "C" {
 
 #[wasm_bindgen]
 extern "C" {
-    fn next_tick();
+    fn next_tick(delay: f64);
+}
+
+#[wasm_bindgen]
+extern "C" {
+    fn performance_now() -> f64;
 }
 
 #[derive(Clone)]
@@ -81,6 +86,7 @@ pub enum Msg {
     GSRemovePlayer(u32),
     GSRemoveAllPlayers,
     GSSetTables(String),
+    GSSetCpuUsage(String),
     GSApply,
     GSGenerate,
     GSMakeEvent,
@@ -117,6 +123,7 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         Msg::GSRemovePlayer(id) => model.generate_schedule.remove_player(id),
         Msg::GSRemoveAllPlayers => model.generate_schedule.remove_all_players(),
         Msg::GSSetTables(tables) => model.generate_schedule.set_tables(tables),
+        Msg::GSSetCpuUsage(cpu_usage) => model.generate_schedule.set_cpu_usage(cpu_usage),
         Msg::GSApply => model.generate_schedule.apply(),
         Msg::GSGenerate => model.generate_schedule.generate(),
         Msg::GSMakeEvent => model.generate_schedule.make_event(&mut model.database),

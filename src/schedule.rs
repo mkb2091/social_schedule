@@ -129,12 +129,12 @@ impl Schedule {
         round: usize,
         table1: usize,
         table2: usize,
-    ) -> bool {
+        apply: bool,
+    ) -> u32 {
         let original_t1 = self.get(round, table1);
         let original_t2 = self.get(round, table2);
         let mut best_t1 = original_t1;
         let mut best_t2 = original_t2;
-        let mut changed = false;
         for player1 in 0..self.player_count {
             let player_number1 = 1 << player1;
             if original_t1 & player_number1 != 0 {
@@ -147,7 +147,6 @@ impl Schedule {
                             original_t2 - player_number2 + player_number1;
                         let new_score = self.generate_score();
                         if new_score > score {
-                            changed = true;
                             best_t1 = original_t1 - player_number1 + player_number2;
                             best_t2 = original_t2 - player_number2 + player_number1;
                             score = new_score;
@@ -156,9 +155,14 @@ impl Schedule {
                 }
             }
         }
-        *self.get_mut(round, table1) = best_t1;
-        *self.get_mut(round, table2) = best_t2;
-        changed
+        if apply {
+            *self.get_mut(round, table1) = best_t1;
+            *self.get_mut(round, table2) = best_t2;
+        } else {
+            *self.get_mut(round, table1) = original_t1;
+            *self.get_mut(round, table2) = original_t2;
+        }
+        score
     }
 }
 
@@ -169,7 +173,12 @@ pub struct ScheduleGenerator<T: rand::Rng + rand_core::RngCore> {
     pub best_score: u32,
     current: Schedule,
     current_score: u32,
+    next: (usize, usize, usize),
+    next_score: u32,
     rng: T,
+    round: usize,
+    table1: usize,
+    table2: usize,
 }
 
 impl<T: rand::Rng + rand_core::RngCore> ScheduleGenerator<T> {
@@ -182,39 +191,63 @@ impl<T: rand::Rng + rand_core::RngCore> ScheduleGenerator<T> {
             tables,
             best: best.clone(),
             best_score: score,
-            current: best,
+            current: best.clone(),
             current_score: score,
+            next: (0, 0, 1),
+            next_score: score,
             rng,
+            round: 0,
+            table1: 0,
+            table2: 0,
         }
     }
 
     pub fn process(&mut self) {
-        for round in 0..self.tables {
-            for table1 in 0..self.tables {
-                for table2 in (table1 + 1)..self.tables {
-                    if table1 == table2 {
-                        continue;
-                    }
-                    if self
-                        .current
-                        .improve_table(self.current_score, round, table1, table2)
-                    {
-                        self.current_score = self.current.generate_score();
+        self.table2 += 1;
+        if self.table2 >= self.tables {
+            self.table2 = self.table1 + 2;
+            self.table1 += 1;
+            if self.table2 >= self.tables {
+                self.table1 = 0;
+                self.table2 = 0;
+                self.round += 1;
+                if self.round >= self.tables {
+                    self.round = 0;
+                    self.table1 = 0;
+                    self.table2 = 0;
+                    if self.next_score > self.current_score {
+                        let (round, table1, table2) = self.next;
+                        self.current
+                            .improve_table(self.current_score, round, table1, table2, true);
+                        self.current_score = self.next_score;
                         if self.current_score > self.best_score {
                             self.best_score = self.current_score;
                             self.best = self.current.clone();
                         }
-                        return;
+                    } else {
+                        self.current = Schedule::new(self.player_count, self.tables);
+                        self.current.generate_random(&mut self.rng);
+                        self.current_score = self.current.generate_score();
+                        self.next_score = self.current_score;
+                        if self.current_score > self.best_score {
+                            self.best_score = self.current_score;
+                            self.best = self.current.clone();
+                        }
                     }
                 }
             }
         }
-        self.current = Schedule::new(self.player_count, self.tables);
-        self.current.generate_random(&mut self.rng);
-        self.current_score = self.current.generate_score();
-        if self.current_score > self.best_score {
-            self.best_score = self.current_score;
-            self.best = self.current.clone();
+
+        let new_score = self.current.improve_table(
+            self.current_score,
+            self.round,
+            self.table1,
+            self.table2,
+            false,
+        );
+        if new_score > self.next_score {
+            self.next = (self.round, self.table1, self.table2);
+            self.next_score = new_score;
         }
     }
 }

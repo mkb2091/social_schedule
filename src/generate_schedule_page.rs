@@ -1,7 +1,10 @@
 use rand_core::SeedableRng;
 use seed::prelude::*;
 
-use crate::{alert, database, next_tick, player_select_box, prompt, schedule, style_control, Msg};
+use crate::{
+    alert, database, next_tick, performance_now, player_select_box, prompt, schedule,
+    style_control, Msg,
+};
 
 pub struct GenerateSchedule {
     players: Vec<u32>,
@@ -10,11 +13,13 @@ pub struct GenerateSchedule {
     tables: usize,
     schedule: Option<schedule::ScheduleGenerator<rand_xorshift::XorShiftRng>>,
     rng: rand_xorshift::XorShiftRng,
+    last_run: f64,
+    cpu_usage: f64,
 }
 
 impl Default for GenerateSchedule {
     fn default() -> Self {
-        next_tick();
+        next_tick(0.0);
         Self {
             players: Vec::new(),
             add_player_select_box: String::new(),
@@ -28,6 +33,8 @@ impl Default for GenerateSchedule {
                 };
                 rand_xorshift::XorShiftRng::from_seed(seed)
             },
+            last_run: 0.0,
+            cpu_usage: 50.0,
         }
     }
 }
@@ -98,6 +105,14 @@ impl GenerateSchedule {
         }
     }
 
+    pub fn set_cpu_usage(&mut self, cpu_usage: String) {
+        if let Ok(cpu_usage) = cpu_usage.parse::<f64>() {
+            self.cpu_usage = cpu_usage;
+        } else {
+            alert("Invalid player count");
+        }
+    }
+
     pub fn apply(&mut self) {
         if let Ok(rng) = rand_xorshift::XorShiftRng::from_rng(&mut self.rng) {
             self.schedule = Some(schedule::ScheduleGenerator::new(
@@ -110,9 +125,19 @@ impl GenerateSchedule {
 
     pub fn generate(&mut self) {
         if let Some(schedule) = &mut self.schedule {
-            schedule.process()
+            let now = performance_now();
+
+            let since_last = now - self.last_run;
+            let ideal = now + since_last * (self.cpu_usage / (100.0 - self.cpu_usage));
+            while performance_now() < ideal {
+                schedule.process();
+            }
+            let actual = performance_now() - now;
+            next_tick(actual - ideal);
+        } else {
+            next_tick(10.0);
         }
-        next_tick();
+        self.last_run = performance_now();
     }
     pub fn make_event(&self, database: &mut database::Database) {
         if let Some(schedule) = &self.schedule {
@@ -292,18 +317,23 @@ St::FlexGrow=> "1";];
             ],
             p![
                 span!["Maximum CPU usage: "],
-                select![style.button_style(), attrs! {At::Value => "99"}, {
-                    let mut cpu_options: Vec<Node<Msg>> = Vec::with_capacity(100);
-                    for percent in 0..99 {
-                        let percent = 99 - percent;
-                        cpu_options.push(option![
-                            style.option_style(),
-                            attrs! {At::Value => percent},
-                            format!("{}%", percent)
-                        ]);
+                select![
+                    style.button_style(),
+                    input_ev(Ev::Input, Msg::GSSetCpuUsage),
+                    attrs! {At::Value => format!("{:}", model.cpu_usage as u32)},
+                    {
+                        let mut cpu_options: Vec<Node<Msg>> = Vec::with_capacity(100);
+                        for percent in 0..99 {
+                            let percent = 99 - percent;
+                            cpu_options.push(option![
+                                style.option_style(),
+                                attrs! {At::Value => percent},
+                                format!("{}%", percent)
+                            ]);
+                        }
+                        cpu_options
                     }
-                    cpu_options
-                }]
+                ]
             ],
         ]
     ]
