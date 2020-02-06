@@ -191,7 +191,7 @@ impl<T: rand::Rng + rand_core::RngCore> ScheduleGenerator<T> {
     pub fn process(&mut self) {
         for round in 0..self.tables {
             for table1 in 0..self.tables {
-                for table2 in 0..self.tables {
+                for table2 in (table1 + 1)..self.tables {
                     if table1 == table2 {
                         continue;
                     }
