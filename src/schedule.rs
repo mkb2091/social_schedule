@@ -136,23 +136,37 @@ impl Schedule {
         let original_t2 = self.get(round, table2);
         let mut best_t1 = original_t1;
         let mut best_t2 = original_t2;
+        let t1_size: usize = original_t1.count_ones() as usize;
+        let t2_size: usize = original_t2.count_ones() as usize;
+        let mut t1_players: Vec<usize> = Vec::with_capacity(t1_size);
+        let mut t2_players: Vec<usize> = Vec::with_capacity(t2_size);
         for player1 in 0..self.player_count {
-            let player_number1 = 1 << player1;
-            if original_t1 & player_number1 != 0 {
-                for player2 in 0..self.player_count {
-                    let player_number2 = 1 << player2;
-                    if original_t2 & player_number2 != 0 {
-                        *self.get_mut(round, table1) =
-                            original_t1 - player_number1 + player_number2;
-                        *self.get_mut(round, table2) =
-                            original_t2 - player_number2 + player_number1;
-                        let new_score = self.generate_score();
-                        if new_score > score {
-                            best_t1 = original_t1 - player_number1 + player_number2;
-                            best_t2 = original_t2 - player_number2 + player_number1;
-                            score = new_score;
-                        }
-                    }
+            if original_t1 & (1 << player1) != 0 {
+                t1_players.push(player1);
+                if t1_players.len() >= t1_size {
+                    break;
+                }
+            }
+        }
+        for player2 in 0..self.player_count {
+            if original_t2 & (1 << player2) != 0 {
+                t2_players.push(player2);
+                if t2_players.len() >= t2_size {
+                    break;
+                }
+            }
+        }
+        for player1 in t1_players.iter() {
+            let player_number1: u64 = 1u64 << player1;
+            for player2 in t2_players.iter() {
+                let player_number2: u64 = 1u64 << player2;
+                *self.get_mut(round, table1) = original_t1 - player_number1 + player_number2;
+                *self.get_mut(round, table2) = original_t2 - player_number2 + player_number1;
+                let new_score = self.generate_score();
+                if new_score > score {
+                    best_t1 = original_t1 - player_number1 + player_number2;
+                    best_t2 = original_t2 - player_number2 + player_number1;
+                    score = new_score;
                 }
             }
         }
