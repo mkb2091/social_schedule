@@ -123,11 +123,7 @@ impl Schedule {
     }
 
     pub fn unique_opponents(&self) -> u32 {
-        let mut total: u32 = 0;
-        for player in 0..self.player_count {
-            total += self.player_opponent_cache[player]
-        }
-        total - self.player_count as u32
+        self.player_opponent_cache.iter().sum::<u32>() - self.player_count as u32
     }
 
     pub fn get_tables(&self) -> usize {
