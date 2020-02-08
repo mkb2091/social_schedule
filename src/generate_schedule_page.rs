@@ -14,6 +14,10 @@ pub struct GenerateSchedule {
     schedule: Option<schedule::ScheduleGenerator<rand_xorshift::XorShiftRng>>,
     rng: rand_xorshift::XorShiftRng,
     cpu_usage: f64,
+    operations_per_second: u32,
+    operation_history: [f64; 20],
+    last_run: f64,
+    iteration: usize,
 }
 
 impl Default for GenerateSchedule {
@@ -33,6 +37,10 @@ impl Default for GenerateSchedule {
                 rand_xorshift::XorShiftRng::from_seed(seed)
             },
             cpu_usage: 50.0,
+            operations_per_second: 0,
+            operation_history: [0.0; 20],
+            last_run: performance_now(),
+            iteration: 0,
         }
     }
 }
@@ -125,13 +133,21 @@ impl GenerateSchedule {
         if let Some(schedule) = &mut self.schedule {
             let now = performance_now();
             let ideal = now + self.cpu_usage;
+            let mut operations: u32 = 0;
             while performance_now() < ideal {
                 schedule.process();
+                operations += 1;
             }
             next_tick(100.0 - self.cpu_usage);
+            self.iteration += 1;
+            self.iteration %= 20;
+            self.operation_history[self.iteration] = (operations as f64) / (performance_now() - self.last_run) * 1000.0;
+            self.operations_per_second = (self.operation_history.iter().sum::<f64>() / 20.0) as u32;
         } else {
             next_tick(10.0);
+            self.operations_per_second = 0;
         }
+        self.last_run = performance_now();
     }
     pub fn make_event(&self, database: &mut database::Database) {
         if let Some(schedule) = &self.schedule {
@@ -255,6 +271,7 @@ St::FlexGrow=> "1";];
             if let Some(schedule) = &model.schedule {
                 let best = &schedule.best;
                 p![
+                    p![format!("Operations /s: {}", model.operations_per_second)],
                     p![format!(
                         "Total unique games played(ideally {}): {}",
                         best.get_player_count() * best.get_tables(),
