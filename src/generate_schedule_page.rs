@@ -35,7 +35,7 @@ impl Default for GenerateSchedule {
                 };
                 rand_xorshift::XorShiftRng::from_seed(seed)
             },
-            cpu_usage: 50.0,
+            cpu_usage: 99.0,
             operations_per_second: 0,
             operation_history: [0.0; 35],
             iteration: 0,
