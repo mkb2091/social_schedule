@@ -6,6 +6,8 @@ pub struct Schedule {
     player_count: usize,
     tables: usize,
     matches: Vec<u64>,
+    player_positions: Vec<usize>,
+    player_opponent_cache: Vec<u32>,
     score_multiplier: u32,
 }
 
@@ -15,10 +17,20 @@ impl Schedule {
         for _ in 0..(tables * tables) {
             matches.push(0);
         }
+        let mut player_positions: Vec<usize> = Vec::with_capacity(player_count * tables);
+        for _ in 0..(player_count * tables) {
+            player_positions.push(0);
+        }
+        let mut player_opponent_cache: Vec<u32> = Vec::with_capacity(player_count);
+        for _ in 0..player_count {
+            player_opponent_cache.push(0);
+        }
         Schedule {
             player_count,
             tables,
             matches,
+            player_positions,
+            player_opponent_cache,
             score_multiplier: 2 * (player_count - tables) as u32,
         }
     }
@@ -34,13 +46,23 @@ impl Schedule {
         for _ in 0..(self.tables * self.tables) {
             self.matches.push(0);
         }
+        self.player_positions = Vec::with_capacity(self.player_count * self.tables);
+        for _ in 0..(self.player_count * self.tables) {
+            self.player_positions.push(0);
+        }
+        self.player_opponent_cache = Vec::with_capacity(self.player_count);
+        for _ in 0..self.player_count {
+            self.player_opponent_cache.push(0);
+        }
         for (round_number, round) in data.iter().enumerate() {
             for (table_number, table) in round.iter().enumerate() {
                 for player in table.iter() {
                     *self.get_mut(round_number, table_number) |= 1u64 << player;
+                    self.player_positions[player * self.tables + round_number] = table_number;
                 }
             }
         }
+        self.find_unique_opponents();
     }
 
     pub fn generate_random<T: rand::Rng + rand_core::RngCore>(&mut self, rng: &mut T) {
@@ -71,7 +93,6 @@ impl Schedule {
 
     pub fn unique_games_played(&self) -> u32 {
         let mut total: u32 = 0;
-
         for table in 0..self.tables {
             let mut total_table = 0;
             for round in 0..self.tables {
@@ -81,22 +102,30 @@ impl Schedule {
         }
         total
     }
+    fn player_unique_opponents(&mut self, player: usize) -> u32 {
+        let mut opponents: u64 = 0;
+        for round in 0..self.tables {
+            let table = self.player_positions[player * self.tables + round];
+            let game = self.get(round, table);
+            opponents |= game;
+        }
+        let count = opponents.count_ones();
+        self.player_opponent_cache[player] = count;
+        count
+    }
+
+    pub fn find_unique_opponents(&mut self) -> u32 {
+        let mut total: u32 = 0;
+        for player in 0..self.player_count {
+            total += self.player_unique_opponents(player)
+        }
+        total - self.player_count as u32
+    }
 
     pub fn unique_opponents(&self) -> u32 {
         let mut total: u32 = 0;
         for player in 0..self.player_count {
-            let mut opponents: u64 = 0;
-            let player = 1 << player;
-            for round in 0..self.tables {
-                for table in 0..self.tables {
-                    let game = self.get(round, table);
-                    if game & player != 0 {
-                        opponents |= game;
-                        break;
-                    }
-                }
-            }
-            total += opponents.count_ones();
+            total += self.player_opponent_cache[player]
         }
         total - self.player_count as u32
     }
@@ -120,22 +149,29 @@ impl Schedule {
         }
         players
     }
-    pub fn generate_score(&self) -> u32 {
+    pub fn generate_score(&mut self) -> u32 {
+        self.find_unique_opponents() * (self.tables as u32)
+            + self.unique_games_played() * self.score_multiplier
+    }
+    pub fn get_score(&self) -> u32 {
         self.unique_opponents() * (self.tables as u32)
             + self.unique_games_played() * self.score_multiplier
     }
     pub fn improve_table(
         &mut self,
-        mut score: u32,
+        old_score: u32,
         round: usize,
         table1: usize,
         table2: usize,
         apply: bool,
     ) -> u32 {
+        let mut score = old_score;
         let original_t1 = self.get(round, table1);
         let original_t2 = self.get(round, table2);
         let mut best_t1 = original_t1;
         let mut best_t2 = original_t2;
+        let mut best_player1 = 0;
+        let mut best_player2 = 0;
         let t1_size: usize = original_t1.count_ones() as usize;
         let t2_size: usize = original_t2.count_ones() as usize;
         let mut t1_players: Vec<usize> = Vec::with_capacity(t1_size);
@@ -162,10 +198,22 @@ impl Schedule {
                 let player_number2: u64 = 1u64 << player2;
                 *self.get_mut(round, table1) = original_t1 - player_number1 + player_number2;
                 *self.get_mut(round, table2) = original_t2 - player_number2 + player_number1;
-                let new_score = self.generate_score();
+                self.player_positions[player1 * self.tables + round] = table2;
+                self.player_positions[player2 * self.tables + round] = table1;
+                for p1 in t1_players.iter() {
+                    self.player_unique_opponents(*p1);
+                }
+                for p2 in t2_players.iter() {
+                    self.player_unique_opponents(*p2);
+                }
+                let new_score = self.get_score();
+                self.player_positions[player2 * self.tables + round] = table2;
+                self.player_positions[player1 * self.tables + round] = table1;
                 if new_score > score {
                     best_t1 = original_t1 - player_number1 + player_number2;
                     best_t2 = original_t2 - player_number2 + player_number1;
+                    best_player1 = *player1;
+                    best_player2 = *player2;
                     score = new_score;
                 }
             }
@@ -173,9 +221,19 @@ impl Schedule {
         if apply {
             *self.get_mut(round, table1) = best_t1;
             *self.get_mut(round, table2) = best_t2;
+            if score > old_score {
+                self.player_positions[best_player1 * self.tables + round] = table2;
+                self.player_positions[best_player2 * self.tables + round] = table1;
+            }
         } else {
             *self.get_mut(round, table1) = original_t1;
             *self.get_mut(round, table2) = original_t2;
+        }
+        for p1 in t1_players.iter() {
+            self.player_unique_opponents(*p1);
+        }
+        for p2 in t2_players.iter() {
+            self.player_unique_opponents(*p2);
         }
         score
     }
@@ -206,7 +264,7 @@ impl<T: rand::Rng + rand_core::RngCore> ScheduleGenerator<T> {
             tables,
             best: best.clone(),
             best_score: score,
-            current: best.clone(),
+            current: best,
             current_score: score,
             next: (0, 0, 1),
             next_score: score,
@@ -216,7 +274,6 @@ impl<T: rand::Rng + rand_core::RngCore> ScheduleGenerator<T> {
             table2: 0,
         }
     }
-
     pub fn process(&mut self) {
         self.table2 += 1;
         if self.table2 >= self.tables {
@@ -224,12 +281,12 @@ impl<T: rand::Rng + rand_core::RngCore> ScheduleGenerator<T> {
             self.table1 += 1;
             if self.table2 >= self.tables {
                 self.table1 = 0;
-                self.table2 = 0;
+                self.table2 = 1;
                 self.round += 1;
                 if self.round >= self.tables {
                     self.round = 0;
                     self.table1 = 0;
-                    self.table2 = 0;
+                    self.table2 = 1;
                     if self.next_score > self.current_score {
                         let (round, table1, table2) = self.next;
                         self.current
@@ -302,7 +359,7 @@ mod tests {
         for _ in 0..6 {
             game.push(round.clone());
         }
-        let schedule = Schedule::from_vec(24, 6, game);
-        assert_eq!(3 * 24, schedule.unique_opponents());
+        let mut schedule = Schedule::from_vec(24, 6, game);
+        assert_eq!(3 * 24, schedule.find_unique_opponents());
     }
 }

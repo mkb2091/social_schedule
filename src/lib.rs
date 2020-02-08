@@ -249,7 +249,7 @@ St::Overflow => "auto";],
     ]
 }
 
-fn window_events(model: &Model) -> Vec<seed::events::Listener<Msg>> {
+fn window_events(_model: &Model) -> Vec<seed::events::Listener<Msg>> {
     let mut result = Vec::new();
     result.push(simple_ev(Ev::Playing, Msg::GSGenerate));
     result
