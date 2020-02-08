@@ -113,11 +113,12 @@ impl Schedule {
         self.unique_games_played_cache
     }
     fn player_unique_opponents(&mut self, player: usize) -> u32 {
-        let mut opponents: u64 = 0;
-        for round in 0..self.tables {
-            opponents |= self.matches[self.player_positions[player * self.tables + round]];
-        }
-        let count = opponents.count_ones();
+        let count = (0..self.tables)
+            .map(|round_number| {
+                self.matches[self.player_positions[player * self.tables + round_number]]
+            })
+            .fold(0, |acc, round| acc | round)
+            .count_ones();
         self.player_opponent_cache[player] = count;
         count
     }
