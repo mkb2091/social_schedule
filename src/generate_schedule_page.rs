@@ -15,8 +15,7 @@ pub struct GenerateSchedule {
     rng: rand_xorshift::XorShiftRng,
     cpu_usage: f64,
     operations_per_second: u32,
-    operation_history: [f64; 20],
-    last_run: f64,
+    operation_history: [f64; 35],
     iteration: usize,
 }
 
@@ -38,8 +37,7 @@ impl Default for GenerateSchedule {
             },
             cpu_usage: 50.0,
             operations_per_second: 0,
-            operation_history: [0.0; 20],
-            last_run: performance_now(),
+            operation_history: [0.0; 35],
             iteration: 0,
         }
     }
@@ -138,16 +136,15 @@ impl GenerateSchedule {
                 schedule.process();
                 operations += 1;
             }
-            next_tick(100.0 - self.cpu_usage);
             self.iteration += 1;
-            self.iteration %= 20;
-            self.operation_history[self.iteration] = (operations as f64) / (performance_now() - self.last_run) * 1000.0;
-            self.operations_per_second = (self.operation_history.iter().sum::<f64>() / 20.0) as u32;
+            self.iteration %= 35;
+            self.operation_history[self.iteration] = (operations as f64) * 10.0;
+            self.operations_per_second = (self.operation_history.iter().sum::<f64>() / 35.0) as u32;
+            next_tick(100.0 - self.cpu_usage);
         } else {
-            next_tick(10.0);
+            next_tick(100.0);
             self.operations_per_second = 0;
         }
-        self.last_run = performance_now();
     }
     pub fn make_event(&self, database: &mut database::Database) {
         if let Some(schedule) = &self.schedule {
