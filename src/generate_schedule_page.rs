@@ -131,7 +131,13 @@ impl GenerateSchedule {
         if let Some(schedule) = &mut self.schedule {
             let now = performance_now();
             let ideal = now + self.cpu_usage;
-            let mut operations: u32 = 0;
+            let predicted_loops =
+                ((self.operations_per_second as f64) / 1000.0 * self.cpu_usage) as u32;
+            for _ in 0..(predicted_loops / 2) {
+                // Reduce calls to performance_now() by predicting
+                schedule.process();
+            }
+            let mut operations: u32 = predicted_loops / 2;
             while performance_now() < ideal {
                 schedule.process();
                 operations += 1;
