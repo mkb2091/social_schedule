@@ -164,8 +164,9 @@ impl Schedule {
         table1: usize,
         table2: usize,
         apply: bool,
-    ) -> u32 {
+    ) -> (u32, u32) {
         let mut score = old_score;
+        let mut unique_games_played = self.unique_games_played();
         let original_t1 = self.get(round, table1);
         let original_t2 = self.get(round, table2);
         let mut best_t1 = original_t1;
@@ -207,14 +208,18 @@ impl Schedule {
                     self.player_unique_opponents(*p2);
                 }
                 let new_score = self.get_score();
+                let new_unique_games_played = self.unique_games_played();
                 self.player_positions[player2 * self.tables + round] = table2;
                 self.player_positions[player1 * self.tables + round] = table1;
-                if new_score > score {
+                if new_score > score
+                    || (new_score == score && new_unique_games_played > unique_games_played)
+                {
                     best_t1 = original_t1 - player_number1 + player_number2;
                     best_t2 = original_t2 - player_number2 + player_number1;
                     best_player1 = *player1;
                     best_player2 = *player2;
                     score = new_score;
+                    unique_games_played = new_unique_games_played;
                 }
             }
         }
@@ -235,7 +240,7 @@ impl Schedule {
         for p2 in t2_players.iter() {
             self.player_unique_opponents(*p2);
         }
-        score
+        (score, unique_games_played)
     }
 }
 
@@ -244,10 +249,12 @@ pub struct ScheduleGenerator<T: rand::Rng + rand_core::RngCore> {
     tables: usize,
     pub best: Schedule,
     pub best_score: u32,
+    best_unique_games: u32,
     current: Schedule,
     current_score: u32,
     next: (usize, usize, usize),
     next_score: u32,
+    next_unique_games: u32,
     rng: T,
     round: usize,
     table1: usize,
@@ -264,10 +271,12 @@ impl<T: rand::Rng + rand_core::RngCore> ScheduleGenerator<T> {
             tables,
             best: best.clone(),
             best_score: score,
+            best_unique_games: best.unique_games_played(),
             current: best,
             current_score: score,
             next: (0, 0, 1),
             next_score: score,
+            next_unique_games: 0,
             rng,
             round: 0,
             table1: 0,
@@ -292,7 +301,11 @@ impl<T: rand::Rng + rand_core::RngCore> ScheduleGenerator<T> {
                         self.current
                             .improve_table(self.current_score, round, table1, table2, true);
                         self.current_score = self.next_score;
-                        if self.current_score > self.best_score {
+                        if self.current_score > self.best_score
+                            || (self.current_score == self.best_score
+                                && self.current.unique_games_played() > self.best_unique_games)
+                        {
+                            self.best_unique_games = self.current.unique_games_played();
                             self.best_score = self.current_score;
                             self.best = self.current.clone();
                         }
@@ -301,7 +314,11 @@ impl<T: rand::Rng + rand_core::RngCore> ScheduleGenerator<T> {
                         self.current.generate_random(&mut self.rng);
                         self.current_score = self.current.generate_score();
                         self.next_score = self.current_score;
-                        if self.current_score > self.best_score {
+                        if self.current_score > self.best_score
+                            || (self.current_score == self.best_score
+                                && self.current.unique_games_played() > self.best_unique_games)
+                        {
+                            self.best_unique_games = self.current.unique_games_played();
                             self.best_score = self.current_score;
                             self.best = self.current.clone();
                         }
@@ -309,16 +326,19 @@ impl<T: rand::Rng + rand_core::RngCore> ScheduleGenerator<T> {
                 }
             }
         }
-        let new_score = self.current.improve_table(
+        let (new_score, new_unique_games_played) = self.current.improve_table(
             self.current_score,
             self.round,
             self.table1,
             self.table2,
             false,
         );
-        if new_score > self.next_score {
+        if new_score > self.next_score
+            || (new_score == self.next_score && new_unique_games_played > self.next_unique_games)
+        {
             self.next = (self.round, self.table1, self.table2);
             self.next_score = new_score;
+            self.next_unique_games = new_unique_games_played;
         }
     }
 }
