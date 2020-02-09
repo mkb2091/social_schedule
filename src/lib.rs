@@ -21,6 +21,10 @@ use seed::prelude::*;
 
 extern crate wasm_bindgen;
 
+#[cfg(test)]
+#[macro_use]
+extern crate quickcheck;
+
 #[wasm_bindgen]
 extern "C" {
     fn alert(s: &str);

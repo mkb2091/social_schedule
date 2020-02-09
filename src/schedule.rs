@@ -1,4 +1,5 @@
 use rand::seq::SliceRandom;
+use rand::SeedableRng;
 use std::ops::IndexMut;
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
@@ -427,4 +428,46 @@ mod tests {
         let mut schedule = Schedule::from_vec(24, 6, game);
         assert_eq!(3 * 24, schedule.find_unique_opponents());
     }
+    #[derive(Clone, Debug)]
+    struct Seed {
+        pub data: [u8; 16],
+    }
+
+    impl quickcheck::Arbitrary for Seed {
+        fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+            let mut data: [u8; 16] = [0; 16];
+            for i in 0..16 {
+                data[i] = u8::arbitrary(g);
+            }
+            Seed { data }
+        }
+    }
+
+    quickcheck! {fn get_score_matches_generate_score(tables: i8, player_count: i8, seed: Seed) -> bool{
+        let tables = (tables.abs() & 63).max(2) as usize;
+        let player_count = (player_count.abs() & 63) as usize;
+        let mut schedule = Schedule::new(player_count as usize, tables as usize);
+        let mut rng = rand_xorshift::XorShiftRng::from_seed(seed.data);
+        schedule.generate_random(&mut rng);
+        schedule.get_score() == schedule.generate_score()
+    }}
+
+    quickcheck! {fn unique_games_played_less_equal_players_times_games_before_process(tables: i8, player_count: i8, seed: Seed) -> bool{
+        let tables = (tables.abs() & 63).max(2) as usize;
+        let player_count = (player_count.abs() & 63) as usize;
+        let mut schedule = Schedule::new(player_count as usize, tables as usize);
+        let mut rng = rand_xorshift::XorShiftRng::from_seed(seed.data);
+        schedule.generate_random(&mut rng);
+        schedule.find_unique_games_played() <= (tables * player_count) as u32
+    }}
+
+    quickcheck! {fn score_doesnt_decrease_after_process(tables: i8, player_count: i8, seed: Seed) -> bool{
+        let tables = (tables.abs() & 63).max(2) as usize;
+        let player_count = (player_count.abs() & 63) as usize;
+        let rng = rand_xorshift::XorShiftRng::from_seed(seed.data);
+        let mut generator = Generator::new(rng, player_count as usize, tables as usize);
+    let old_score = generator.best_score;
+        generator.process();
+        generator.best_score >= old_score
+    }}
 }
