@@ -18,6 +18,7 @@ pub struct Schedule {
 
 impl Schedule {
     pub fn new(player_count: usize, tables: usize) -> Schedule {
+        // player_count must be <= 64, since that means players will be 0 to 63 (inclusive), and 1 << 64 is undefined.
         let mut matches: Vec<u64> = Vec::with_capacity(tables * tables);
         for _ in 0..(tables * tables) {
             matches.push(0);
@@ -463,8 +464,8 @@ mod tests {
     impl quickcheck::Arbitrary for Seed {
         fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
             let mut data: [u8; 16] = [0; 16];
-            for i in 0..16 {
-                data[i] = u8::arbitrary(g);
+            for val in data.iter_mut() {
+                *val = u8::arbitrary(g);
             }
             Seed { data }
         }
