@@ -99,13 +99,39 @@ impl Schedule {
     #[inline(never)]
     pub fn find_unique_games_played(&mut self) -> u32 {
         let mut total: u32 = 0;
-        for table in 0..self.tables {
-            let mut total_table = 0;
+        for table1 in (0..(self.tables / 2 * 2)).step_by(2) {
+            let table2 = table1 + 1;
+            let mut total_table: u128 = 0;
             for round in 0..self.tables {
-                total_table |= self.get(round, table);
+                total_table |= unsafe {
+                    std::mem::transmute::<[u64; 2], u128>([
+                        self.get(round, table1),
+                        self.get(round, table2),
+                    ])
+                };
             }
             total += total_table.count_ones();
         }
+        if self.tables % 2 == 1 {
+            let mut total_table = 0;
+            for round in 0..self.tables {
+                total_table |= self.get(round, self.tables - 1);
+            }
+            total += total_table.count_ones();
+        }
+        debug_assert!(
+            total == {
+                let mut total2: u32 = 0;
+                for table in 0..self.tables {
+                    let mut total_table = 0;
+                    for round in 0..self.tables {
+                        total_table |= self.get(round, table);
+                    }
+                    total2 += total_table.count_ones();
+                }
+                total2
+            }
+        );
         self.unique_games_played_cache = total;
         total
     }
