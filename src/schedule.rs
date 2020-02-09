@@ -83,19 +83,37 @@ impl Schedule {
     }
 
     pub fn generate_random<T: rand::Rng + rand_core::RngCore>(&mut self, rng: &mut T) {
-        let players: Vec<usize> = (0..self.player_count).collect();
+        let mut player_list: Vec<usize> = (0..self.player_count).collect();
         let mut game: Vec<Vec<Vec<usize>>> = Vec::new();
         for _round in 0..self.tables {
-            let mut player_list = players.clone();
+            let offset: usize = rng.gen();
             player_list.shuffle(rng);
             let mut round: Vec<Vec<usize>> = Vec::new();
             for _ in 0..self.tables {
                 round.push(Vec::new());
             }
             for (i, player) in player_list.iter().enumerate() {
-                round[i % self.tables].push(*player);
+                round[(i + offset) % self.tables].push(*player);
             }
             game.push(round);
+        }
+        self.import_vec(game);
+    }
+
+    pub fn normal_fill(&mut self) {
+        let player_list: Vec<usize> = (0..self.player_count).collect();
+        let mut game: Vec<Vec<Vec<usize>>> = Vec::new();
+        let mut offset = 0;
+        for _round in 0..self.tables {
+            let mut round: Vec<Vec<usize>> = Vec::new();
+            for _ in 0..self.tables {
+                round.push(Vec::new());
+            }
+            for (i, player) in player_list.iter().enumerate() {
+                round[(i + offset) % self.tables].push(*player);
+            }
+            game.push(round);
+            offset += 1;
         }
         self.import_vec(game);
     }
@@ -164,6 +182,7 @@ impl Schedule {
             .fold(0, |acc, round| acc | round)
             .count_ones();
         self.player_opponent_cache[player] = count;
+        debug_assert!(count >= 1); // Since self is counted, should always be at least 1
         count
     }
     pub fn find_unique_opponents(&mut self) -> u32 {
@@ -225,8 +244,8 @@ impl Schedule {
         table2: usize,
         apply: bool,
     ) -> (u32, u32) {
-	// Find which pair of players being swapped maximises the score
-	// Returns (best found score, total unique games played)
+        // Find which pair of players being swapped maximises the score
+        // Returns (best found score, total unique games played)
         // If apply is true then it applies the found optimal, otherwise self should be unchanged
         let mut score = old_score;
         debug_assert!(score == self.get_score());
@@ -308,13 +327,14 @@ impl Schedule {
                 );
             }
             self.unique_games_played_cache = unique_games_played;
-        } else { // Restore matches to previous state
+        } else {
+            // Restore matches to previous state
             *self.get_mut(round, table1) = original_t1;
             *self.get_mut(round, table2) = original_t2;
             self.unique_games_played_cache = old_unique_games_played;
         }
         self.sum_unique_opponent();
-	// Regenerate sum caches
+        // Regenerate sum caches
         debug_assert!(self.get_score() == self.generate_score()); // Check that cache still represents most recent data
         (score, unique_games_played)
     }
@@ -337,9 +357,9 @@ pub struct Generator<T: rand::Rng + rand_core::RngCore> {
 }
 
 impl<T: rand::Rng + rand_core::RngCore> Generator<T> {
-    pub fn new(mut rng: T, player_count: usize, tables: usize) -> Self {
+    pub fn new(rng: T, player_count: usize, tables: usize) -> Self {
         let mut best = Schedule::new(player_count, tables);
-        best.generate_random(&mut rng);
+        best.normal_fill();
         let score = best.generate_score();
         Self {
             player_count,
@@ -500,6 +520,18 @@ mod tests {
         let mut rng = rand_xorshift::XorShiftRng::from_seed(seed.data);
         schedule.generate_random(&mut rng);
         schedule.find_unique_opponents() <= schedule.ideal_unique_opponents
+    }}
+
+    quickcheck! {fn normal_fill_maxes_unique_games(tables: i8, player_count: i8, seed: Seed) -> bool{
+        let tables = (tables.abs() & 63).max(2) as usize;
+        let player_count = (player_count.abs() & 63).max(1) as usize;
+        let mut schedule = Schedule::new(player_count as usize, tables as usize);
+        let mut rng = rand_xorshift::XorShiftRng::from_seed(seed.data);
+        schedule.generate_random(&mut rng);
+        schedule.normal_fill();
+    println!("tables: {}, player_count: {}, UGP: {}, IUGP: {}", tables, player_count,
+        schedule.find_unique_games_played() , schedule.ideal_unique_games);
+        schedule.find_unique_games_played() == schedule.ideal_unique_games
     }}
 
     quickcheck! {fn score_doesnt_decrease_after_process(tables: i8, player_count: i8, seed: Seed) -> bool{
