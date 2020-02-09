@@ -8,11 +8,11 @@ pub struct Schedule {
     player_count: usize,
     tables: usize,
     matches: Vec<u64>, // Stores each individual match, uses round * self.tables + table
-    player_positions: Vec<usize>, // Store where each player is for a given round, uses player * self.tables + round_number
-    player_opponent_cache: Vec<u32>, // Cache of how many unique opponents each player has
+    player_positions: Vec<u16>, // Store where each player is for a given round, uses player * self.tables + round_number
+    player_opponent_cache: Vec<u8>, // Cache of how many unique opponents each player has
     unique_games_played_cache: u32, // Cache of total unique games played
     unique_opponent_sum_cache: u32, // Cache of sum of how many unique opponents each player has
-    pub ideal_unique_games: u32,  // Calculated max possible total unique games played
+    pub ideal_unique_games: u32, // Calculated max possible total unique games played
     pub ideal_unique_opponents: u32, // Calculated max possible total unique opponents
 }
 
@@ -23,11 +23,11 @@ impl Schedule {
         for _ in 0..(tables * tables) {
             matches.push(0);
         }
-        let mut player_positions: Vec<usize> = Vec::with_capacity(player_count * tables);
+        let mut player_positions: Vec<u16> = Vec::with_capacity(player_count * tables);
         for _ in 0..(player_count * tables) {
             player_positions.push(0);
         }
-        let mut player_opponent_cache: Vec<u32> = Vec::with_capacity(player_count);
+        let mut player_opponent_cache: Vec<u8> = Vec::with_capacity(player_count);
         for _ in 0..player_count {
             player_opponent_cache.push(0);
         }
@@ -74,7 +74,7 @@ impl Schedule {
                 for player in table.iter() {
                     *self.get_mut(round_number, table_number) |= 1_u64 << player;
                     self.player_positions[player * self.tables + round_number] =
-                        round_number * self.tables + table_number;
+                        (round_number * self.tables + table_number) as u16;
                 }
             }
         }
@@ -173,14 +173,14 @@ impl Schedule {
     pub const fn unique_games_played(&self) -> u32 {
         self.unique_games_played_cache
     }
-    fn player_unique_opponents(&mut self, player: usize) -> u32 {
+    fn player_unique_opponents(&mut self, player: usize) -> u8 {
         // Take a bitwise OR on all games specified player was in, and then count the ones to get total unique players
         let count = (0..self.tables)
             .map(|round_number| {
-                self.matches[self.player_positions[player * self.tables + round_number]]
+                self.matches[self.player_positions[player * self.tables + round_number] as usize]
             })
             .fold(0, |acc, round| acc | round)
-            .count_ones();
+            .count_ones() as u8;
         self.player_opponent_cache[player] = count;
         debug_assert!(count >= 1); // Since self is counted, should always be at least 1
         count
@@ -188,7 +188,7 @@ impl Schedule {
     pub fn find_unique_opponents(&mut self) -> u32 {
         let mut total: u32 = 0;
         for player in 0..self.player_count {
-            total += self.player_unique_opponents(player)
+            total += self.player_unique_opponents(player) as u32;
         }
         total -= self.player_count as u32; // Remove player_count so that players aren't counted as their own opponent
         self.unique_opponent_sum_cache = total;
@@ -197,8 +197,12 @@ impl Schedule {
 
     fn sum_unique_opponent(&mut self) {
         // Remove player_count so that players aren't counted as their own opponent
-        self.unique_opponent_sum_cache =
-            self.player_opponent_cache.iter().sum::<u32>() - self.player_count as u32;
+        self.unique_opponent_sum_cache = self
+            .player_opponent_cache
+            .iter()
+            .map(|&val| val as u32)
+            .sum::<u32>()
+            - self.player_count as u32;
     }
     pub const fn unique_opponents(&self) -> u32 {
         self.unique_opponent_sum_cache

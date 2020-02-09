@@ -138,7 +138,7 @@ impl GenerateSchedule {
                 self.iteration %= 35;
                 self.operation_history[self.iteration] = 0.0;
                 self.operations_per_second = 0;
-		return;
+                return;
             }
             let now = performance_now();
             let ideal = now + self.cpu_usage;
