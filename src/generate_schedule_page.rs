@@ -130,7 +130,7 @@ impl GenerateSchedule {
     pub fn generate(&mut self) {
         if let Some(schedule) = &mut self.schedule {
             if schedule.get_player_count() == 0
-                || schedule.get_tables() <= 2
+                || schedule.get_tables() < 2
                 || schedule.best.is_ideal()
             {
                 next_tick(100.0);
