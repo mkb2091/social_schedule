@@ -277,12 +277,12 @@ St::FlexGrow=> "1";];
                     p![format!("Operations /s: {}", model.operations_per_second)],
                     p![format!(
                         "Total unique games played(ideally {}): {}",
-                        best.get_player_count() * best.get_tables(),
+                        best.ideal_unique_games,
                         best.unique_games_played()
                     )],
                     p![format!(
                         "Total unique opponents/teammates played(ideally {}): {}",
-                        best.get_player_count() * (best.get_player_count() - best.get_tables()),
+                        best.ideal_unique_opponents,
                         best.unique_opponents()
                     )],
                     table![{

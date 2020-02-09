@@ -1,6 +1,7 @@
 use rand::seq::SliceRandom;
-use rand::SeedableRng;
 use std::ops::IndexMut;
+
+const UNIQUE_GAMES_MULTIPLIER: u32 = 2;
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct Schedule {
@@ -11,7 +12,8 @@ pub struct Schedule {
     player_opponent_cache: Vec<u32>,
     unique_games_played_cache: u32,
     unique_opponent_sum_cache: u32,
-    score_multiplier: u32,
+    ideal_unique_games: u32,
+    ideal_unique_opponents: u32,
 }
 
 impl Schedule {
@@ -36,7 +38,14 @@ impl Schedule {
             player_opponent_cache,
             unique_games_played_cache: 0,
             unique_opponent_sum_cache: 0,
-            score_multiplier: 2 * (player_count - tables) as u32,
+            ideal_unique_games: (player_count * tables) as u32,
+            ideal_unique_opponents: (player_count
+                * tables
+                * (if player_count % tables != 0 {
+                    player_count / tables + 1
+                } else {
+                    player_count / tables
+                } - 1)) as u32,
         }
     }
 
@@ -189,12 +198,14 @@ impl Schedule {
         players
     }
     pub fn generate_score(&mut self) -> u32 {
-        self.find_unique_opponents() * (self.tables as u32)
-            + self.find_unique_games_played() * self.score_multiplier
+        self.find_unique_opponents() * self.ideal_unique_games
+            + self.find_unique_games_played()
+                * self.ideal_unique_opponents
+                * UNIQUE_GAMES_MULTIPLIER
     }
     pub fn get_score(&self) -> u32 {
-        self.unique_opponents() * (self.tables as u32)
-            + self.unique_games_played() * self.score_multiplier
+        self.unique_opponents() * self.ideal_unique_games
+            + self.unique_games_played() * self.ideal_unique_opponents * UNIQUE_GAMES_MULTIPLIER
     }
     pub fn improve_table(
         &mut self,
@@ -392,6 +403,7 @@ impl<T: rand::Rng + rand_core::RngCore> Generator<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rand::SeedableRng;
 
     #[test]
     fn unique_games_played_returns_number_of_player_when_players_stay() {
@@ -452,13 +464,22 @@ mod tests {
         schedule.get_score() == schedule.generate_score()
     }}
 
-    quickcheck! {fn unique_games_played_less_equal_players_times_games_before_process(tables: i8, player_count: i8, seed: Seed) -> bool{
+    quickcheck! {fn unique_games_played_less_equal_ideal(tables: i8, player_count: i8, seed: Seed) -> bool{
         let tables = (tables.abs() & 63).max(2) as usize;
         let player_count = (player_count.abs() & 63) as usize;
         let mut schedule = Schedule::new(player_count as usize, tables as usize);
         let mut rng = rand_xorshift::XorShiftRng::from_seed(seed.data);
         schedule.generate_random(&mut rng);
-        schedule.find_unique_games_played() <= (tables * player_count) as u32
+        schedule.find_unique_games_played() <= schedule.ideal_unique_games
+    }}
+
+    quickcheck! {fn unique_opponents_played_less_equal_ideal(tables: i8, player_count: i8, seed: Seed) -> bool{
+        let tables = (tables.abs() & 63).max(2) as usize;
+        let player_count = (player_count.abs() & 63) as usize;
+        let mut schedule = Schedule::new(player_count as usize, tables as usize);
+        let mut rng = rand_xorshift::XorShiftRng::from_seed(seed.data);
+        schedule.generate_random(&mut rng);
+        schedule.find_unique_opponents() <= schedule.ideal_unique_opponents
     }}
 
     quickcheck! {fn score_doesnt_decrease_after_process(tables: i8, player_count: i8, seed: Seed) -> bool{
