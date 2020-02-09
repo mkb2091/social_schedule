@@ -110,7 +110,7 @@ impl Schedule {
     #[inline(never)]
     pub fn find_unique_games_played(&mut self) -> u32 {
         assert!(self.matches.len() >= self.tables * self.tables);
-        // Check that the unchecked_get won't read a value of the end of the array
+        // Check that the unchecked_get won't read a value off the end of the array
         let mut total: u32 = 0;
         for table1 in (0..(self.tables / 2 * 2)).step_by(2) {
             let table2 = table1 + 1;
@@ -225,6 +225,9 @@ impl Schedule {
         table2: usize,
         apply: bool,
     ) -> (u32, u32) {
+	// Find which pair of players being swapped maximises the score
+	// Returns (best found score, total unique games played)
+        // If apply is true then it applies the found optimal, otherwise self should be unchanged
         let mut score = old_score;
         debug_assert!(score == self.get_score());
         debug_assert!(score == self.generate_score()); // check that cache is updated
@@ -305,12 +308,13 @@ impl Schedule {
                 );
             }
             self.unique_games_played_cache = unique_games_played;
-        } else {
+        } else { // Restore matches to previous state
             *self.get_mut(round, table1) = original_t1;
             *self.get_mut(round, table2) = original_t2;
             self.unique_games_played_cache = old_unique_games_played;
         }
         self.sum_unique_opponent();
+	// Regenerate sum caches
         debug_assert!(self.get_score() == self.generate_score()); // Check that cache still represents most recent data
         (score, unique_games_played)
     }
