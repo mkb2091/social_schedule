@@ -338,6 +338,10 @@ impl Schedule {
         debug_assert!(self.get_score() == self.generate_score()); // Check that cache still represents most recent data
         (score, unique_games_played)
     }
+    pub fn is_ideal(&self) -> bool {
+        self.unique_opponents() == self.ideal_unique_opponents
+            && self.unique_games_played() == self.ideal_unique_games
+    }
 }
 
 pub struct Generator<T: rand::Rng + rand_core::RngCore> {
@@ -376,6 +380,14 @@ impl<T: rand::Rng + rand_core::RngCore> Generator<T> {
             table1: 0,
             table2: 0,
         }
+    }
+
+    pub fn get_player_count(&self) -> usize {
+        self.player_count
+    }
+
+    pub fn get_tables(&self) -> usize {
+        self.tables
     }
     pub fn process(&mut self) {
         self.table2 += 1;

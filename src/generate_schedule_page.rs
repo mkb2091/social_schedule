@@ -129,6 +129,17 @@ impl GenerateSchedule {
 
     pub fn generate(&mut self) {
         if let Some(schedule) = &mut self.schedule {
+            if schedule.get_player_count() == 0
+                || schedule.get_tables() <= 2
+                || schedule.best.is_ideal()
+            {
+                next_tick(100.0);
+                self.iteration += 1;
+                self.iteration %= 35;
+                self.operation_history[self.iteration] = 0.0;
+                self.operations_per_second = 0;
+		return;
+            }
             let now = performance_now();
             let ideal = now + self.cpu_usage;
             let predicted_loops =
