@@ -7,13 +7,13 @@ const UNIQUE_GAMES_MULTIPLIER: u32 = 2;
 pub struct Schedule {
     player_count: usize,
     tables: usize,
-    matches: Vec<u64>,
-    player_positions: Vec<usize>,
-    player_opponent_cache: Vec<u32>,
-    unique_games_played_cache: u32,
-    unique_opponent_sum_cache: u32,
-    pub ideal_unique_games: u32,
-    pub ideal_unique_opponents: u32,
+    matches: Vec<u64>, // Stores each individual match, uses round * self.tables + table
+    player_positions: Vec<usize>, // Store where each player is for a given round, uses player * self.tables + round_number
+    player_opponent_cache: Vec<u32>, // Cache of how many unique opponents each player has
+    unique_games_played_cache: u32, // Cache of total unique games played
+    unique_opponent_sum_cache: u32, // Cache of sum of how many unique opponents each player has
+    pub ideal_unique_games: u32,  // Calculated max possible total unique games played
+    pub ideal_unique_opponents: u32, // Calculated max possible total unique opponents
 }
 
 impl Schedule {
@@ -41,11 +41,11 @@ impl Schedule {
             ideal_unique_games: (player_count * tables) as u32,
             ideal_unique_opponents: (player_count
                 * tables
-                * (if player_count % tables != 0 {
+                * (1.max(if player_count % tables != 0 {
                     player_count / tables + 1
                 } else {
                     player_count / tables
-                } - 1)) as u32,
+                }) - 1)) as u32,
         }
     }
 
@@ -77,8 +77,8 @@ impl Schedule {
                 }
             }
         }
-        self.find_unique_opponents();
-        self.find_unique_games_played();
+        self.find_unique_opponents(); // Fill cache of unique opponents with correct data
+        self.find_unique_games_played(); // Fill cache of unique games played with correct data
     }
 
     pub fn generate_random<T: rand::Rng + rand_core::RngCore>(&mut self, rng: &mut T) {
@@ -109,6 +109,7 @@ impl Schedule {
     #[inline(never)]
     pub fn find_unique_games_played(&mut self) -> u32 {
         assert!(self.matches.len() >= self.tables * self.tables);
+        // Check that the unchecked_get won't read a value of the end of the array
         let mut total: u32 = 0;
         for table1 in (0..(self.tables / 2 * 2)).step_by(2) {
             let table2 = table1 + 1;
@@ -116,8 +117,9 @@ impl Schedule {
             for round in 0..self.tables {
                 let base = round * self.tables;
                 total_table |= unsafe {
+                    // Treat pairs of u64 as u128 to enable faster bitwise AND
                     std::mem::transmute::<[u64; 2], u128>([
-                        *self.matches.get_unchecked(base + table1),
+                        *self.matches.get_unchecked(base + table1), // Using get_unchecked since it gave ~10% improvement
                         *self.matches.get_unchecked(base + table2),
                     ])
                 };
@@ -125,6 +127,7 @@ impl Schedule {
             total += total_table.count_ones();
         }
         if self.tables % 2 == 1 {
+            // Deal with the number of tables not being an even number
             let mut total_table = 0;
             for round in 0..self.tables {
                 total_table |= self.get(round, self.tables - 1);
@@ -132,6 +135,7 @@ impl Schedule {
             total += total_table.count_ones();
         }
         debug_assert!(
+            // Less optimised version used to check that above code is correct
             total == {
                 let mut total2: u32 = 0;
                 for table in 0..self.tables {
@@ -151,6 +155,7 @@ impl Schedule {
         self.unique_games_played_cache
     }
     fn player_unique_opponents(&mut self, player: usize) -> u32 {
+        // Take a bitwise OR on all games specified player was in, and then count the ones to get total unique players
         let count = (0..self.tables)
             .map(|round_number| {
                 self.matches[self.player_positions[player * self.tables + round_number]]
@@ -165,12 +170,13 @@ impl Schedule {
         for player in 0..self.player_count {
             total += self.player_unique_opponents(player)
         }
-        total -= self.player_count as u32;
+        total -= self.player_count as u32; // Remove player_count so that players aren't counted as their own opponent
         self.unique_opponent_sum_cache = total;
         total
     }
 
     fn sum_unique_opponent(&mut self) {
+        // Remove player_count so that players aren't counted as their own opponent
         self.unique_opponent_sum_cache =
             self.player_opponent_cache.iter().sum::<u32>() - self.player_count as u32;
     }
@@ -187,6 +193,7 @@ impl Schedule {
     }
 
     pub fn get_game(&self, round: usize, table: usize) -> Vec<usize> {
+        // Convert a single match into a Vec containing the players
         let game = self.get(round, table);
         let mut players: Vec<usize> = Vec::with_capacity(game.count_ones() as usize);
         for player in 0..self.player_count {
@@ -198,12 +205,14 @@ impl Schedule {
         players
     }
     pub fn generate_score(&mut self) -> u32 {
+        // Calculate score and store results in cache
         self.find_unique_opponents() * self.ideal_unique_games
             + self.find_unique_games_played()
                 * self.ideal_unique_opponents
                 * UNIQUE_GAMES_MULTIPLIER
     }
     pub fn get_score(&self) -> u32 {
+        // Use cached results
         self.unique_opponents() * self.ideal_unique_games
             + self.unique_games_played() * self.ideal_unique_opponents * UNIQUE_GAMES_MULTIPLIER
     }
@@ -217,7 +226,7 @@ impl Schedule {
     ) -> (u32, u32) {
         let mut score = old_score;
         debug_assert!(score == self.get_score());
-        debug_assert!(score == self.generate_score());
+        debug_assert!(score == self.generate_score()); // check that cache is updated
         let old_unique_games_played = self.unique_games_played();
         let mut unique_games_played = old_unique_games_played;
         let original_t1 = self.get(round, table1);
@@ -230,6 +239,7 @@ impl Schedule {
         let t2_size: usize = original_t2.count_ones() as usize;
         let mut t1_players: Vec<usize> = Vec::with_capacity(t1_size);
         let mut t2_players: Vec<usize> = Vec::with_capacity(t2_size);
+        // Find what players are in each table
         for player1 in 0..self.player_count {
             if original_t1 & (1 << player1) != 0 {
                 t1_players.push(player1);
@@ -251,10 +261,12 @@ impl Schedule {
             let player_number1: u64 = 1_u64 << player1;
             for player2 in t2_players.iter() {
                 let player_number2: u64 = 1_u64 << player2;
+                // Swap 1 player from each of the two tables
                 *self.get_mut(round, table1) = original_t1 - player_number1 + player_number2;
                 *self.get_mut(round, table2) = original_t2 - player_number2 + player_number1;
                 self.player_positions
                     .swap(player1 * self.tables + round, player2 * self.tables + round);
+                // Regenerate results for players in those two tables, since they are the only affected players
                 for p1 in t1_players.iter() {
                     self.player_unique_opponents(*p1);
                 }
@@ -265,7 +277,7 @@ impl Schedule {
                 let new_unique_games_played = self.find_unique_games_played();
                 let new_score = self.get_score();
                 self.player_positions
-                    .swap(player1 * self.tables + round, player2 * self.tables + round);
+                    .swap(player1 * self.tables + round, player2 * self.tables + round); // Swap players back to original position
                 if new_score > score
                     || (new_score == score && new_unique_games_played > unique_games_played)
                 {
@@ -298,7 +310,7 @@ impl Schedule {
             self.unique_games_played_cache = old_unique_games_played;
         }
         self.sum_unique_opponent();
-        debug_assert!(self.get_score() == self.generate_score());
+        debug_assert!(self.get_score() == self.generate_score()); // Check that cache still represents most recent data
         (score, unique_games_played)
     }
 }
@@ -350,10 +362,12 @@ impl<T: rand::Rng + rand_core::RngCore> Generator<T> {
                 self.table2 = 1;
                 self.round += 1;
                 if self.round >= self.tables {
+                    // Reached end of iteration of all single-step changes from self.current
                     self.round = 0;
                     self.table1 = 0;
                     self.table2 = 1;
                     if self.next_score > self.current_score {
+                        // If best single-step change is an improvement, then apply it
                         let (round, table1, table2) = self.next;
                         self.current
                             .improve_table(self.current_score, round, table1, table2, true);
@@ -367,6 +381,7 @@ impl<T: rand::Rng + rand_core::RngCore> Generator<T> {
                             self.best = self.current.clone();
                         }
                     } else {
+                        // If best single-step change is not an improvement, then generate a new random schedule
                         self.current = Schedule::new(self.player_count, self.tables);
                         self.current.generate_random(&mut self.rng);
                         self.current_score = self.current.generate_score();
