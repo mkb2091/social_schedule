@@ -12,8 +12,8 @@ pub struct Schedule {
     player_opponent_cache: Vec<u32>,
     unique_games_played_cache: u32,
     unique_opponent_sum_cache: u32,
-    ideal_unique_games: u32,
-    ideal_unique_opponents: u32,
+    pub ideal_unique_games: u32,
+    pub ideal_unique_opponents: u32,
 }
 
 impl Schedule {
