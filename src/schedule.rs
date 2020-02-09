@@ -487,7 +487,7 @@ mod tests {
         let player_count = (player_count.abs() & 63) as usize;
         let rng = rand_xorshift::XorShiftRng::from_seed(seed.data);
         let mut generator = Generator::new(rng, player_count as usize, tables as usize);
-    let old_score = generator.best_score;
+        let old_score = generator.best_score;
         generator.process();
         generator.best_score >= old_score
     }}
