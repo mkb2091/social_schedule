@@ -541,8 +541,6 @@ mod tests {
         let mut rng = rand_xorshift::XorShiftRng::from_seed(seed.data);
         schedule.generate_random(&mut rng);
         schedule.normal_fill();
-    println!("tables: {}, player_count: {}, UGP: {}, IUGP: {}", tables, player_count,
-        schedule.find_unique_games_played() , schedule.ideal_unique_games);
         schedule.find_unique_games_played() == schedule.ideal_unique_games
     }}
 
