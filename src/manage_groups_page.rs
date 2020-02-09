@@ -96,7 +96,7 @@ St::FlexGrow=> "1";];
                             input_ev("input", move |player_id| Msg::MGAddPlayerInput(
                                 id, player_id
                             )),
-                            player_select_box(&database, style)
+                            player_select_box(database, style)
                         ],
                         button![
                             style.button_style(),

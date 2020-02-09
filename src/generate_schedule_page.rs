@@ -210,7 +210,7 @@ St::FlexGrow=> "1";];
                     style.button_style(),
                     attrs! {At::Value => ""},
                     input_ev(Ev::Input, Msg::GSAddPlayerSelectBoxInput),
-                    player_select_box(&database, style),
+                    player_select_box(database, style),
                 ],
                 button![
                     style.button_style(),

@@ -17,7 +17,7 @@ pub struct Schedule {
 }
 
 impl Schedule {
-    pub fn new(player_count: usize, tables: usize) -> Schedule {
+    pub fn new(player_count: usize, tables: usize) -> Self {
         // player_count must be <= 64, since that means players will be 0 to 63 (inclusive), and 1 << 64 is undefined.
         let mut matches: Vec<u64> = Vec::with_capacity(tables * tables);
         for _ in 0..(tables * tables) {
@@ -31,7 +31,7 @@ impl Schedule {
         for _ in 0..player_count {
             player_opponent_cache.push(0);
         }
-        Schedule {
+        Self {
             player_count,
             tables,
             matches,
@@ -50,8 +50,8 @@ impl Schedule {
         }
     }
 
-    pub fn from_vec(player_count: usize, tables: usize, data: Vec<Vec<Vec<usize>>>) -> Schedule {
-        let mut new = Schedule::new(player_count, tables);
+    pub fn from_vec(player_count: usize, tables: usize, data: Vec<Vec<Vec<usize>>>) -> Self {
+        let mut new = Self::new(player_count, tables);
         new.import_vec(data);
         new
     }
@@ -152,7 +152,7 @@ impl Schedule {
         self.unique_games_played_cache = total;
         total
     }
-    pub fn unique_games_played(&self) -> u32 {
+    pub const fn unique_games_played(&self) -> u32 {
         self.unique_games_played_cache
     }
     fn player_unique_opponents(&mut self, player: usize) -> u32 {
@@ -181,15 +181,15 @@ impl Schedule {
         self.unique_opponent_sum_cache =
             self.player_opponent_cache.iter().sum::<u32>() - self.player_count as u32;
     }
-    pub fn unique_opponents(&self) -> u32 {
+    pub const fn unique_opponents(&self) -> u32 {
         self.unique_opponent_sum_cache
     }
 
-    pub fn get_tables(&self) -> usize {
+    pub const fn get_tables(&self) -> usize {
         self.tables
     }
 
-    pub fn get_player_count(&self) -> usize {
+    pub const fn get_player_count(&self) -> usize {
         self.player_count
     }
 
@@ -212,7 +212,7 @@ impl Schedule {
                 * self.ideal_unique_opponents
                 * UNIQUE_GAMES_MULTIPLIER
     }
-    pub fn get_score(&self) -> u32 {
+    pub const fn get_score(&self) -> u32 {
         // Use cached results
         self.unique_opponents() * self.ideal_unique_games
             + self.unique_games_played() * self.ideal_unique_opponents * UNIQUE_GAMES_MULTIPLIER
@@ -333,11 +333,11 @@ pub struct Generator<T: rand::Rng + rand_core::RngCore> {
 }
 
 impl<T: rand::Rng + rand_core::RngCore> Generator<T> {
-    pub fn new(mut rng: T, player_count: usize, tables: usize) -> Generator<T> {
+    pub fn new(mut rng: T, player_count: usize, tables: usize) -> Self {
         let mut best = Schedule::new(player_count, tables);
         best.generate_random(&mut rng);
         let score = best.generate_score();
-        Generator {
+        Self {
             player_count,
             tables,
             best: best.clone(),
@@ -467,7 +467,7 @@ mod tests {
             for val in data.iter_mut() {
                 *val = u8::arbitrary(g);
             }
-            Seed { data }
+            Self { data }
         }
     }
 

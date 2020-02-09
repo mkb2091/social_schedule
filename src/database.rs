@@ -13,7 +13,7 @@ impl std::fmt::Display for Email {
 }
 
 impl Email {
-    pub fn parse_string(email_string: &str) -> Result<Option<Email>, ()> {
+    pub fn parse_string(email_string: &str) -> Result<Option<Self>, ()> {
         if email_string.is_empty() {
             return Ok(None);
         }
@@ -36,7 +36,7 @@ impl Email {
         if !found_at || username.is_empty() || host.is_empty() {
             return Err(());
         }
-        Ok(Some(Email { username, host }))
+        Ok(Some(Self { username, host }))
     }
 }
 
@@ -66,8 +66,8 @@ impl Group {
 }
 
 impl Event {
-    pub fn from(name: String, schedule: schedule::Schedule, players: Vec<u32>) -> Option<Event> {
-        Some(Event {
+    pub fn from(name: String, schedule: schedule::Schedule, players: Vec<u32>) -> Option<Self> {
+        Some(Self {
             name,
             schedule,
             players,
@@ -83,7 +83,7 @@ pub struct Database {
 }
 
 impl Database {
-    pub fn load() -> Database {
+    pub fn load() -> Self {
         if let Some(storage) = seed::storage::get_storage() {
             if let Ok(Some(loaded_serialized)) = storage.get_item("database") {
                 if let Ok(database) = serde_json::from_str(&loaded_serialized) {
@@ -91,7 +91,7 @@ impl Database {
                 }
             }
         }
-        Database {
+        Self {
             players: std::collections::HashMap::new(),
             groups: std::collections::HashMap::new(),
             events: std::collections::HashMap::new(),
