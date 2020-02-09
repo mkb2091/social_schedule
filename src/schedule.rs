@@ -98,15 +98,17 @@ impl Schedule {
     }
     #[inline(never)]
     pub fn find_unique_games_played(&mut self) -> u32 {
+        assert!(self.matches.len() >= self.tables * self.tables);
         let mut total: u32 = 0;
         for table1 in (0..(self.tables / 2 * 2)).step_by(2) {
             let table2 = table1 + 1;
             let mut total_table: u128 = 0;
             for round in 0..self.tables {
+                let base = round * self.tables;
                 total_table |= unsafe {
                     std::mem::transmute::<[u64; 2], u128>([
-                        self.get(round, table1),
-                        self.get(round, table2),
+                        *self.matches.get_unchecked(base + table1),
+                        *self.matches.get_unchecked(base + table2),
                     ])
                 };
             }
