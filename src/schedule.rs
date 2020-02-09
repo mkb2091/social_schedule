@@ -61,7 +61,7 @@ impl Schedule {
         for (round_number, round) in data.iter().enumerate() {
             for (table_number, table) in round.iter().enumerate() {
                 for player in table.iter() {
-                    *self.get_mut(round_number, table_number) |= 1u64 << player;
+                    *self.get_mut(round_number, table_number) |= 1_u64 << player;
                     self.player_positions[player * self.tables + round_number] =
                         round_number * self.tables + table_number;
                 }
@@ -208,9 +208,9 @@ impl Schedule {
         }
         let mut new_player_opponent_cache = self.player_opponent_cache.clone();
         for player1 in t1_players.iter() {
-            let player_number1: u64 = 1u64 << player1;
+            let player_number1: u64 = 1_u64 << player1;
             for player2 in t2_players.iter() {
-                let player_number2: u64 = 1u64 << player2;
+                let player_number2: u64 = 1_u64 << player2;
                 *self.get_mut(round, table1) = original_t1 - player_number1 + player_number2;
                 *self.get_mut(round, table2) = original_t2 - player_number2 + player_number1;
                 self.player_positions
@@ -263,7 +263,7 @@ impl Schedule {
     }
 }
 
-pub struct ScheduleGenerator<T: rand::Rng + rand_core::RngCore> {
+pub struct Generator<T: rand::Rng + rand_core::RngCore> {
     player_count: usize,
     tables: usize,
     pub best: Schedule,
@@ -279,12 +279,12 @@ pub struct ScheduleGenerator<T: rand::Rng + rand_core::RngCore> {
     table2: usize,
 }
 
-impl<T: rand::Rng + rand_core::RngCore> ScheduleGenerator<T> {
-    pub fn new(mut rng: T, player_count: usize, tables: usize) -> ScheduleGenerator<T> {
+impl<T: rand::Rng + rand_core::RngCore> Generator<T> {
+    pub fn new(mut rng: T, player_count: usize, tables: usize) -> Generator<T> {
         let mut best = Schedule::new(player_count, tables);
         best.generate_random(&mut rng);
         let score = best.generate_score();
-        ScheduleGenerator {
+        Generator {
             player_count,
             tables,
             best: best.clone(),

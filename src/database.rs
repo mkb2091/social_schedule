@@ -22,15 +22,15 @@ impl Email {
         let mut found_at: bool = false;
         for c in email_string.chars() {
             if !found_at {
-                if c != '@' {
-                    username.push(c);
-                } else {
+                if c == '@' {
                     found_at = true;
+                } else {
+                    username.push(c);
                 }
-            } else if c != '@' {
-                host.push(c);
-            } else {
+            } else if c == '@' {
                 return Err(());
+            } else {
+                host.push(c);
             }
         }
         if !found_at || username.is_empty() || host.is_empty() {

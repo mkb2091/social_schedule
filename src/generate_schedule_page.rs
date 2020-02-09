@@ -11,7 +11,7 @@ pub struct GenerateSchedule {
     add_player_select_box: String,
     add_group_select_box: String,
     tables: usize,
-    schedule: Option<schedule::ScheduleGenerator<rand_xorshift::XorShiftRng>>,
+    schedule: Option<schedule::Generator<rand_xorshift::XorShiftRng>>,
     rng: rand_xorshift::XorShiftRng,
     cpu_usage: f64,
     operations_per_second: u32,
@@ -119,7 +119,7 @@ impl GenerateSchedule {
 
     pub fn apply(&mut self) {
         if let Ok(rng) = rand_xorshift::XorShiftRng::from_rng(&mut self.rng) {
-            self.schedule = Some(schedule::ScheduleGenerator::new(
+            self.schedule = Some(schedule::Generator::new(
                 rng,
                 self.players.len(),
                 self.tables,
