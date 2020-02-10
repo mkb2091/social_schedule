@@ -175,10 +175,9 @@ impl Schedule {
     }
     fn player_unique_opponents(&mut self, player: usize) -> u8 {
         // Take a bitwise OR on all games specified player was in, and then count the ones to get total unique players
-        let count = (0..self.tables)
-            .map(|round_number| {
-                self.matches[self.player_positions[player * self.tables + round_number] as usize]
-            })
+        let count = self.player_positions[player * self.tables..player * self.tables + self.tables]
+            .iter()
+            .map(|&index| self.matches[index as usize])
             .fold(0, |acc, round| acc | round)
             .count_ones() as u8;
         self.player_opponent_cache[player] = count;
