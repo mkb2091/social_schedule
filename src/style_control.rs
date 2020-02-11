@@ -30,7 +30,7 @@ St::Background => "#171717";
 St::Color => "#FFFFFF";],
         }
     }
-    #[inline(always)]
+
     pub fn button_style(&self) -> seed::dom_types::Style {
         match self.theme {
             Theme::Light => style![St::Border => "1px solid #CCCCCC";
