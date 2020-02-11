@@ -3,10 +3,8 @@ name = "social_schedule"
 version = "0.1.0"
 authors = ["Hugh Williams <mkb2191@protonmail.com"]
 
-
 [lib]
-crate-type = ["cdylib"]
-
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 rand = {version = "0.7", default-features = false, features = ['alloc']}
@@ -23,6 +21,11 @@ futures = "0.3"
 
 [dev-dependencies]
 quickcheck = "0.9"
+criterion = "0.3"
+
+[[bench]]
+name = "bench"
+harness = false
 
 [profile.release]
 lto = true
