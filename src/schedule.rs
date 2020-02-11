@@ -511,8 +511,8 @@ mod tests {
     }
 
     quickcheck! {fn get_score_matches_generate_score(tables: i8, player_count: i8, seed: Seed) -> bool{
-        let tables = (tables.abs() & 63).max(2) as usize;
-        let player_count = (player_count.abs() & 63) as usize;
+        let tables = (tables.abs() % 65).max(2) as usize;
+        let player_count = (player_count.abs() % 65) as usize;
         let mut schedule = Schedule::new(player_count as usize, tables as usize);
         let mut rng = rand_xorshift::XorShiftRng::from_seed(seed.data);
         schedule.generate_random(&mut rng);
@@ -520,8 +520,8 @@ mod tests {
     }}
 
     quickcheck! {fn unique_games_played_less_equal_ideal(tables: i8, player_count: i8, seed: Seed) -> bool{
-        let tables = (tables.abs() & 63).max(2) as usize;
-        let player_count = (player_count.abs() & 63) as usize;
+        let tables = (tables.abs() % 65).max(2) as usize;
+        let player_count = (player_count.abs() % 65) as usize;
         let mut schedule = Schedule::new(player_count as usize, tables as usize);
         let mut rng = rand_xorshift::XorShiftRng::from_seed(seed.data);
         schedule.generate_random(&mut rng);
@@ -529,8 +529,8 @@ mod tests {
     }}
 
     quickcheck! {fn unique_opponents_played_less_equal_ideal(tables: i8, player_count: i8, seed: Seed) -> bool{
-        let tables = (tables.abs() & 63).max(2) as usize;
-        let player_count = (player_count.abs() & 63) as usize;
+        let tables = (tables.abs() % 65).max(2) as usize;
+        let player_count = (player_count.abs() % 65) as usize;
         let mut schedule = Schedule::new(player_count as usize, tables as usize);
         let mut rng = rand_xorshift::XorShiftRng::from_seed(seed.data);
         schedule.generate_random(&mut rng);
@@ -538,8 +538,8 @@ mod tests {
     }}
 
     quickcheck! {fn normal_fill_maxes_unique_games(tables: i8, player_count: i8, seed: Seed) -> bool{
-        let tables = (tables.abs() & 63).max(2) as usize;
-        let player_count = (player_count.abs() & 63).max(1) as usize;
+        let tables = (tables.abs() % 65).max(2) as usize;
+        let player_count = (player_count.abs() % 65) as usize;
         let mut schedule = Schedule::new(player_count as usize, tables as usize);
         let mut rng = rand_xorshift::XorShiftRng::from_seed(seed.data);
         schedule.generate_random(&mut rng);
@@ -548,8 +548,8 @@ mod tests {
     }}
 
     quickcheck! {fn score_doesnt_decrease_after_process(tables: i8, player_count: i8, seed: Seed) -> bool{
-        let tables = (tables.abs() & 63).max(2) as usize;
-        let player_count = (player_count.abs() & 63) as usize;
+        let tables = (tables.abs() % 65).max(2) as usize;
+        let player_count = (player_count.abs() % 65) as usize;
         let rng = rand_xorshift::XorShiftRng::from_seed(seed.data);
         let mut generator = Generator::new(rng, player_count as usize, tables as usize);
         let old_score = generator.best_score;
