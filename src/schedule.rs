@@ -599,4 +599,16 @@ mod tests {
         generator.process();
         generator.best_score >= old_score
     }}
+
+    quickcheck! {fn score_doesnt_decrease_after_repeated_process(tables: i8, player_count: i8, seed: Seed, reps: u16) -> bool{
+        let tables = (tables.abs() % 65).max(2) as usize;
+        let player_count = (player_count.abs() % 65) as usize;
+        let rng = rand_xorshift::XorShiftRng::from_seed(seed.data);
+        let mut generator = Generator::new(rng, player_count as usize, tables as usize);
+        let old_score = generator.best_score;
+    for _ in 0..reps {
+            generator.process();
+    }
+        generator.best_score >= old_score
+    }}
 }
