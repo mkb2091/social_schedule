@@ -74,7 +74,6 @@ impl Schedule {
         }
     }
     /**Create a new Schedule object with the specified player count,  table count, and schedule which is in the following form:
-
     Player number as usize,
     Players in a game as Vec of players, stored as Vec<usize>,
     Games in a round as Vec of Players in a games, stored as Vec<Vec<usize>>
@@ -87,7 +86,6 @@ impl Schedule {
     }
 
     /**Import specified schedule which is in the following form:
-
     Player number as usize,
     Players in a game as Vec of players, stored as Vec<usize>,
     Games in a round as Vec of Players in a games, stored as Vec<Vec<usize>>
@@ -421,7 +419,6 @@ pub struct Generator<T: rand::Rng + rand_core::RngCore> {
 
 impl<T: rand::Rng + rand_core::RngCore> Generator<T> {
     /**Create a new Generator object with specified player count, table count, and rng. Panics if player count >= 64, or table count <= 2.
-
     Initially contains a schedule generated via normal_fill*/
     pub fn new(rng: T, player_count: usize, tables: usize) -> Self {
         let mut best = Schedule::new(player_count, tables);
