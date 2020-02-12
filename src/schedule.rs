@@ -32,7 +32,6 @@ pub struct Schedule {
 
 impl Schedule {
     /**Create a new Schedule object with specified player count and table count. Panics if player count >= 64, or table count <= 2.
-
     Contains blank schedule, so either generate_random, normal_fill, or import_vec will need to be called before it can be used */
     pub fn new(player_count: usize, tables: usize) -> Self {
         assert!(player_count <= 64);
