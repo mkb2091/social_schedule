@@ -575,6 +575,21 @@ mod tests {
         schedule.find_unique_games_played() == schedule.ideal_unique_games
     }}
 
+    quickcheck! {fn game_length_is_expected(tables: i8, player_count: i8, seed: Seed) -> bool{
+        let tables = (tables.abs() % 65).max(2) as usize;
+        let player_count = (player_count.abs() % 65) as usize;
+
+        let mut schedule = Schedule::new(player_count as usize, tables as usize);
+        let mut rng = rand_xorshift::XorShiftRng::from_seed(seed.data);
+        schedule.generate_random(&mut rng);
+        let game_size = schedule.get_game(0, 0).len();
+    if player_count % tables != 0 {
+                game_size == player_count / tables || game_size == (player_count / tables + 1)
+            } else {
+                game_size == player_count / tables
+            }
+    }}
+
     quickcheck! {fn score_doesnt_decrease_after_process(tables: i8, player_count: i8, seed: Seed) -> bool{
         let tables = (tables.abs() % 65).max(2) as usize;
         let player_count = (player_count.abs() % 65) as usize;
