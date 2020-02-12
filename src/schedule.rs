@@ -21,7 +21,8 @@ pub struct Schedule {
 
 impl Schedule {
     pub fn new(player_count: usize, tables: usize) -> Self {
-        // player_count must be <= 64, since that means players will be 0 to 63 (inclusive), and 1 << 64 is undefined.
+        assert!(player_count <= 64);
+        assert!(tables >= 2); // Cannot swap two different tables, if there are less than two tables.
         let mut matches: Vec<u64> = Vec::with_capacity(tables * tables);
         for _ in 0..(tables * tables) {
             matches.push(0);
@@ -214,7 +215,6 @@ impl Schedule {
     }
     /** Take the sum of the cached number of opponents each player has, and cache the result*/
     fn sum_unique_opponent(&mut self) {
-        // Remove player_count so that players aren't counted as their own opponent
         self.unique_opponent_sum_cache = self
             .player_opponent_cache
             .iter()
@@ -534,8 +534,26 @@ mod tests {
         assert!(schedule.is_ideal());
     }
 
+    #[test]
+    #[should_panic]
+    fn too_high_player_count_panics() {
+        let schedule = Schedule::new(65, 6);
+    }
+
+    #[test]
+    #[should_panic]
+    fn too_low_table_count_panics_0() {
+        let schedule = Schedule::new(24, 0);
+    }
+    #[test]
+    #[should_panic]
+    fn too_low_table_count_panics_1() {
+        let schedule = Schedule::new(24, 1);
+    }
+
     #[derive(Clone, Debug)]
     struct Seed {
+        // Used for rng
         pub data: [u8; 16],
     }
 
