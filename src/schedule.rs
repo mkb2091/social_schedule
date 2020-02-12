@@ -200,7 +200,6 @@ impl Schedule {
             .count_ones() as u8
             - 1;
         self.player_opponent_cache[player] = count;
-        debug_assert!(count >= 0); // Since self is counted, should always be at least 1
         count
     }
     /** Count the number of opponents each player has been in a match with
