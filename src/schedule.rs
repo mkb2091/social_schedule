@@ -6,10 +6,12 @@ const UNIQUE_GAMES_MULTIPLIER: u32 = 2;
 testing this seemed to result in overall better (higher total unique games played and higher total unique opponents) generated schedules.
 */
 
+/** Structure for storing a schedule, and performing operations on it
+*/
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct Schedule {
-    player_count: usize,
-    tables: usize,
+    player_count: usize,             // The number of players
+    tables: usize, // The number of tables, since one table per game, same as number of games
     matches: Vec<u64>, // Stores each individual match, uses round * self.tables + table
     player_positions: Vec<u16>, // Store where each player is for a given round, uses player * self.tables + round_number
     player_opponent_cache: Vec<u8>, // Cache of how many unique opponents each player has
@@ -20,6 +22,9 @@ pub struct Schedule {
 }
 
 impl Schedule {
+    /**Create a new Schedule object with specified player count and table count. Panics if player count >= 64, or table count <= 2.
+
+    Contains blank schedule, so either generate_random, normal_fill, or import_vec will need to be called before it can be used */
     pub fn new(player_count: usize, tables: usize) -> Self {
         assert!(player_count <= 64);
         assert!(tables >= 2); // Cannot swap two different tables, if there are less than two tables.
@@ -59,13 +64,26 @@ impl Schedule {
             ideal_unique_opponents,
         }
     }
+    /**Create a new Schedule object with the specified player count,  table count, and schedule which is in the following form:
 
+    Player number as usize,
+    Players in a game as Vec of players, stored as Vec<usize>,
+    Games in a round as Vec of Players in a games, stored as Vec<Vec<usize>>
+    Rounds in an event as Vec of Games in a Round, stored as Vec<Vec<Vec<usize>>>
+     */
     pub fn from_vec(player_count: usize, tables: usize, data: Vec<Vec<Vec<usize>>>) -> Self {
         let mut new = Self::new(player_count, tables);
         new.import_vec(data);
         new
     }
 
+    /**Import specified schedule which is in the following form:
+
+    Player number as usize,
+    Players in a game as Vec of players, stored as Vec<usize>,
+    Games in a round as Vec of Players in a games, stored as Vec<Vec<usize>>
+    Rounds in an event as Vec of Games in a Round, stored as Vec<Vec<Vec<usize>>>
+     */
     pub fn import_vec(&mut self, data: Vec<Vec<Vec<usize>>>) {
         self.matches = Vec::with_capacity(self.tables * self.tables);
         for _ in 0..(self.tables * self.tables) {
@@ -92,6 +110,9 @@ impl Schedule {
         self.find_unique_games_played(); // Fill cache of unique games played with correct data
     }
 
+    /**
+    Replace current schedule with a random schedule
+     */
     pub fn generate_random<T: rand::Rng + rand_core::RngCore>(&mut self, rng: &mut T) {
         let mut player_list: Vec<usize> = (0..self.player_count).collect();
         let mut game: Vec<Vec<Vec<usize>>> = Vec::new();
@@ -225,38 +246,43 @@ impl Schedule {
     pub const fn unique_opponents(&self) -> u32 {
         self.unique_opponent_sum_cache
     }
-
+    /** Get the number of tables*/
     pub const fn get_tables(&self) -> usize {
         self.tables
     }
-
+    /** Get the number of players */
     pub const fn get_player_count(&self) -> usize {
         self.player_count
     }
 
-    /** Get a vector of all players in a single match
+    /** Get a vector of all players in the game at specified round and table
      */
-    pub fn get_game(&self, round: usize, table: usize) -> Vec<usize> {
+    pub fn get_players_from_game(&self, round: usize, table: usize) -> Vec<usize> {
+        debug_assert!(round < self.tables);
+        debug_assert!(table < self.tables);
         let game = self.get(round, table);
-        let mut players: Vec<usize> = Vec::with_capacity(game.count_ones() as usize);
+        let game_size = game.count_ones() as usize;
+        let mut players: Vec<usize> = Vec::with_capacity(game_size);
         for player in 0..self.player_count {
             let player_number = 1 << player;
             if game & player_number != 0 {
                 players.push(player);
+                if players.len() >= game_size {
+                    return players;
+                }
             }
         }
         players
     }
     /** Calculate score and cache results*/
     pub fn generate_score(&mut self) -> u32 {
-        // Calculate score and store results in cache
         self.find_unique_opponents() * self.ideal_unique_games
             + self.find_unique_games_played()
                 * self.ideal_unique_opponents
                 * UNIQUE_GAMES_MULTIPLIER
     }
-    /** Get score using cached results */
 
+    /** Get score using cached results */
     pub const fn get_score(&self) -> u32 {
         self.unique_opponents() * self.ideal_unique_games
             + self.unique_games_played() * self.ideal_unique_opponents * UNIQUE_GAMES_MULTIPLIER
@@ -278,33 +304,18 @@ impl Schedule {
         debug_assert!(score == self.generate_score()); // check that cache is updated
         let old_unique_games_played = self.unique_games_played();
         let mut unique_games_played = old_unique_games_played;
+
         let original_t1 = self.get(round, table1);
         let original_t2 = self.get(round, table2);
+
         let mut best_t1 = original_t1;
         let mut best_t2 = original_t2;
         let mut best_player1 = 0;
         let mut best_player2 = 0;
-        let t1_size: usize = original_t1.count_ones() as usize;
-        let t2_size: usize = original_t2.count_ones() as usize;
-        let mut t1_players: Vec<usize> = Vec::with_capacity(t1_size);
-        let mut t2_players: Vec<usize> = Vec::with_capacity(t2_size);
-        // Find what players are in each table
-        for player1 in 0..self.player_count {
-            if original_t1 & (1 << player1) != 0 {
-                t1_players.push(player1);
-                if t1_players.len() >= t1_size {
-                    break;
-                }
-            }
-        }
-        for player2 in 0..self.player_count {
-            if original_t2 & (1 << player2) != 0 {
-                t2_players.push(player2);
-                if t2_players.len() >= t2_size {
-                    break;
-                }
-            }
-        }
+
+        let t1_players: Vec<usize> = self.get_players_from_game(round, table1);
+        let t2_players: Vec<usize> = self.get_players_from_game(round, table2);
+
         let mut new_player_opponent_cache = self.player_opponent_cache.clone();
         for player1 in t1_players.iter() {
             let player_number1: u64 = 1_u64 << player1;
@@ -364,7 +375,7 @@ impl Schedule {
         debug_assert!(self.get_score() == self.generate_score()); // Check that cache still represents most recent data
         (score, unique_games_played)
     }
-    /** Check if the schedule is the has entirely met all criteria*/
+    /** Check if the schedule has entirely met all criteria*/
     pub fn is_ideal(&self) -> bool {
         self.unique_opponents() == self.ideal_unique_opponents
             && self.unique_games_played() == self.ideal_unique_games
@@ -373,22 +384,25 @@ impl Schedule {
 
 /** Wrapper around schedule that handles randomly generating new schedules and using local optimisation to try and find better schedules */
 pub struct Generator<T: rand::Rng + rand_core::RngCore> {
-    player_count: usize,
-    tables: usize,
-    pub best: Schedule,
-    pub best_score: u32,
+    player_count: usize, // The number of players
+    tables: usize,       // The number of tables, since one table per game, same as number of games
+    pub best: Schedule,  // The best schedule found so far
+    pub best_score: u32, // The score of the best schedule found so far
     current: Schedule,
     current_score: u32,
-    next: (usize, usize, usize),
-    next_score: u32,
-    next_unique_games: u32,
-    rng: T,
-    round: usize,
-    table1: usize,
-    table2: usize,
+    next: (usize, usize, usize), // The best scoring round, table1, table2 combination that has been found in the current loop of changes
+    next_score: u32, // The score of the best scoring schedule that has been found in the current loop of changes
+    next_unique_games: u32, // The total number of unique games played of the best scoring schedule that has been found in the current loop of changes
+    rng: T,                 // The rng object
+    round: usize,           // Current round in loop, between 0 and less than the number of tables
+    table1: usize,          // Current table1 in loop, between 0 and less than table2
+    table2: usize, // Current table1 in loop, between table1 and less than the number of tables
 }
 
 impl<T: rand::Rng + rand_core::RngCore> Generator<T> {
+    /**Create a new Generator object with specified player count, table count, and rng. Panics if player count >= 64, or table count <= 2.
+
+    Initially contains a schedule generated via normal_fill*/
     pub fn new(rng: T, player_count: usize, tables: usize) -> Self {
         let mut best = Schedule::new(player_count, tables);
         best.normal_fill();
@@ -409,11 +423,11 @@ impl<T: rand::Rng + rand_core::RngCore> Generator<T> {
             table2: 0,
         }
     }
-
+    /** Get the number of players*/
     pub fn get_player_count(&self) -> usize {
         self.player_count
     }
-
+    /** Get the number of tables */
     pub fn get_tables(&self) -> usize {
         self.tables
     }
@@ -530,7 +544,7 @@ mod tests {
             vec![vec![4, 5], vec![0, 3], vec![1, 2]],
             vec![vec![2, 3], vec![1, 4], vec![0, 5]],
         ];
-        let mut schedule = Schedule::from_vec(6, 3, ideal);
+        let schedule = Schedule::from_vec(6, 3, ideal);
         assert!(schedule.is_ideal());
     }
 
@@ -611,7 +625,7 @@ mod tests {
         let mut schedule = Schedule::new(player_count as usize, tables as usize);
         let mut rng = rand_xorshift::XorShiftRng::from_seed(seed.data);
         schedule.generate_random(&mut rng);
-        let game_size = schedule.get_game(0, 0).len();
+        let game_size = schedule.get_players_from_game(0, 0).len();
     if player_count % tables != 0 {
                 game_size == player_count / tables || game_size == (player_count / tables + 1)
             } else {

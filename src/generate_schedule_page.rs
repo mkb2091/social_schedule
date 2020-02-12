@@ -311,7 +311,9 @@ St::FlexGrow=> "1";];
                                 let mut row: Vec<Node<Msg>> = Vec::with_capacity(tables + 1);
                                 row.push(td![format!("Round {:}", round + 1)]);
                                 for table in 0..tables {
-                                    row.push(td![{ format!("{:?}", best.get_game(round, table)) }]);
+                                    row.push(td![{
+                                        format!("{:?}", best.get_players_from_game(round, table))
+                                    }]);
                                 }
                                 row
                             }]);
