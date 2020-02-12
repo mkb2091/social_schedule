@@ -522,6 +522,18 @@ mod tests {
         let mut schedule = Schedule::from_vec(24, 6, game);
         assert_eq!(3 * 24, schedule.find_unique_opponents());
     }
+
+    #[test]
+    fn ideal_is_ideal() {
+        let ideal: Vec<Vec<Vec<usize>>> = vec![
+            vec![vec![0, 1], vec![2, 5], vec![3, 4]],
+            vec![vec![4, 5], vec![0, 3], vec![1, 2]],
+            vec![vec![2, 3], vec![1, 4], vec![0, 5]],
+        ];
+        let mut schedule = Schedule::from_vec(6, 3, ideal);
+        assert!(schedule.is_ideal());
+    }
+
     #[derive(Clone, Debug)]
     struct Seed {
         pub data: [u8; 16],
