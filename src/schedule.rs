@@ -10,15 +10,24 @@ testing this seemed to result in overall better (higher total unique games playe
 */
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct Schedule {
-    player_count: usize,             // The number of players
-    tables: usize, // The number of tables, since one table per game, same as number of games
-    matches: Vec<u64>, // Stores each individual match, uses round * self.tables + table
-    player_positions: Vec<u16>, // Store where each player is for a given round, uses player * self.tables + round_number
-    player_opponent_cache: Vec<u8>, // Cache of how many unique opponents each player has
-    unique_games_played_cache: u32, // Cache of total unique games played
-    unique_opponent_sum_cache: u32, // Cache of sum of how many unique opponents each player has
-    pub ideal_unique_games: u32, // Calculated max possible total unique games played
-    pub ideal_unique_opponents: u32, // Calculated max possible total unique opponents
+    /**The number of players*/
+    player_count: usize,
+    /**The number of tables, since one table per game, same as number of games*/
+    tables: usize,
+    /**Stores each individual match, uses round * self.tables + table*/
+    matches: Vec<u64>,
+    /**Store where each player is for a given round, uses player * self.tables + round_number*/
+    player_positions: Vec<u16>,
+    /**Cache of how many unique opponents each player has*/
+    player_opponent_cache: Vec<u8>,
+    /**Cache of total unique games played*/
+    unique_games_played_cache: u32,
+    /**Cache of sum of how many unique opponents each player has*/
+    unique_opponent_sum_cache: u32,
+    /**Calculated max possible total unique games played*/
+    pub ideal_unique_games: u32,
+    /**Calculated max possible total unique opponents*/
+    pub ideal_unique_opponents: u32,
 }
 
 impl Schedule {
@@ -384,19 +393,30 @@ impl Schedule {
 
 /** Wrapper around schedule that handles randomly generating new schedules and using local optimisation to try and find better schedules */
 pub struct Generator<T: rand::Rng + rand_core::RngCore> {
-    player_count: usize, // The number of players
-    tables: usize,       // The number of tables, since one table per game, same as number of games
-    pub best: Schedule,  // The best schedule found so far
-    pub best_score: u32, // The score of the best schedule found so far
+    /**The number of players*/
+    player_count: usize,
+    /**The number of tables, since one table per game, same as number of games*/
+    tables: usize,
+    /**The best schedule found so far*/
+    pub best: Schedule,
+    /**The score of the best schedule found so far*/
+    pub best_score: u32,
     current: Schedule,
     current_score: u32,
-    next: (usize, usize, usize), // The best scoring round, table1, table2 combination that has been found in the current loop of changes
-    next_score: u32, // The score of the best scoring schedule that has been found in the current loop of changes
-    next_unique_games: u32, // The total number of unique games played of the best scoring schedule that has been found in the current loop of changes
-    rng: T,                 // The rng object
-    round: usize,           // Current round in loop, between 0 and less than the number of tables
-    table1: usize,          // Current table1 in loop, between 0 and less than table2
-    table2: usize, // Current table1 in loop, between table1 and less than the number of tables
+    /**The best scoring round, table1, table2 combination that has been found in the current loop of changes*/
+    next: (usize, usize, usize),
+    /**The score of the best scoring schedule that has been found in the current loop of changes*/
+    next_score: u32,
+    /**The total number of unique games played of the best scoring schedule that has been found in the current loop of changes*/
+    next_unique_games: u32,
+    /**The rng object*/
+    rng: T,
+    /** Current round in loop, between 0 and less than the number of tables*/
+    round: usize,
+    /**Current table1 in loop, between 0 and less than table2*/
+    table1: usize,
+    /**Current table1 in loop, between table1 and less than the number of tables*/
+    table2: usize,
 }
 
 impl<T: rand::Rng + rand_core::RngCore> Generator<T> {
