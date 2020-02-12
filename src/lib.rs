@@ -51,6 +51,7 @@ pub enum Page {
     ManagePlayers,
     ManageGroups,
     ManageEvents,
+    CreateEvent,
     Preferences,
 }
 
@@ -60,6 +61,7 @@ struct Model {
     pub manage_players: manage_players_page::ManagePlayers,
     manage_groups: manage_groups_page::ManageGroups,
     manage_events: manage_events_page::ManageEvents,
+    create_event: manage_events_page::CreateEvent,
     preferences: preferences_page::Preferences,
     style_control: style_control::StyleControl,
     database: database::Database,
@@ -73,6 +75,7 @@ impl Default for Model {
             manage_players: manage_players_page::ManagePlayers::default(),
             manage_groups: manage_groups_page::ManageGroups::default(),
             manage_events: manage_events_page::ManageEvents::default(),
+            create_event: manage_events_page::CreateEvent::default(),
             preferences: preferences_page::Preferences::default(),
             style_control: style_control::StyleControl::default(),
             database: database::Database::load(),
@@ -83,6 +86,13 @@ impl Default for Model {
 #[derive(Clone)]
 pub enum Msg {
     ChangePage(Page),
+    CEAddPlayer,
+    CEAddPlayerSelectBoxInput(String),
+    CEAddGroup,
+    CEAddGroupSelectBoxInput(String),
+    CERemovePlayer(u32),
+    CERemoveAllPlayers,
+    CESetTables(String),
     GSAddPlayer,
     GSAddPlayerSelectBoxInput(String),
     GSAddGroup,
@@ -116,6 +126,17 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         Msg::ChangePage(page) => {
             model.page = page;
         }
+
+        Msg::CEAddPlayerSelectBoxInput(id) => {
+            model.create_event.set_add_player_select_box_input(id)
+        }
+        Msg::CEAddPlayer => model.create_event.add_player(&model.database),
+        Msg::CEAddGroupSelectBoxInput(id) => model.create_event.set_add_group_select_box_input(id),
+        Msg::CEAddGroup => model.create_event.add_group(&model.database),
+        Msg::CERemovePlayer(id) => model.create_event.remove_player(id),
+        Msg::CERemoveAllPlayers => model.create_event.remove_all_players(),
+        Msg::CESetTables(tables) => model.create_event.set_tables(tables),
+
         Msg::GSAddPlayerSelectBoxInput(id) => {
             model.generate_schedule.set_add_player_select_box_input(id)
         }
@@ -189,11 +210,18 @@ St::Overflow => "auto";],
             Page::ManagePlayers => "Manage Players",
             Page::ManageGroups => "Manage Groups",
             Page::ManageEvents => "Manage Events",
+            Page::CreateEvent => "Create Event",
             Page::Preferences => "Preferences",
         }],
         div![
             style![St::Display => "Flex";
 		St::FlexWrap => "Wrap";],
+            button![
+                model.style_control.button_style(),
+                &tab_style,
+                simple_ev(Ev::Click, Msg::ChangePage(Page::CreateEvent)),
+                "Create Event"
+            ],
             button![
                 model.style_control.button_style(),
                 &tab_style,
@@ -243,6 +271,11 @@ St::Overflow => "auto";],
             ),
             Page::ManageEvents => manage_events_page::view_manage_events(
                 &model.manage_events,
+                &model.database,
+                &model.style_control,
+            ),
+            Page::CreateEvent => manage_events_page::view_create_event(
+                &model.create_event,
                 &model.database,
                 &model.style_control,
             ),
