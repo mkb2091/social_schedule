@@ -47,11 +47,10 @@ extern "C" {
 
 #[derive(Clone)]
 pub enum Page {
-    GenerateSchedule,
+    CreateEvent,
     ManagePlayers,
     ManageGroups,
     ManageEvents,
-    CreateEvent,
     Preferences,
 }
 
@@ -70,7 +69,7 @@ struct Model {
 impl Default for Model {
     fn default() -> Self {
         Self {
-            page: Page::GenerateSchedule,
+            page: Page::CreateEvent,
             generate_schedule: generate_schedule_page::GenerateSchedule::default(),
             manage_players: manage_players_page::ManagePlayers::default(),
             manage_groups: manage_groups_page::ManageGroups::default(),
@@ -86,6 +85,10 @@ impl Default for Model {
 #[derive(Clone)]
 pub enum Msg {
     ChangePage(Page),
+    CESetEventName(String),
+    CESetEventDate(String),
+    CEGoToEnterPlayers,
+    CEBackToDetails,
     CEAddPlayer,
     CEAddPlayerSelectBoxInput(String),
     CEAddGroup,
@@ -93,15 +96,8 @@ pub enum Msg {
     CERemovePlayer(u32),
     CERemoveAllPlayers,
     CESetTables(String),
-    GSAddPlayer,
-    GSAddPlayerSelectBoxInput(String),
-    GSAddGroup,
-    GSAddGroupSelectBoxInput(String),
-    GSRemovePlayer(u32),
-    GSRemoveAllPlayers,
-    GSSetTables(String),
+    CEGoToGenerateSchedule,
     GSSetCpuUsage(String),
-    GSApply,
     GSGenerate,
     GSMakeEvent,
     MPAddPlayer,
@@ -126,7 +122,10 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         Msg::ChangePage(page) => {
             model.page = page;
         }
-
+        Msg::CESetEventName(name) => model.create_event.set_event_name(name),
+        Msg::CESetEventDate(date) => model.create_event.set_event_date(date),
+        Msg::CEGoToEnterPlayers => model.create_event.go_to_enter_players(),
+        Msg::CEBackToDetails => model.create_event.back_to_details(),
         Msg::CEAddPlayerSelectBoxInput(id) => {
             model.create_event.set_add_player_select_box_input(id)
         }
@@ -136,20 +135,10 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         Msg::CERemovePlayer(id) => model.create_event.remove_player(id),
         Msg::CERemoveAllPlayers => model.create_event.remove_all_players(),
         Msg::CESetTables(tables) => model.create_event.set_tables(tables),
-
-        Msg::GSAddPlayerSelectBoxInput(id) => {
-            model.generate_schedule.set_add_player_select_box_input(id)
-        }
-        Msg::GSAddPlayer => model.generate_schedule.add_player(&model.database),
-        Msg::GSAddGroupSelectBoxInput(id) => {
-            model.generate_schedule.set_add_group_select_box_input(id)
-        }
-        Msg::GSAddGroup => model.generate_schedule.add_group(&model.database),
-        Msg::GSRemovePlayer(id) => model.generate_schedule.remove_player(id),
-        Msg::GSRemoveAllPlayers => model.generate_schedule.remove_all_players(),
-        Msg::GSSetTables(tables) => model.generate_schedule.set_tables(tables),
+        Msg::CEGoToGenerateSchedule => model
+            .create_event
+            .go_to_generate_schedule_page(&mut model.generate_schedule),
         Msg::GSSetCpuUsage(cpu_usage) => model.generate_schedule.set_cpu_usage(cpu_usage),
-        Msg::GSApply => model.generate_schedule.apply(),
         Msg::GSGenerate => model.generate_schedule.generate(),
         Msg::GSMakeEvent => model.generate_schedule.make_event(&mut model.database),
         Msg::MPAddPlayerNameInput(player_name) => {
@@ -206,7 +195,6 @@ fn view(model: &Model) -> impl View<Msg> {
         style![St::Flex => "1";
 St::Overflow => "auto";],
         h1![match model.page {
-            Page::GenerateSchedule => "Generate Schedule",
             Page::ManagePlayers => "Manage Players",
             Page::ManageGroups => "Manage Groups",
             Page::ManageEvents => "Manage Events",
@@ -221,12 +209,6 @@ St::Overflow => "auto";],
                 &tab_style,
                 simple_ev(Ev::Click, Msg::ChangePage(Page::CreateEvent)),
                 "Create Event"
-            ],
-            button![
-                model.style_control.button_style(),
-                &tab_style,
-                simple_ev(Ev::Click, Msg::ChangePage(Page::GenerateSchedule)),
-                "Generate Schedule"
             ],
             button![
                 model.style_control.button_style(),
@@ -254,7 +236,8 @@ St::Overflow => "auto";],
             ]
         ],
         match model.page {
-            Page::GenerateSchedule => generate_schedule_page::view_generate_schedule(
+            Page::CreateEvent => manage_events_page::view_create_event(
+                &model.create_event,
                 &model.generate_schedule,
                 &model.database,
                 &model.style_control,
@@ -274,11 +257,7 @@ St::Overflow => "auto";],
                 &model.database,
                 &model.style_control,
             ),
-            Page::CreateEvent => manage_events_page::view_create_event(
-                &model.create_event,
-                &model.database,
-                &model.style_control,
-            ),
+
             Page::Preferences => {
                 preferences_page::view_preferences(&model.preferences, &model.style_control)
             }

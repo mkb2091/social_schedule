@@ -8,8 +8,6 @@ use crate::{
 
 pub struct GenerateSchedule {
     players: Vec<u32>,
-    add_player_select_box: String,
-    add_group_select_box: String,
     tables: usize,
     schedule: Option<schedule::Generator<rand_xorshift::XorShiftRng>>,
     rng: rand_xorshift::XorShiftRng,
@@ -24,8 +22,6 @@ impl Default for GenerateSchedule {
         next_tick(0.0);
         Self {
             players: Vec::new(),
-            add_player_select_box: String::new(),
-            add_group_select_box: String::new(),
             tables: 2,
             schedule: None,
             rng: {
@@ -44,68 +40,15 @@ impl Default for GenerateSchedule {
 }
 
 impl GenerateSchedule {
-    pub fn set_add_player_select_box_input(&mut self, id: String) {
-        self.add_player_select_box = id;
-    }
-
-    pub fn add_player(&mut self, database: &database::Database) {
-        let player_id = &self.add_player_select_box;
-        if !player_id.is_empty() {
-            if let Ok(id) = player_id.parse::<u32>() {
-                if database.contains_player(id) {
-                    self.players.push(id);
-                } else {
-                    alert("Player with specified ID does not exist");
-                }
-            } else {
-                alert("Invalid ID of player");
-            }
-        }
-    }
-
-    pub fn set_add_group_select_box_input(&mut self, id: String) {
-        self.add_group_select_box = id;
-    }
-
-    pub fn add_group(&mut self, database: &database::Database) {
-        let group_id = &self.add_group_select_box;
-        if !group_id.is_empty() {
-            if let Ok(id) = group_id.parse::<u32>() {
-                if let Some(group) = database.get_group(id) {
-                    for player in group.get_players() {
-                        self.players.push(*player);
-                    }
-                } else {
-                    alert("Player does not exist");
-                }
-            } else {
-                alert("Failed to convert ID to integer");
-            }
-        }
-    }
-
-    pub fn remove_player(&mut self, id: u32) {
-        if let Some((pos, _)) = self
-            .players
-            .iter()
-            .enumerate()
-            .find(|(_, &player_id)| id == player_id)
-        {
-            self.players.remove(pos);
-        } else {
-            alert("Player with specified ID not in list");
-        }
-    }
-
-    pub fn remove_all_players(&mut self) {
-        self.players = Vec::new();
-    }
-
-    pub fn set_tables(&mut self, tables: String) {
-        if let Ok(tables) = tables.parse::<usize>() {
-            self.tables = tables;
-        } else {
-            alert("Invalid player count");
+    pub fn apply_parameters(&mut self, players: Vec<u32>, tables: usize) {
+        self.players = players;
+        self.tables = tables;
+        if let Ok(rng) = rand_xorshift::XorShiftRng::from_rng(&mut self.rng) {
+            self.schedule = Some(schedule::Generator::new(
+                rng,
+                self.players.len(),
+                self.tables,
+            ));
         }
     }
 
@@ -114,16 +57,6 @@ impl GenerateSchedule {
             self.cpu_usage = cpu_usage;
         } else {
             alert("Invalid player count");
-        }
-    }
-
-    pub fn apply(&mut self) {
-        if let Ok(rng) = rand_xorshift::XorShiftRng::from_rng(&mut self.rng) {
-            self.schedule = Some(schedule::Generator::new(
-                rng,
-                self.players.len(),
-                self.tables,
-            ));
         }
     }
 
@@ -186,101 +119,9 @@ St::FlexGrow=> "1";];
         St::FlexWrap => "Wrap"],
         div![
             &box_style,
-            h2!["Event Players"],
-            p![
-                span!["Group: "],
-                select![
-                    style.button_style(),
-                    attrs! {At::Value => ""},
-                    input_ev(Ev::Input, Msg::GSAddGroupSelectBoxInput),
-                    {
-                        let group_list = database.get_groups();
-                        let mut node_list: Vec<Node<Msg>> =
-                            Vec::with_capacity(group_list.len() + 1);
-                        node_list.push(option![style.option_style(), attrs! {At::Value => ""}, ""]);
-                        for (&id, group) in &group_list {
-                            let player_count = group.get_players().len();
-                            node_list.push(option![
-                                style.option_style(),
-                                attrs! {At::Value => id},
-                                format!("{} ({})", group.name, player_count)
-                            ]);
-                        }
-                        node_list
-                    }
-                ],
-                button![
-                    style.button_style(),
-                    simple_ev(Ev::Click, Msg::GSAddGroup),
-                    "Add"
-                ],
-            ],
-            p![
-                span!["Individual: "],
-                select![
-                    style.button_style(),
-                    attrs! {At::Value => ""},
-                    input_ev(Ev::Input, Msg::GSAddPlayerSelectBoxInput),
-                    player_select_box(database, style),
-                ],
-                button![
-                    style.button_style(),
-                    simple_ev(Ev::Click, Msg::GSAddPlayer),
-                    "Add"
-                ],
-            ],
-            p![button![
-                style.button_style(),
-                simple_ev(Ev::Click, Msg::GSRemoveAllPlayers),
-                "Remove All"
-            ]],
-            table![style![St::PaddingBottom => "5px";], {
-                let mut players_list: Vec<Node<Msg>> = Vec::with_capacity(model.players.len());
-                for &player_id in &model.players {
-                    players_list.push(tr![
-                        td![if let Some(player) = database.get_player(player_id) {
-                            &player.name
-                        } else {
-                            "Player does not exist"
-                        }],
-                        td![button![
-                            style.button_style(),
-                            raw_ev(Ev::Click, move |_| Msg::GSRemovePlayer(player_id)),
-                            "Remove"
-                        ]]
-                    ]);
-                }
-                players_list
-            }],
-        ],
-        div![
-            &box_style,
-            p![
-                span!["Tables: "],
-                select![
-                    style.button_style(),
-                    input_ev(Ev::Input, Msg::GSSetTables),
-                    {
-                        let mut table_size_list: Vec<Node<Msg>> = Vec::with_capacity(42);
-                        for table_size in 2..43 {
-                            table_size_list.push(option![
-                                style.option_style(),
-                                attrs! {At::Value => table_size},
-                                format!("{}", table_size)
-                            ]);
-                        }
-                        table_size_list
-                    }
-                ],
-            ],
             p![
                 span!["Email Players: "],
                 input![attrs! {At::Type => "checkbox"}],
-            ],
-            button![
-                style.button_style(),
-                simple_ev(Ev::Click, Msg::GSApply),
-                "Apply parameters"
             ],
             if let Some(schedule) = &model.schedule {
                 let best = &schedule.best;
