@@ -12,6 +12,7 @@ pub struct GenerateSchedule {
     operations_per_second: u32,
     operation_history: [f64; 35],
     iteration: usize,
+    running: bool,
 }
 
 impl Default for GenerateSchedule {
@@ -32,6 +33,7 @@ impl Default for GenerateSchedule {
             operations_per_second: 0,
             operation_history: [0.0; 35],
             iteration: 0,
+            running: true,
         }
     }
 }
@@ -49,6 +51,14 @@ impl GenerateSchedule {
         }
     }
 
+    pub fn stop(&mut self) {
+        self.running = false
+    }
+
+    pub fn resume(&mut self) {
+        self.running = true
+    }
+
     pub fn set_cpu_usage(&mut self, cpu_usage: String) {
         if let Ok(cpu_usage) = cpu_usage.parse::<f64>() {
             self.cpu_usage = cpu_usage;
@@ -59,7 +69,8 @@ impl GenerateSchedule {
 
     pub fn generate(&mut self) {
         if let Some(schedule) = &mut self.schedule {
-            if schedule.get_player_count() == 0
+            if !self.running
+                || schedule.get_player_count() == 0
                 || schedule.get_tables() < 2
                 || schedule.best.is_ideal()
             {
@@ -212,6 +223,25 @@ St::FlexGrow=> "1";];
                     }
                 ]
             ],
+            p![if model.running {
+                button![
+                    style.button_style(),
+                    span![
+                        style![St::Color => "red"],
+                        simple_ev(Ev::Click, Msg::GSStop),
+                        "STOP"
+                    ]
+                ]
+            } else {
+                button![
+                    style.button_style(),
+                    span![
+                        style![St::Color => "green"],
+                        simple_ev(Ev::Click, Msg::GSResume),
+                        "RESUME"
+                    ]
+                ]
+            }],
         ]
     ]
 }

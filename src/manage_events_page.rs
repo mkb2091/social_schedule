@@ -207,7 +207,7 @@ St::FlexGrow=> "1";];
                     td![input![input_ev(Ev::Input, Msg::CESetEventDate)]]
                 ],
                 tr![
-                    td!["Tables: "],
+                    td!["Number of different boardgames: "],
                     td![select![
                         style.button_style(),
                         input_ev(Ev::Input, Msg::CESetTables),
@@ -226,9 +226,10 @@ St::FlexGrow=> "1";];
                     ]],
                 ]
             ],
-            "Generate a schedule which attempts to maximise the number of unique games each player plays,\
-            while simultaneously attempting to maximise the number of unique opponents each player plays with",
-            br![],
+            p![
+                "Generate a schedule which attempts to maximise the number of unique games each player plays,\
+                while simultaneously attempting to maximise the number of unique opponents each player plays with",
+            ],
             button![
                 style.button_style(),
                 simple_ev(Ev::Click, Msg::CEGenerateSchedule),
