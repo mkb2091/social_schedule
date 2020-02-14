@@ -57,7 +57,7 @@ impl ManageGroups {
 }
 
 pub fn view_manage_groups(
-    _model: &ManageGroups,
+    model: &ManageGroups,
     database: &database::Database,
     style: &style_control::StyleControl,
 ) -> Node<Msg> {
@@ -102,7 +102,12 @@ St::FlexGrow=> "1";];
                             player_select_box(
                                 database,
                                 style,
-                                &players.iter().map(|&id| id).collect()
+                                &players.iter().map(|&id| id).collect(),
+                                if let Some(&player_id) = model.add_player_to_group_input.get(&id) {
+                                    Some(player_id)
+                                } else {
+                                    None
+                                }
                             )
                         ],
                         button![

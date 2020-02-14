@@ -171,17 +171,22 @@ fn player_select_box(
     database: &database::Database,
     style: &style_control::StyleControl,
     ignored_players: &std::collections::HashSet<u32>,
+    selected: Option<u32>,
 ) -> Vec<Node<Msg>> {
     let mut player_list = database.get_players();
     player_list.sort_by_key(|(&id, _)| id);
     let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(player_list.len() + 1);
     node_list.push(option![style.option_style(), attrs! {At::Value => ""}, ""]);
     for (id, player) in &player_list {
-        if !ignored_players.contains(id) {
+        if !ignored_players.contains(id) || Some(**id) == selected {
             node_list.push(option![
                 style.option_style(),
                 attrs! {At::Value => id},
-                format!("{} (ID: {})", player.name, id)
+                if !ignored_players.contains(id) {
+                    format!("{} (ID: {})", player.name, id)
+                } else {
+                    "".to_string()
+                }
             ]);
         }
     }

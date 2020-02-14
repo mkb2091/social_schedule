@@ -54,7 +54,7 @@ pub struct CreateEvent {
     event_name: String,
     event_date: String,
     players: std::collections::HashSet<u32>,
-    add_player_select_box: String,
+    add_player_select_box: Option<u32>,
     add_group_select_box: String,
     tables: Option<usize>,
     stage: CreateEventStages,
@@ -66,7 +66,7 @@ impl Default for CreateEvent {
             event_name: String::new(),
             event_date: String::new(),
             players: std::collections::HashSet::new(),
-            add_player_select_box: String::new(),
+            add_player_select_box: None,
             add_group_select_box: String::new(),
             tables: None,
             stage: CreateEventStages::Details,
@@ -113,27 +113,28 @@ impl CreateEvent {
     }
 
     pub fn set_add_player_select_box_input(&mut self, id: String) {
-        self.add_player_select_box = id;
+        if let Ok(id) = id.parse::<u32>() {
+            self.add_player_select_box = Some(id)
+        } else {
+            self.add_player_select_box = None;
+        }
     }
     pub fn add_player(&mut self, database: &database::Database) {
-        let player_id = &self.add_player_select_box;
-        if !player_id.is_empty() {
-            if let Ok(id) = player_id.parse::<u32>() {
-                if database.contains_player(id) {
-                    self.players.insert(id);
-                } else {
-                    alert("Player with specified ID does not exist");
-                }
+        if let Some(id) = self.add_player_select_box {
+            if database.contains_player(id) {
+                self.players.insert(id);
             } else {
-                alert("Invalid ID of player");
+                alert("Player with specified ID does not exist");
             }
+        } else {
+            alert("Invalid ID of player");
         }
         if self.players.len() > 64 {
             alert(&format!(
                 "Has {} players, which is above the maximum of 64",
                 self.players.len()
             ));
-        }
+        };
     }
     pub fn set_add_group_select_box_input(&mut self, id: String) {
         self.add_group_select_box = id;
@@ -279,7 +280,7 @@ St::FlexGrow=> "1";];
                     style.button_style(),
                     attrs! {At::Value => ""},
                     input_ev(Ev::Input, Msg::CEAddPlayerSelectBoxInput),
-                    player_select_box(database, style, &model.players),
+                    player_select_box(database, style, &model.players, model.add_player_select_box),
                 ],
                 button![
                     style.button_style(),

@@ -116,23 +116,27 @@ St::FlexGrow=> "1";];
         St::FlexWrap => "Wrap"],
         div![
             &box_style,
-            p![
-                span!["Email Players: "],
-                input![attrs! {At::Type => "checkbox"}],
-            ],
             if let Some(schedule) = &model.schedule {
                 let best = &schedule.best;
                 p![
+                    p![
+                        style![St::FontWeight => "bold";],
+                        if schedule.best.is_ideal() {
+                            "Found ideal schedule"
+                        } else {
+                            "Generating schedules..."
+                        }
+                    ],
                     p![format!("Operations /s: {}", model.operations_per_second)],
                     p![format!(
-                        "Total unique games played(ideally {}): {}",
-                        best.ideal_unique_games,
-                        best.unique_games_played()
+                        "Average number of unique games played (maximium {}): {}",
+                        (best.ideal_unique_games as f32 / schedule.get_player_count() as f32),
+                        (best.unique_games_played() as f32 / schedule.get_player_count() as f32)
                     )],
                     p![format!(
-                        "Total unique opponents/teammates played(ideally {}): {}",
-                        best.ideal_unique_opponents,
-                        best.unique_opponents()
+                        "Average number of unique opponents/teammates played with (maximium {}): {}",
+                        (best.ideal_unique_opponents as f32 / schedule.get_player_count() as f32),
+                        (best.unique_opponents() as f32 / schedule.get_player_count() as f32)
                     )],
                     table![style![St::BorderSpacing => "5px 10px"; ], {
                         let tables = best.get_tables();
