@@ -252,7 +252,8 @@ St::FlexGrow=> "1";];
                     attrs! {At::Value => ""},
                     input_ev(Ev::Input, Msg::CEAddGroupSelectBoxInput),
                     {
-                        let group_list = database.get_groups();
+                        let mut group_list = database.get_groups();
+                        group_list.sort_by_key(|(&id, _)| id);
                         let mut node_list: Vec<Node<Msg>> =
                             Vec::with_capacity(group_list.len() + 1);
                         node_list.push(option![style.option_style(), attrs! {At::Value => ""}, ""]);
@@ -279,7 +280,7 @@ St::FlexGrow=> "1";];
                     style.button_style(),
                     attrs! {At::Value => ""},
                     input_ev(Ev::Input, Msg::CEAddPlayerSelectBoxInput),
-                    player_select_box(database, style),
+                    player_select_box(database, style, &model.players),
                 ],
                 button![
                     style.button_style(),

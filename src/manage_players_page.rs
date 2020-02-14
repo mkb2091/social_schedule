@@ -74,7 +74,9 @@ St::FlexGrow=> "1";];
             &box_style,
             h2!["Player List"],
             table![style![St::PaddingBottom => "5px";], {
-                let player_list = database.get_players();
+                let mut player_list = database.get_players();
+                player_list.sort_by_key(|(&id, _)| id);
+                player_list.reverse();
                 let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(player_list.len() + 1);
                 if !player_list.is_empty() {
                     node_list.push(tr![td!["ID"], td!["Name"], td!["Email"]])
