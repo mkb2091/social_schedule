@@ -47,7 +47,6 @@ St::FlexGrow=> "1";];
 
 enum CreateEventStages {
     Details,
-    AddPlayers,
     GenerateSchedule,
 }
 
@@ -57,7 +56,7 @@ pub struct CreateEvent {
     players: std::collections::HashSet<u32>,
     add_player_select_box: String,
     add_group_select_box: String,
-    tables: usize,
+    tables: Option<usize>,
     stage: CreateEventStages,
 }
 
@@ -69,7 +68,7 @@ impl Default for CreateEvent {
             players: std::collections::HashSet::new(),
             add_player_select_box: String::new(),
             add_group_select_box: String::new(),
-            tables: 2,
+            tables: None,
             stage: CreateEventStages::Details,
         }
     }
@@ -82,13 +81,6 @@ impl CreateEvent {
     pub fn set_event_date(&mut self, date: String) {
         self.event_date = date
     }
-    pub fn go_to_enter_players(&mut self) {
-        if !self.event_name.is_empty() || !self.event_date.is_empty() {
-            self.stage = CreateEventStages::AddPlayers;
-        } else {
-            alert("Empty name or date");
-        }
-    }
     pub fn back_to_details(&mut self) {
         self.stage = CreateEventStages::Details;
     }
@@ -97,16 +89,27 @@ impl CreateEvent {
         &mut self,
         generate_schedule_model: &mut generate_schedule_page::GenerateSchedule,
     ) {
-        if self.players.len() > 64 {
+        if self.event_name.is_empty() {
+            alert("Event name is empty")
+        } else if self.event_date.is_empty() {
+            alert("Event date is empty")
+        } else if self.players.len() > 64 {
             alert(&format!(
                 "Has {} players, which is above the maximum of 64",
                 self.players.len()
             ));
-            return;
+        } else if self.players.len() <= 4 {
+            alert(&format!(
+                "Has {} players, which is below minimium of 4",
+                self.players.len()
+            ));
+        } else if let Some(tables) = self.tables {
+            self.stage = CreateEventStages::GenerateSchedule;
+            let players: Vec<u32> = self.players.iter().map(|&id| id).collect();
+            generate_schedule_model.apply_parameters(players, tables)
+        } else {
+            alert("Number of tables is not set");
         }
-        self.stage = CreateEventStages::GenerateSchedule;
-        let players: Vec<u32> = self.players.iter().map(|&id| id).collect();
-        generate_schedule_model.apply_parameters(players, self.tables)
     }
 
     pub fn set_add_player_select_box_input(&mut self, id: String) {
@@ -169,10 +172,10 @@ impl CreateEvent {
         self.players = std::collections::HashSet::new();
     }
     pub fn set_tables(&mut self, tables: String) {
-        if let Ok(tables) = tables.parse::<usize>() {
-            self.tables = tables;
+        if let Ok(table_count) = tables.parse::<usize>() {
+            self.tables = Some(table_count);
         } else {
-            alert("Invalid player count");
+            self.tables = None;
         }
     }
 }
@@ -191,6 +194,8 @@ St::FlexGrow=> "1";];
         St::FlexWrap => "Wrap"],
         div![
             &box_style,
+            style![St::Width => "min-content"],
+            h2!["Event Details"],
             table![
                 tr![
                     td!["Event Name: "],
@@ -199,54 +204,44 @@ St::FlexGrow=> "1";];
                 tr![
                     td!["Event date: "],
                     td![input![input_ev(Ev::Input, Msg::CESetEventDate)]]
+                ],
+                tr![
+                    td!["Tables: "],
+                    td![select![
+                        style.button_style(),
+                        input_ev(Ev::Input, Msg::CESetTables),
+                        {
+                            let mut table_size_list: Vec<Node<Msg>> = Vec::with_capacity(32);
+                            table_size_list.push(option![]);
+                            for table_size in 2..32 {
+                                table_size_list.push(option![
+                                    style.option_style(),
+                                    attrs! {At::Value => table_size},
+                                    format!("{}", table_size)
+                                ]);
+                            }
+                            table_size_list
+                        }
+                    ]],
                 ]
             ],
+            "Generate a schedule which attempts to maximise the number of unique games each player plays,\
+            while simultaneously attempting to maximise the number of unique opponents each player plays with",
+            br![],
             button![
                 style.button_style(),
-                "Next",
-                simple_ev(Ev::Click, Msg::CEGoToEnterPlayers)
+                simple_ev(Ev::Click, Msg::CEGenerateSchedule),
+                "Generate Schedule"
             ],
-        ],
-    ]
-}
-
-fn view_create_event_players(
-    model: &CreateEvent,
-    database: &database::Database,
-    style: &style_control::StyleControl,
-) -> Node<Msg> {
-    let box_style = style![St::PaddingLeft => "15px";
-St::PaddingRight => "15px";
-St::FlexGrow=> "1";];
-
-    div![
-        style![St::Display => "Flex";
-        St::FlexWrap => "Wrap"],
-        div![
-            &box_style,
-            table![style![St::PaddingBottom => "5px";], {
-                let mut players_list: Vec<Node<Msg>> = Vec::with_capacity(model.players.len());
-                for &player_id in &model.players {
-                    players_list.push(tr![
-                        td![if let Some(player) = database.get_player(player_id) {
-                            &player.name
-                        } else {
-                            "Player does not exist"
-                        }],
-                        td![button![
-                            style.button_style(),
-                            raw_ev(Ev::Click, move |_| Msg::CERemovePlayer(player_id)),
-                            "Remove"
-                        ]]
-                    ]);
-                }
-                players_list
-            }],
         ],
         div![
             &box_style,
             p![
-                span!["Group: "],
+                style![St::Border => "6px inset grey";
+                    St::Padding => "10px";
+                    St::Width => "max-content";],
+                h3!["Add a group"],
+                br![],
                 select![
                     style.button_style(),
                     attrs! {At::Value => ""},
@@ -275,7 +270,11 @@ St::FlexGrow=> "1";];
                 ],
             ],
             p![
-                span!["Individual: "],
+                style![St::Border => "6px inset grey";
+                    St::Padding => "10px";
+                    St::Width => "max-content";],
+                h3!["Add an individual"],
+                br![],
                 select![
                     style.button_style(),
                     attrs! {At::Value => ""},
@@ -293,35 +292,29 @@ St::FlexGrow=> "1";];
                 simple_ev(Ev::Click, Msg::CERemoveAllPlayers),
                 "Remove All"
             ]],
-            p![
-                span!["Tables: "],
-                select![
-                    style.button_style(),
-                    input_ev(Ev::Input, Msg::CESetTables),
-                    {
-                        let mut table_size_list: Vec<Node<Msg>> = Vec::with_capacity(42);
-                        for table_size in 2..43 {
-                            table_size_list.push(option![
-                                style.option_style(),
-                                attrs! {At::Value => table_size},
-                                format!("{}", table_size)
-                            ]);
-                        }
-                        table_size_list
-                    }
-                ],
-            ],
-            button![
-                style.button_style(),
-                simple_ev(Ev::Click, Msg::CEBackToDetails),
-                "Back"
-            ],
-            button![
-                style.button_style(),
-                simple_ev(Ev::Click, Msg::CEGoToGenerateSchedule),
-                "Next"
-            ]
-        ]
+        ],
+        div![
+            &box_style,
+            h2![format!("Players to be in the event: {}", model.players.len())],
+            table![style![St::PaddingBottom => "5px";], {
+                let mut players_list: Vec<Node<Msg>> = Vec::with_capacity(model.players.len());
+                for &player_id in &model.players {
+                    players_list.push(tr![
+                        td![if let Some(player) = database.get_player(player_id) {
+                            &player.name
+                        } else {
+                            "Player does not exist"
+                        }],
+                        td![button![
+                            style.button_style(),
+                            raw_ev(Ev::Click, move |_| Msg::CERemovePlayer(player_id)),
+                            "Remove"
+                        ]]
+                    ]);
+                }
+                players_list
+            }],
+        ],
     ]
 }
 
@@ -333,7 +326,6 @@ pub fn view_create_event(
 ) -> Node<Msg> {
     match model.stage {
         CreateEventStages::Details => view_create_event_details(model, database, style),
-        CreateEventStages::AddPlayers => view_create_event_players(model, database, style),
         CreateEventStages::GenerateSchedule => {
             generate_schedule_page::view_generate_schedule(generate_schedule_model, database, style)
         }

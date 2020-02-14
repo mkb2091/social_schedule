@@ -1,10 +1,7 @@
 use rand_core::SeedableRng;
 use seed::prelude::*;
 
-use crate::{
-    alert, database, next_tick, performance_now, player_select_box, prompt, schedule,
-    style_control, Msg,
-};
+use crate::{alert, database, next_tick, performance_now, prompt, schedule, style_control, Msg};
 
 pub struct GenerateSchedule {
     players: Vec<u32>,

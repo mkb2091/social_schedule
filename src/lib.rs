@@ -87,8 +87,6 @@ pub enum Msg {
     ChangePage(Page),
     CESetEventName(String),
     CESetEventDate(String),
-    CEGoToEnterPlayers,
-    CEBackToDetails,
     CEAddPlayer,
     CEAddPlayerSelectBoxInput(String),
     CEAddGroup,
@@ -96,7 +94,7 @@ pub enum Msg {
     CERemovePlayer(u32),
     CERemoveAllPlayers,
     CESetTables(String),
-    CEGoToGenerateSchedule,
+    CEGenerateSchedule,
     GSSetCpuUsage(String),
     GSGenerate,
     GSMakeEvent,
@@ -124,8 +122,6 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         }
         Msg::CESetEventName(name) => model.create_event.set_event_name(name),
         Msg::CESetEventDate(date) => model.create_event.set_event_date(date),
-        Msg::CEGoToEnterPlayers => model.create_event.go_to_enter_players(),
-        Msg::CEBackToDetails => model.create_event.back_to_details(),
         Msg::CEAddPlayerSelectBoxInput(id) => {
             model.create_event.set_add_player_select_box_input(id)
         }
@@ -135,7 +131,7 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         Msg::CERemovePlayer(id) => model.create_event.remove_player(id),
         Msg::CERemoveAllPlayers => model.create_event.remove_all_players(),
         Msg::CESetTables(tables) => model.create_event.set_tables(tables),
-        Msg::CEGoToGenerateSchedule => model
+        Msg::CEGenerateSchedule => model
             .create_event
             .go_to_generate_schedule_page(&mut model.generate_schedule),
         Msg::GSSetCpuUsage(cpu_usage) => model.generate_schedule.set_cpu_usage(cpu_usage),
