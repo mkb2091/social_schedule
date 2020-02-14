@@ -54,7 +54,7 @@ enum CreateEventStages {
 pub struct CreateEvent {
     event_name: String,
     event_date: String,
-    players: Vec<u32>,
+    players: std::collections::HashSet<u32>,
     add_player_select_box: String,
     add_group_select_box: String,
     tables: usize,
@@ -66,7 +66,7 @@ impl Default for CreateEvent {
         Self {
             event_name: String::new(),
             event_date: String::new(),
-            players: Vec::new(),
+            players: std::collections::HashSet::new(),
             add_player_select_box: String::new(),
             add_group_select_box: String::new(),
             tables: 2,
@@ -105,7 +105,8 @@ impl CreateEvent {
             return;
         }
         self.stage = CreateEventStages::GenerateSchedule;
-        generate_schedule_model.apply_parameters(self.players.clone(), self.tables)
+        let players: Vec<u32> = self.players.iter().map(|&id| id).collect();
+        generate_schedule_model.apply_parameters(players, self.tables)
     }
 
     pub fn set_add_player_select_box_input(&mut self, id: String) {
@@ -116,7 +117,7 @@ impl CreateEvent {
         if !player_id.is_empty() {
             if let Ok(id) = player_id.parse::<u32>() {
                 if database.contains_player(id) {
-                    self.players.push(id);
+                    self.players.insert(id);
                 } else {
                     alert("Player with specified ID does not exist");
                 }
@@ -141,7 +142,7 @@ impl CreateEvent {
             if let Ok(id) = group_id.parse::<u32>() {
                 if let Some(group) = database.get_group(id) {
                     for player in group.get_players() {
-                        self.players.push(*player);
+                        self.players.insert(*player);
                     }
                 } else {
                     alert("Player does not exist");
@@ -159,20 +160,13 @@ impl CreateEvent {
     }
 
     pub fn remove_player(&mut self, id: u32) {
-        if let Some((pos, _)) = self
-            .players
-            .iter()
-            .enumerate()
-            .find(|(_, &player_id)| id == player_id)
-        {
-            self.players.remove(pos);
-        } else {
+        if !self.players.remove(&id) {
             alert("Player with specified ID not in list");
         }
     }
 
     pub fn remove_all_players(&mut self) {
-        self.players = Vec::new();
+        self.players = std::collections::HashSet::new();
     }
     pub fn set_tables(&mut self, tables: String) {
         if let Ok(tables) = tables.parse::<usize>() {
