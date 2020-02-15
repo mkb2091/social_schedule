@@ -19,7 +19,7 @@ impl Default for StyleControl {
 }
 
 impl StyleControl {
-    pub fn base_style(&self) -> seed::dom_types::Style {
+    pub fn base_style(&self) -> seed::virtual_dom::style::Style {
         match self.theme {
             Theme::Light => style![
             St::Background => "#FFFFFF";
@@ -31,7 +31,7 @@ St::Color => "#FFFFFF";],
         }
     }
 
-    pub fn button_style(&self) -> seed::dom_types::Style {
+    pub fn button_style(&self) -> seed::virtual_dom::style::Style {
         match self.theme {
             Theme::Light => style![St::Border => "1px solid #CCCCCC";
             St::BorderRadius => "3px";
@@ -46,7 +46,7 @@ St::Color => "#FFFFFF";],
             ],
         }
     }
-    pub fn option_style(&self) -> seed::dom_types::Style {
+    pub fn option_style(&self) -> seed::virtual_dom::style::Style {
         match self.theme {
             Theme::Light => style![St::Background => "#FFFFFF";
             St::Color => "#000000";

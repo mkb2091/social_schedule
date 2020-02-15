@@ -267,12 +267,6 @@ dependencies = [
 
 [[package]]
 name = "futures"
-version = "0.1.29"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b980f2816d6ee8673b6517b52cb0e808a180efc92e5c19d02cdda79066703ef"
-
-[[package]]
-name = "futures"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c329ae8753502fb44ae4fc2b622fa2a94652c41e795143765ba0927f92ab780"
@@ -385,9 +379,9 @@ dependencies = [
 
 [[package]]
 name = "gloo-timers"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31e1136fb2586cee1d7eeea23a85eab15f9336294bb8fccafac62fa3410a1f28"
+checksum = "0b2d17dbd803c2fc86cb1b613adf63192046a7176f383a8302594654752c4c4a"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
@@ -610,9 +604,9 @@ dependencies = [
 
 [[package]]
 name = "pulldown-cmark"
-version = "0.5.3"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77043da1282374688ee212dc44b3f37ff929431de9c9adc3053bd3cee5630357"
+checksum = "1c205cc82214f3594e2d50686730314f817c67ffa80fe800cf0db78c3c2b9d9e"
 dependencies = [
  "bitflags",
  "getopts",
@@ -780,15 +774,15 @@ checksum = "b42e15e59b18a828bbf5c58ea01debb36b9b096346de35d941dcb89009f24a0d"
 
 [[package]]
 name = "seed"
-version = "0.4.2"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f6c7a232f602b6ff24f090ef43dd71527ad4cd12cb29e028c5e597565bc5c426"
+checksum = "516cdd85cdde01a3769edc1d921aff431e024ab82b0e608c59e178d8747f902a"
 dependencies = [
  "console_error_panic_hook",
  "cookie",
  "dbg",
  "enclose",
- "futures 0.1.29",
+ "futures",
  "gloo-timers",
  "indexmap",
  "js-sys",
@@ -864,7 +858,7 @@ name = "social_schedule"
 version = "0.1.0"
 dependencies = [
  "criterion",
- "futures 0.3.4",
+ "futures",
  "getrandom",
  "num-format",
  "quickcheck",
@@ -1048,12 +1042,11 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-futures"
-version = "0.3.27"
+version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83420b37346c311b9ed822af41ec2e82839bfe99867ec6c54e2da43b7538771c"
+checksum = "8bbdd49e3e28b40dec6a9ba8d17798245ce32b019513a845369c641b275135d9"
 dependencies = [
  "cfg-if",
- "futures 0.1.29",
  "js-sys",
  "wasm-bindgen",
  "web-sys",

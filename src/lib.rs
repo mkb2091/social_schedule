@@ -280,7 +280,7 @@ St::Overflow => "auto";],
     ]
 }
 
-fn window_events(_model: &Model) -> Vec<seed::events::Listener<Msg>> {
+fn window_events(_model: &Model) -> Vec<seed::virtual_dom::listener::Listener<Msg>> {
     let mut result = Vec::new();
     result.push(simple_ev(Ev::Playing, Msg::GSGenerate));
     result
@@ -288,7 +288,7 @@ fn window_events(_model: &Model) -> Vec<seed::events::Listener<Msg>> {
 
 #[wasm_bindgen(start)]
 pub fn render() {
-    seed::App::build(|_, _| Init::new(Model::default()), update, view)
+    seed::app::App::builder(update, view)
         .window_events(window_events)
         .build_and_start();
 }
