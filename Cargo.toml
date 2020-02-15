@@ -31,5 +31,5 @@ harness = false
 [profile.release]
 lto = true
 opt-level = 3
-debug = true
+debug = false
 debug-assertions = false
