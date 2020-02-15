@@ -143,9 +143,11 @@ St::FlexGrow=> "1";];
 
     div![
         style![St::Display => "Flex";
-        St::FlexWrap => "Wrap"],
+        St::FlexWrap => "Wrap";],
         div![
             &box_style,
+            style![St::FlexGrow=> "0";
+            St::Width => "min-content"],
             if let Some(schedule) = &model.schedule {
                 let best = &schedule.best;
                 p![
@@ -163,6 +165,7 @@ St::FlexGrow=> "1";];
                         li![format!("{} players", model.players.len())],
                         li![format!("{} tables", model.tables)]
                     ],
+                    p!["While the algorithm is running it is continuously trying to find better schedules. Leaving it running longer can result in better schedules being generated. When happy with the current best generated schedule, then click 'Finalise Event'"],
                     div![
                         style![St::Border => "6px inset grey";
                     St::Padding => "10px";
@@ -216,6 +219,7 @@ St::FlexGrow=> "1";];
         ],
         div![
             &box_style,
+            style![St::Width => "min-content"],
             p![
                 span!["Runtime Limit: "],
                 input![attrs! {At::Type => "checkbox"}],
@@ -249,7 +253,9 @@ St::FlexGrow=> "1";];
                         }
                         cpu_options
                     }
-                ]
+                ],
+                br![],
+                "This controls how much CPU the program will attempt to use. The high it is, the faster the schedule generation will be, but also the slower other programs running the this computer will be, and the higher temperature the CPU will reach."
             ],
             p![{
                 let mut writer = String::from("Testing ");
