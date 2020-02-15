@@ -92,7 +92,7 @@ St::FlexGrow=> "1";];
                         }
                     });
                     node_list.push(tr![
-                        td![h3![group.name]],
+                        td![h3![group.name], format!(" ({} players)", players.len())],
                         td![button![
                             style.button_style(),
                             raw_ev(Ev::Click, move |_| Msg::MGChangeName(id)),

@@ -263,7 +263,7 @@ St::FlexGrow=> "1";];
                             node_list.push(option![
                                 style.option_style(),
                                 attrs! {At::Value => id},
-                                format!("{} ({})", group.name, player_count)
+                                format!("{} ({} players)", group.name, player_count)
                             ]);
                         }
                         node_list
