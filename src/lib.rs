@@ -217,7 +217,11 @@ St::Overflow => "auto";],
                 Page::ManagePlayers => "Manage Players",
                 Page::ManageGroups => "Manage Groups",
                 Page::ManageEvents => "Manage Events",
-                Page::CreateEvent => "Create Event",
+                Page::CreateEvent => match model.create_event.stage {
+                    manage_events_page::CreateEventStages::Details => "Create Event",
+                    manage_events_page::CreateEventStages::GenerateSchedule =>
+                        "Generating Schedule...",
+                },
                 Page::Preferences => "Preferences",
             }
         ],
@@ -228,7 +232,11 @@ St::Overflow => "auto";],
                 model.style_control.button_style(),
                 &tab_style,
                 simple_ev(Ev::Click, Msg::ChangePage(Page::CreateEvent)),
-                "Create Event"
+                match model.create_event.stage {
+                    manage_events_page::CreateEventStages::Details => "Create Event",
+                    manage_events_page::CreateEventStages::GenerateSchedule =>
+                        "Generating Schedule...",
+                }
             ],
             button![
                 model.style_control.button_style(),

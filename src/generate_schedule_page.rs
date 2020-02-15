@@ -167,7 +167,7 @@ St::FlexGrow=> "1";];
                         style![St::Border => "6px inset grey";
                     St::Padding => "10px";
                     St::Width => "max-content";],
-                        h3!["Current best found"],
+                        h3!["Current best schedule solution found"],
                         p![format!(
                             "Average number of unique games played: {}",
                             best.unique_games_played() as f32 / schedule.get_player_count() as f32

@@ -101,7 +101,7 @@ St::FlexGrow=> "1";];
                         td![button![
                             style.button_style(),
                             raw_ev(Ev::Click, move |_| Msg::MPChangeEmail(id)),
-                            "Change Email"
+                            "Edit Email"
                         ]],
                         td![button![
                             style.button_style(),
@@ -133,7 +133,7 @@ St::FlexGrow=> "1";];
             button![
                 style.button_style(),
                 simple_ev(Ev::Click, Msg::MPAddPlayer),
-                "Add"
+                "Add to player list"
             ],
         ],
     ]

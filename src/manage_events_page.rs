@@ -45,7 +45,7 @@ St::FlexGrow=> "1";];
     ]
 }
 
-enum CreateEventStages {
+pub enum CreateEventStages {
     Details,
     GenerateSchedule,
 }
@@ -57,7 +57,7 @@ pub struct CreateEvent {
     add_player_select_box: Option<u32>,
     add_group_select_box: String,
     tables: Option<usize>,
-    stage: CreateEventStages,
+    pub stage: CreateEventStages,
 }
 
 impl Default for CreateEvent {
@@ -250,43 +250,46 @@ St::FlexGrow=> "1";];
                 "Steps:",
                 ol![
                     li![
-                        "Enter event name",
+                        "Enter event name ",
                         if !model.event_name.is_empty() {
                             span![style![St::Color => "green"], "✔"]
                         } else {
-                            span![]
+                            span![style![St::Color => "red"], "✕"]
                         }
                     ],
                     li![
-                        "Enter event date",
+                        "Enter event date ",
                         if !model.event_date.is_empty() {
                             span![style![St::Color => "green"], "✔"]
                         } else {
-                            span![]
+                            span![style![St::Color => "red"], "✕"]
                         }
                     ],
                     li![
-                        "Enter the number of board games",
+                        "Enter the number of board games ",
                         if model.tables.is_some() {
                             span![style![St::Color => "green"], "✔"]
                         } else {
-                            span![]
+                            span![style![St::Color => "red"], "✕"]
                         }
                     ],
                     li![
-                        "Add the players",
-                        if !model.players.is_empty() {
-                            span![style![St::Color => "green"], "✔"]
-                        } else {
-                            span![]
-                        }
+                        "Add the players ",
+                        span![
+                            if model.players.len() <= 64 && model.players.len() >= 4{
+                                style![St::Color => "green"]
+                            } else {
+                                style![St::Color => "red"]
+                            },
+                            format!("{} / 64", model.players.len())
+                        ]
                     ],
-                    li!["Click Generate Schedule"],
+                    li!["Click Generate Schedule to start the schedule generation process using the entered information"],
                 ],
             ],
             p![
-                "Generate a schedule which attempts to maximise the number of unique games each player plays, \
-                while simultaneously attempting to maximise the number of unique opponents each player plays with",
+                "The algorithm will attempt to generate a schedule maximise the number of unique games each player plays, \
+                while simultaneously attempting to maximise the number of unique opponents each player has",
             ],
             button![
                 style.button_style(),
