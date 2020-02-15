@@ -219,7 +219,7 @@ St::FlexGrow=> "1";];
                         input_ev(Ev::Input, Msg::CESetEventDate)]]
                 ],
                 tr![
-                    td!["Number of different boardgames: "],
+                    td!["Number of different board games: "],
                     td![select![
                         style.button_style(),
                         input_ev(Ev::Input, Msg::CESetTables),
@@ -242,6 +242,48 @@ St::FlexGrow=> "1";];
                         }
                     ]],
                 ]],
+            p![
+                "The number of board games will also be the number of rounds, so \
+                each player will get an opportunity to play each of the games once"
+            ],
+            p![
+                "Steps:",
+                ol![
+                    li![
+                        "Enter event name",
+                        if !model.event_name.is_empty() {
+                            span![style![St::Color => "green"], "✔"]
+                        } else {
+                            span![]
+                        }
+                    ],
+                    li![
+                        "Enter event date",
+                        if !model.event_date.is_empty() {
+                            span![style![St::Color => "green"], "✔"]
+                        } else {
+                            span![]
+                        }
+                    ],
+                    li![
+                        "Enter the number of board games",
+                        if model.tables.is_some() {
+                            span![style![St::Color => "green"], "✔"]
+                        } else {
+                            span![]
+                        }
+                    ],
+                    li![
+                        "Add the players",
+                        if !model.players.is_empty() {
+                            span![style![St::Color => "green"], "✔"]
+                        } else {
+                            span![]
+                        }
+                    ],
+                    li!["Click Generate Schedule"],
+                ],
+            ],
             p![
                 "Generate a schedule which attempts to maximise the number of unique games each player plays, \
                 while simultaneously attempting to maximise the number of unique opponents each player plays with",
@@ -308,7 +350,7 @@ St::FlexGrow=> "1";];
             p![button![
                 style.button_style(),
                 simple_ev(Ev::Click, Msg::CERemoveAllPlayers),
-                "Remove All"
+                "Remove All Players From Event"
             ]],
         ],
         div![

@@ -211,13 +211,16 @@ fn view(model: &Model) -> impl View<Msg> {
         model.style_control.base_style(),
         style![St::Flex => "1";
 St::Overflow => "auto";],
-        h1![match model.page {
-            Page::ManagePlayers => "Manage Players",
-            Page::ManageGroups => "Manage Groups",
-            Page::ManageEvents => "Manage Events",
-            Page::CreateEvent => "Create Event",
-            Page::Preferences => "Preferences",
-        }],
+        h1![
+            style![St::PaddingLeft => "20px";],
+            match model.page {
+                Page::ManagePlayers => "Manage Players",
+                Page::ManageGroups => "Manage Groups",
+                Page::ManageEvents => "Manage Events",
+                Page::CreateEvent => "Create Event",
+                Page::Preferences => "Preferences",
+            }
+        ],
         div![
             style![St::Display => "Flex";
 		St::FlexWrap => "Wrap";],
