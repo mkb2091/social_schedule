@@ -224,8 +224,7 @@ St::FlexGrow=> "1";];
                             table_size_list
                         }
                     ]],
-                ]
-            ],
+                ]],
             p![
                 "Generate a schedule which attempts to maximise the number of unique games each player plays,\
                 while simultaneously attempting to maximise the number of unique opponents each player plays with",

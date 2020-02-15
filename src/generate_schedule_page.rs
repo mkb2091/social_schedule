@@ -40,9 +40,9 @@ impl Default for GenerateSchedule {
 
 impl GenerateSchedule {
     pub fn apply_parameters(&mut self, players: Vec<u32>, tables: usize) {
-        self.players = players;
-        self.tables = tables;
         if let Ok(rng) = rand_xorshift::XorShiftRng::from_rng(&mut self.rng) {
+            self.players = players;
+            self.tables = tables;
             self.schedule = Some(schedule::Generator::new(
                 rng,
                 self.players.len(),
@@ -63,7 +63,7 @@ impl GenerateSchedule {
         if let Ok(cpu_usage) = cpu_usage.parse::<f64>() {
             self.cpu_usage = cpu_usage;
         } else {
-            alert("Invalid player count");
+            alert("Invalid CPU usage");
         }
     }
 
@@ -216,6 +216,11 @@ St::FlexGrow=> "1";];
                             cpu_options.push(option![
                                 style.option_style(),
                                 attrs! {At::Value => percent},
+                                if percent as f64 == model.cpu_usage {
+                                    attrs! {At::Selected => "selected"}
+                                } else {
+                                    attrs! {}
+                                },
                                 format!("{}%", percent)
                             ]);
                         }
