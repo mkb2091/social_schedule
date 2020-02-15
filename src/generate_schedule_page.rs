@@ -61,6 +61,7 @@ impl GenerateSchedule {
             self.tables = tables;
             self.event_name = String::from(event_name);
             self.event_date = String::from(event_date);
+            self.running = true;
             self.schedule = Some(schedule::Generator::new(
                 rng,
                 self.players.len(),
@@ -208,11 +209,6 @@ St::FlexGrow=> "1";];
                             table
                         }]
                     ],
-                    button![
-                        style.button_style(),
-                        simple_ev(Ev::Click, Msg::GSMakeEvent),
-                        "Make event with schedule"
-                    ]
                 ]
             } else {
                 p![]
@@ -290,6 +286,15 @@ St::FlexGrow=> "1";];
                     ]
                 ]
             }],
+            p![
+                button![
+                    style.button_style(),
+                    simple_ev(Ev::Click, Msg::GSBack),
+                    "Back / Edit Details"
+                ],
+                button![style.button_style(), "Create New Event"],
+                button![style.button_style(), "Finalise Event"],
+            ]
         ]
     ]
 }

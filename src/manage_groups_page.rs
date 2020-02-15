@@ -184,7 +184,10 @@ St::FlexGrow=> "1";];
             h2!["Create New Group"],
             p![
                 span!["Group Name: "],
-                input![input_ev(Ev::Input, Msg::MGAddGroupNameInput)],
+                input![
+                    attrs! {At::Value => model.add_group_name_input},
+                    input_ev(Ev::Input, Msg::MGAddGroupNameInput)
+                ],
             ],
             button![
                 style.button_style(),

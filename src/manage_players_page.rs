@@ -59,7 +59,7 @@ impl ManagePlayers {
 }
 
 pub fn view_manage_players(
-    _model: &ManagePlayers,
+    model: &ManagePlayers,
     database: &database::Database,
     style: &style_control::StyleControl,
 ) -> Node<Msg> {
@@ -118,11 +118,17 @@ St::FlexGrow=> "1";];
             h2!["Add new player"],
             p![
                 span!["Player Name: "],
-                input![input_ev(Ev::Input, Msg::MPAddPlayerNameInput)],
+                input![
+                    attrs! {At::Value => model.add_player_name_input},
+                    input_ev(Ev::Input, Msg::MPAddPlayerNameInput)
+                ],
             ],
             p![
                 span!["Email: "],
-                input![input_ev(Ev::Input, Msg::MPAddPlayerEmailInput)]
+                input![
+                    attrs! {At::Value => model.add_player_email_input},
+                    input_ev(Ev::Input, Msg::MPAddPlayerEmailInput)
+                ]
             ],
             button![
                 style.button_style(),

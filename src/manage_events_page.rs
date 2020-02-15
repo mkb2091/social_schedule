@@ -184,6 +184,10 @@ impl CreateEvent {
             self.tables = None;
         }
     }
+    pub fn back(&mut self, generate_schedule_model: &mut generate_schedule_page::GenerateSchedule) {
+        generate_schedule_model.stop();
+        self.stage = CreateEventStages::Details;
+    }
 }
 
 fn view_create_event_details(
@@ -205,11 +209,14 @@ St::FlexGrow=> "1";];
             table![
                 tr![
                     td!["Event Name: "],
-                    td![input![input_ev(Ev::Input, Msg::CESetEventName)]]
+                    td![input![
+                        attrs! {At::Value => model.event_name},
+                            input_ev(Ev::Input, Msg::CESetEventName)]]
                 ],
                 tr![
                     td!["Event date: "],
-                    td![input![input_ev(Ev::Input, Msg::CESetEventDate)]]
+                    td![input![attrs!{At::Value => model.event_date},
+                        input_ev(Ev::Input, Msg::CESetEventDate)]]
                 ],
                 tr![
                     td!["Number of different boardgames: "],
@@ -223,6 +230,11 @@ St::FlexGrow=> "1";];
                                 table_size_list.push(option![
                                     style.option_style(),
                                     attrs! {At::Value => table_size},
+                                    if Some(table_size) == model.tables {
+                                        attrs! {At::Selected => "selected"}
+                                    } else {
+                                        attrs! {}
+                                    },
                                     format!("{}", table_size)
                                 ]);
                             }
