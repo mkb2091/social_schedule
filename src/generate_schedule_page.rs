@@ -13,7 +13,7 @@ pub struct GenerateSchedule {
     cpu_usage: f64,
     operations_per_second: u32,
     operation_history: [f64; 35],
-    total_operations: u32,
+    total_operations: u64,
     iteration: usize,
     running: bool,
     event_name: String,
@@ -103,7 +103,7 @@ impl GenerateSchedule {
             while performance_now() < ideal {
                 operations += schedule.process();
             }
-            self.total_operations += operations;
+            self.total_operations += operations as u64;
             self.iteration += 1;
             self.iteration %= 35;
             self.operation_history[self.iteration] = (operations as f64) * 10.0;
