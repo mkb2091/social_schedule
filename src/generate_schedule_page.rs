@@ -18,6 +18,7 @@ pub struct GenerateSchedule {
     running: bool,
     event_name: String,
     event_date: String,
+    last_paused: f64,
 }
 
 impl Default for GenerateSchedule {
@@ -42,6 +43,7 @@ impl Default for GenerateSchedule {
             running: true,
             event_name: String::new(),
             event_date: String::new(),
+            last_paused: 0.0,
         }
     }
 }
@@ -68,11 +70,14 @@ impl GenerateSchedule {
     }
 
     pub fn stop(&mut self) {
-        self.running = false
+        self.running = false;
+        self.last_paused = performance_now();
     }
 
     pub fn resume(&mut self) {
-        self.running = true
+        if performance_now() - self.last_paused > 250.0 {
+            self.running = true;
+        }
     }
 
     pub fn set_cpu_usage(&mut self, cpu_usage: String) {
