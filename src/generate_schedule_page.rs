@@ -139,6 +139,10 @@ St::FlexGrow=> "1";];
                         }
                     ],
                     p![format!("Operations /s: {}", model.operations_per_second)],
+                    div![style![St::Border => "6px inset grey";
+                    St::Padding => "10px";
+                    St::Width => "max-content";],
+                        h3!["Current best found"],
                     p![format!(
                         "Average number of unique games played (maximium {}): {}",
                         (best.ideal_unique_games as f32 / schedule.get_player_count() as f32),
@@ -180,7 +184,7 @@ St::FlexGrow=> "1";];
                             }]);
                         }
                         table
-                    }],
+                    }]],
                     button![
                         style.button_style(),
                         simple_ev(Ev::Click, Msg::GSMakeEvent),

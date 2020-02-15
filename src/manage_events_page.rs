@@ -226,7 +226,7 @@ St::FlexGrow=> "1";];
                     ]],
                 ]],
             p![
-                "Generate a schedule which attempts to maximise the number of unique games each player plays,\
+                "Generate a schedule which attempts to maximise the number of unique games each player plays, \
                 while simultaneously attempting to maximise the number of unique opponents each player plays with",
             ],
             button![
@@ -297,11 +297,13 @@ St::FlexGrow=> "1";];
         div![
             &box_style,
             h2![format!("Players to be in the event: {}", model.players.len())],
+            p![if !model.players.is_empty() {"Hover over player name to see player ID"} else {""}],
             table![style![St::PaddingBottom => "5px";], {
                 let mut players_list: Vec<Node<Msg>> = Vec::with_capacity(model.players.len());
                 for &player_id in &model.players {
                     players_list.push(tr![
-                        td![if let Some(player) = database.get_player(player_id) {
+                        td![attrs! {At::Title => player_id.to_string()},
+                            if let Some(player) = database.get_player(player_id) {
                             &player.name
                         } else {
                             "Player does not exist"

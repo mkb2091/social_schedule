@@ -113,6 +113,8 @@ pub enum Msg {
     MGAddPlayer(u32),
     MGRemovePlayerFromGroup(u32, u32),
     MGChangeName(u32),
+    MGExpand(u32),
+    MGHide(u32),
     PSetThemeInput(String),
     PSetTheme,
 }
@@ -166,6 +168,8 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         Msg::MGChangeName(group_id) => model
             .manage_groups
             .change_name(&mut model.database, group_id),
+        Msg::MGExpand(group_id) => model.manage_groups.expand(group_id),
+        Msg::MGHide(group_id) => model.manage_groups.hide(group_id),
         Msg::PSetThemeInput(theme) => model.preferences.set_theme_input(theme),
         Msg::PSetTheme => model.preferences.set_theme(&mut model.style_control),
     }
@@ -178,7 +182,7 @@ fn player_select_box(
     selected: Option<u32>,
 ) -> Vec<Node<Msg>> {
     let mut player_list = database.get_players();
-    player_list.sort_by_key(|(&id, _)| id);
+    player_list.sort_by_key(|(_, player)| &player.name);
     let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(player_list.len() + 1);
     node_list.push(option![style.option_style(), attrs! {At::Value => ""}, ""]);
     for (id, player) in &player_list {

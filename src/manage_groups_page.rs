@@ -5,6 +5,7 @@ use crate::{alert, database, player_select_box, prompt, style_control, Msg};
 pub struct ManageGroups {
     pub add_group_name_input: String,
     pub add_player_to_group_input: std::collections::HashMap<u32, u32>,
+    expanded: std::collections::HashSet<u32>,
 }
 
 impl Default for ManageGroups {
@@ -12,6 +13,7 @@ impl Default for ManageGroups {
         Self {
             add_group_name_input: String::new(),
             add_player_to_group_input: std::collections::HashMap::new(),
+            expanded: std::collections::HashSet::new(),
         }
     }
 }
@@ -54,6 +56,12 @@ impl ManageGroups {
             }
         }
     }
+    pub fn expand(&mut self, id: u32) {
+        self.expanded.insert(id);
+    }
+    pub fn hide(&mut self, id: u32) {
+        self.expanded.remove(&id);
+    }
 }
 
 pub fn view_manage_groups(
@@ -75,9 +83,14 @@ St::FlexGrow=> "1";];
                 let group_list = database.get_groups();
                 let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(group_list.len());
                 for (&id, group) in &group_list {
-                    let mut group_node: Vec<Node<Msg>> = Vec::new();
                     let mut players: Vec<u32> = group.get_players().map(|&id| id).collect();
-                    players.sort();
+                    players.sort_by_key(|&id| {
+                        if let Some(player) = database.get_player(id) {
+                            Some(&player.name)
+                        } else {
+                            None
+                        }
+                    });
                     node_list.push(tr![
                         td![h3![group.name]],
                         td![button![
@@ -89,50 +102,79 @@ St::FlexGrow=> "1";];
                             style.button_style(),
                             raw_ev(Ev::Click, move |_| Msg::MGRemoveGroup(id)),
                             "Remove"
-                        ]]
+                        ]],
+                        td![if model.expanded.contains(&id) {
+                            button![
+                                style.button_style(),
+                                raw_ev(Ev::Click, move |_| Msg::MGHide(id)),
+                                "Hide players in group"
+                            ]
+                        } else {
+                            button![
+                                style.button_style(),
+                                raw_ev(Ev::Click, move |_| Msg::MGExpand(id)),
+                                "Show players in group"
+                            ]
+                        }]
                     ]);
 
-                    node_list.push(tr![td![
-                        attrs! {At::ColSpan => 3},
-                        select![
-                            style.button_style(),
-                            input_ev("input", move |player_id| Msg::MGAddPlayerInput(
-                                id, player_id
-                            )),
-                            player_select_box(
-                                database,
-                                style,
-                                &players.iter().map(|&id| id).collect(),
-                                if let Some(&player_id) = model.add_player_to_group_input.get(&id) {
-                                    Some(player_id)
-                                } else {
-                                    None
+                    if model.expanded.contains(&id) {
+                        node_list.push(tr![td![
+                            style![St::Border => "6px inset grey";
+                        St::Padding => "10px";
+                        St::Width => "max-content";],
+                            attrs! {At::ColSpan => 3},
+                            "Add player to group",
+                            br![],
+                            select![
+                                style.button_style(),
+                                input_ev("input", move |player_id| Msg::MGAddPlayerInput(
+                                    id, player_id
+                                )),
+                                player_select_box(
+                                    database,
+                                    style,
+                                    &players.iter().map(|&id| id).collect(),
+                                    if let Some(&player_id) =
+                                        model.add_player_to_group_input.get(&id)
+                                    {
+                                        Some(player_id)
+                                    } else {
+                                        None
+                                    }
+                                )
+                            ],
+                            button![
+                                style.button_style(),
+                                raw_ev(Ev::Click, move |_| Msg::MGAddPlayer(id)),
+                                "Add Player"
+                            ],
+                            {
+                                let mut group_node: Vec<Node<Msg>> = Vec::new();
+                                for player_id in players.iter() {
+                                    let player_id = *player_id;
+                                    if let Some(player) = database.get_player(player_id) {
+                                        group_node.push(tr![
+                                            td![
+                                                attrs! {
+                                                    At::Title => player_id.to_string()
+                                                },
+                                                player.name,
+                                            ],
+                                            td![button![
+                                                style.button_style(),
+                                                raw_ev(Ev::Click, move |_| {
+                                                    Msg::MGRemovePlayerFromGroup(id, player_id)
+                                                }),
+                                                "Remove from group"
+                                            ]]
+                                        ]);
+                                    }
                                 }
-                            )
-                        ],
-                        button![
-                            style.button_style(),
-                            raw_ev(Ev::Click, move |_| Msg::MGAddPlayer(id)),
-                            "Add Player"
-                        ]
-                    ]]);
-                    for player_id in players.iter() {
-                        let player_id = *player_id;
-                        if let Some(player) = database.get_player(player_id) {
-                            group_node.push(tr![
-                                td![format!("{}: ({})", player.name, player_id)],
-                                td![button![
-                                    style.button_style(),
-                                    raw_ev(Ev::Click, move |_| Msg::MGRemovePlayerFromGroup(
-                                        id, player_id
-                                    )),
-                                    "Remove"
-                                ]]
-                            ]);
-                        }
+                                table![group_node]
+                            }
+                        ]]);
                     }
-
-                    node_list.push(tr![td![attrs! {At::ColSpan => 3}, table![group_node]]]);
                 }
                 node_list
             }],
