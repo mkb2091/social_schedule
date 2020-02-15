@@ -272,7 +272,7 @@ St::FlexGrow=> "1";];
                     span![
                         style![St::Color => "red"],
                         simple_ev(Ev::Click, Msg::GSStop),
-                        "STOP"
+                        "PAUSE"
                     ]
                 ]
             } else {
