@@ -21,6 +21,8 @@ use seed::prelude::*;
 
 extern crate wasm_bindgen;
 
+extern crate num_format;
+
 #[cfg(test)]
 #[macro_use]
 extern crate quickcheck;

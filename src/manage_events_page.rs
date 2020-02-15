@@ -106,7 +106,12 @@ impl CreateEvent {
         } else if let Some(tables) = self.tables {
             self.stage = CreateEventStages::GenerateSchedule;
             let players: Vec<u32> = self.players.iter().map(|&id| id).collect();
-            generate_schedule_model.apply_parameters(players, tables)
+            generate_schedule_model.apply_parameters(
+                players,
+                tables,
+                &self.event_name,
+                &self.event_date,
+            )
         } else {
             alert("Number of tables is not set");
         }

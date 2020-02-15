@@ -304,7 +304,7 @@ impl Schedule {
         table1: usize,
         table2: usize,
         apply: bool,
-    ) -> (u32, u32) {
+    ) -> (u32, u32, u32) {
         let mut score = old_score;
         debug_assert!(score == self.get_score());
         debug_assert!(score == self.generate_score()); // check that cache is updated
@@ -379,7 +379,11 @@ impl Schedule {
         self.sum_unique_opponent();
         // Regenerate sum caches
         debug_assert!(self.get_score() == self.generate_score()); // Check that cache still represents most recent data
-        (score, unique_games_played)
+        (
+            score,
+            unique_games_played,
+            (t1_players.len() * t2_players.len()) as u32,
+        )
     }
     /** Check if the schedule has entirely met all criteria*/
     pub fn is_ideal(&self) -> bool {
@@ -449,7 +453,8 @@ impl<T: rand::Rng + rand_core::RngCore> Generator<T> {
     }
 
     /**Find next table pair swap to try and evaluate if improved*/
-    pub fn process(&mut self) {
+    pub fn process(&mut self) -> u32 {
+        let mut evaluated_schedules = 0;
         self.table2 += 1;
         if self.table2 >= self.tables {
             self.table2 = self.table1 + 2;
@@ -466,8 +471,14 @@ impl<T: rand::Rng + rand_core::RngCore> Generator<T> {
                     if self.next_score > self.current_score {
                         // If best single-step change is an improvement, then apply it
                         let (round, table1, table2) = self.next;
-                        self.current
-                            .improve_table(self.current_score, round, table1, table2, true);
+                        let (_, _, ops) = self.current.improve_table(
+                            self.current_score,
+                            round,
+                            table1,
+                            table2,
+                            true,
+                        );
+                        evaluated_schedules += ops;
                         self.current_score = self.next_score;
                         if self.current_score > self.best_score
                             || (self.current_score == self.best_score
@@ -481,7 +492,8 @@ impl<T: rand::Rng + rand_core::RngCore> Generator<T> {
                         // If best single-step change is not an improvement, then generate a new random schedule
                         self.current = Schedule::new(self.player_count, self.tables);
                         self.current.generate_random(&mut self.rng);
-                        self.current_score = self.current.generate_score();
+                        self.current_score = self.current.get_score();
+                        evaluated_schedules += 1;
                         self.next_score = self.current_score;
                         if self.current_score > self.best_score
                             || (self.current_score == self.best_score
@@ -495,13 +507,14 @@ impl<T: rand::Rng + rand_core::RngCore> Generator<T> {
                 }
             }
         }
-        let (new_score, new_unique_games_played) = self.current.improve_table(
+        let (new_score, new_unique_games_played, ops) = self.current.improve_table(
             self.current_score,
             self.round,
             self.table1,
             self.table2,
             false,
         );
+        evaluated_schedules += ops;
         if new_score > self.next_score
             || (new_score == self.next_score && new_unique_games_played > self.next_unique_games)
         {
@@ -509,6 +522,7 @@ impl<T: rand::Rng + rand_core::RngCore> Generator<T> {
             self.next_score = new_score;
             self.next_unique_games = new_unique_games_played;
         }
+        evaluated_schedules
     }
 }
 

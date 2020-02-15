@@ -1,6 +1,8 @@
 use rand_core::SeedableRng;
 use seed::prelude::*;
 
+use num_format::{Locale, WriteFormatted};
+
 use crate::{alert, database, next_tick, performance_now, prompt, schedule, style_control, Msg};
 
 pub struct GenerateSchedule {
@@ -11,8 +13,11 @@ pub struct GenerateSchedule {
     cpu_usage: f64,
     operations_per_second: u32,
     operation_history: [f64; 35],
+    total_operations: u32,
     iteration: usize,
     running: bool,
+    event_name: String,
+    event_date: String,
 }
 
 impl Default for GenerateSchedule {
@@ -32,17 +37,28 @@ impl Default for GenerateSchedule {
             cpu_usage: 99.0,
             operations_per_second: 0,
             operation_history: [0.0; 35],
+            total_operations: 0,
             iteration: 0,
             running: true,
+            event_name: String::new(),
+            event_date: String::new(),
         }
     }
 }
 
 impl GenerateSchedule {
-    pub fn apply_parameters(&mut self, players: Vec<u32>, tables: usize) {
+    pub fn apply_parameters(
+        &mut self,
+        players: Vec<u32>,
+        tables: usize,
+        event_name: &str,
+        event_date: &str,
+    ) {
         if let Ok(rng) = rand_xorshift::XorShiftRng::from_rng(&mut self.rng) {
             self.players = players;
             self.tables = tables;
+            self.event_name = String::from(event_name);
+            self.event_date = String::from(event_date);
             self.schedule = Some(schedule::Generator::new(
                 rng,
                 self.players.len(),
@@ -83,21 +99,18 @@ impl GenerateSchedule {
             }
             let now = performance_now();
             let ideal = now + self.cpu_usage;
-            let predicted_loops =
-                ((self.operations_per_second as f64) / 1000.0 * self.cpu_usage) as u32;
-            for _ in 0..(predicted_loops / 2) {
-                // Reduce calls to performance_now() by predicting
-                schedule.process();
-            }
-            let mut operations: u32 = predicted_loops / 2;
+            let mut operations: u32 = 0;
             while performance_now() < ideal {
-                schedule.process();
-                operations += 1;
+                operations += schedule.process();
             }
+            self.total_operations += operations;
             self.iteration += 1;
             self.iteration %= 35;
             self.operation_history[self.iteration] = (operations as f64) * 10.0;
-            self.operations_per_second = (self.operation_history.iter().sum::<f64>() / 35.0) as u32;
+            if self.iteration % 5 == 0 {
+                self.operations_per_second =
+                    (self.operation_history.iter().sum::<f64>() / 35.0) as u32;
+            }
             next_tick(100.0 - self.cpu_usage);
         } else {
             next_tick(100.0);
@@ -133,58 +146,63 @@ St::FlexGrow=> "1";];
                     p![
                         style![St::FontWeight => "bold";],
                         if schedule.best.is_ideal() {
-                            "Found ideal schedule"
+                            "Found ideal schedule for "
                         } else {
-                            "Generating schedules..."
-                        }
+                            "Generating schedules for "
+                        },
+                        model.event_name,
                     ],
-                    p![format!("Operations /s: {}", model.operations_per_second)],
-                    div![style![St::Border => "6px inset grey";
+                    ul![
+                        li![format!("On {}", model.event_date)],
+                        li![format!("{} players", model.players.len())],
+                        li![format!("{} tables", model.tables)]
+                    ],
+                    div![
+                        style![St::Border => "6px inset grey";
                     St::Padding => "10px";
                     St::Width => "max-content";],
                         h3!["Current best found"],
-                    p![format!(
-                        "Average number of unique games played (maximium {}): {}",
-                        (best.ideal_unique_games as f32 / schedule.get_player_count() as f32),
-                        (best.unique_games_played() as f32 / schedule.get_player_count() as f32)
-                    )],
-                    p![format!(
-                        "Average number of unique opponents/teammates played with (maximium {}): {}",
-                        (best.ideal_unique_opponents as f32 / schedule.get_player_count() as f32),
-                        (best.unique_opponents() as f32 / schedule.get_player_count() as f32)
-                    )],
-                    table![style![St::BorderSpacing => "5px 10px"; ], {
-                        let tables = best.get_tables();
+                        p![format!(
+                            "Average number of unique games played: {}",
+                            best.unique_games_played() as f32 / schedule.get_player_count() as f32
+                        )],
+                        p![format!(
+                            "Average number of unique opponents/teammates played with: {}",
+                            (best.unique_opponents() as f32 / schedule.get_player_count() as f32)
+                        )],
+                        table![style![St::BorderSpacing => "5px 10px"; ], {
+                            let tables = best.get_tables();
 
-                        let mut table: Vec<Node<Msg>> = Vec::with_capacity(tables + 1);
-                        let mut heading: Vec<Node<Msg>> = Vec::with_capacity(tables + 1);
-                        heading.push(td![]);
-                        for game in 1..=tables {
-                            heading.push(th![format!("Table {:}", game)]);
-                        }
-                        table.push(tr![heading]);
-                        for round in 0..tables {
-                            table.push(tr![{
-                                let mut row: Vec<Node<Msg>> = Vec::with_capacity(tables + 1);
-                                row.push(td![format!("Round {:}", round + 1)]);
-                                for table in 0..tables {
-                                    row.push(td![{
-                                        let players = best.get_players_from_game(round, table);
-                                        let mut data: Vec<Node<Msg>> = Vec::new();
-                                        for player_number in players {
-                                            let id = model.players[player_number];
-                                            if let Some(player) = database.get_player(id) {
-                                                data.push(span![player.name, br![]]);
+                            let mut table: Vec<Node<Msg>> = Vec::with_capacity(tables + 1);
+                            let mut heading: Vec<Node<Msg>> = Vec::with_capacity(tables + 1);
+                            heading.push(td![]);
+                            for game in 1..=tables {
+                                heading.push(th![format!("Table {:}", game)]);
+                            }
+                            table.push(tr![heading]);
+                            for round in 0..tables {
+                                table.push(tr![{
+                                    let mut row: Vec<Node<Msg>> = Vec::with_capacity(tables + 1);
+                                    row.push(td![format!("Round {:}", round + 1)]);
+                                    for table in 0..tables {
+                                        row.push(td![{
+                                            let players = best.get_players_from_game(round, table);
+                                            let mut data: Vec<Node<Msg>> = Vec::new();
+                                            for player_number in players {
+                                                let id = model.players[player_number];
+                                                if let Some(player) = database.get_player(id) {
+                                                    data.push(span![player.name, br![]]);
+                                                }
                                             }
-                                        }
-                                        data
-                                    }]);
-                                }
-                                row
-                            }]);
-                        }
-                        table
-                    }]],
+                                            data
+                                        }]);
+                                    }
+                                    row
+                                }]);
+                            }
+                            table
+                        }]
+                    ],
                     button![
                         style.button_style(),
                         simple_ev(Ev::Click, Msg::GSMakeEvent),
@@ -232,6 +250,22 @@ St::FlexGrow=> "1";];
                     }
                 ]
             ],
+            p![{
+                let mut writer = String::from("Testing ");
+                writer
+                    .write_formatted(&model.operations_per_second, &Locale::en)
+                    .unwrap();
+                writer.push_str(" schedules per second");
+                writer
+            }],
+            p![{
+                let mut writer = String::from("Tested ");
+                writer
+                    .write_formatted(&model.total_operations, &Locale::en)
+                    .unwrap();
+                writer.push_str(" schedules");
+                writer
+            }],
             p![if model.running {
                 button![
                     style.button_style(),
