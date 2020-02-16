@@ -255,7 +255,7 @@ St::FlexGrow=> "1";];
                             cpu_options.push(option![
                                 style.option_style(),
                                 attrs! {At::Value => percent},
-                                if percent as f64 == model.cpu_usage {
+                                if percent == model.cpu_usage as usize {
                                     attrs! {At::Selected => "selected"}
                                 } else {
                                     attrs! {}

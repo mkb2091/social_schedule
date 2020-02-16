@@ -105,7 +105,7 @@ impl CreateEvent {
             ));
         } else if let Some(tables) = self.tables {
             self.stage = CreateEventStages::GenerateSchedule;
-            let players: Vec<u32> = self.players.iter().map(|&id| id).collect();
+            let players: Vec<u32> = self.players.iter().copied().collect();
             generate_schedule_model.apply_parameters(
                 players,
                 tables,

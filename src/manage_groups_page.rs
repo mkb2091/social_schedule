@@ -84,7 +84,7 @@ St::FlexGrow=> "1";];
                 let group_list = database.get_groups();
                 let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(group_list.len());
                 for (&id, group) in &group_list {
-                    let mut players: Vec<u32> = group.get_players().map(|&id| id).collect();
+                    let mut players: Vec<u32> = group.get_players().copied().collect();
                     players.sort_by_key(|&id| {
                         if let Some(player) = database.get_player(id) {
                             Some(&player.name)
@@ -136,7 +136,7 @@ St::FlexGrow=> "1";];
                                 player_select_box(
                                     database,
                                     style,
-                                    &players.iter().map(|&id| id).collect(),
+                                    &players.iter().copied().collect(),
                                     if let Some(&player_id) =
                                         model.add_player_to_group_input.get(&id)
                                     {

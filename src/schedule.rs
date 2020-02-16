@@ -143,8 +143,7 @@ impl Schedule {
     pub fn normal_fill(&mut self) {
         let player_list: Vec<usize> = (0..self.player_count).collect();
         let mut game: Vec<Vec<Vec<usize>>> = Vec::new();
-        let mut offset = 0;
-        for _round in 0..self.tables {
+        for (offset, _round) in (0..self.tables).enumerate() {
             let mut round: Vec<Vec<usize>> = Vec::new();
             for _ in 0..self.tables {
                 round.push(Vec::new());
@@ -153,7 +152,6 @@ impl Schedule {
                 round[(i + offset) % self.tables].push(*player);
             }
             game.push(round);
-            offset += 1;
         }
         self.import_vec(game);
     }
