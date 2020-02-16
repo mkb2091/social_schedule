@@ -89,29 +89,31 @@ impl CreateEvent {
         &mut self,
         generate_schedule_model: &mut generate_schedule_page::GenerateSchedule,
     ) {
-        if self.event_name.is_empty() {
-            alert("Event name is empty")
-        } else if self.event_date.is_empty() {
-            alert("Event date is empty")
-        } else if self.players.len() > 64 {
-            alert(&format!(
-                "Has {} players, which is above the maximum of 64",
-                self.players.len()
-            ));
-        } else if self.players.len() < 4 {
-            alert(&format!(
-                "Has {} players, which is below minimium of 4",
-                self.players.len()
-            ));
-        } else if let Some(tables) = self.tables {
-            self.stage = CreateEventStages::GenerateSchedule;
-            let players: Vec<u32> = self.players.iter().copied().collect();
-            generate_schedule_model.apply_parameters(
-                players,
-                tables,
-                &self.event_name,
-                &self.event_date,
-            )
+        if let Some(tables) = self.tables {
+            if self.event_name.is_empty() {
+                alert("Event name is empty")
+            } else if self.event_date.is_empty() {
+                alert("Event date is empty")
+            } else if self.players.len() > 64 {
+                alert(&format!(
+                    "Has {} players, which is above the maximum of 64",
+                    self.players.len()
+                ));
+            } else if self.players.len() < tables * 2 {
+                alert(&format!(
+                    "Has {} players, which is below minimium of 2 per table",
+                    self.players.len()
+                ));
+            } else {
+                self.stage = CreateEventStages::GenerateSchedule;
+                let players: Vec<u32> = self.players.iter().copied().collect();
+                generate_schedule_model.apply_parameters(
+                    players,
+                    tables,
+                    &self.event_name,
+                    &self.event_date,
+                )
+            }
         } else {
             alert("Number of tables is not set");
         }
@@ -135,12 +137,6 @@ impl CreateEvent {
         } else {
             alert("Invalid ID of player");
         }
-        if self.players.len() > 64 {
-            alert(&format!(
-                "Has {} players, which is above the maximum of 64",
-                self.players.len()
-            ));
-        };
     }
     pub fn set_add_group_select_box_input(&mut self, id: String) {
         if let Ok(id) = id.parse::<u32>() {
@@ -160,12 +156,6 @@ impl CreateEvent {
             } else {
                 alert("Player does not exist");
             }
-        }
-        if self.players.len() > 64 {
-            alert(&format!(
-                "Has {} players, which is above the maximum of 64",
-                self.players.len()
-            ));
         }
     }
 
@@ -293,12 +283,24 @@ St::FlexGrow=> "1";];
                     li![
                         "Add the players. Players can be added to the database via the Manage Players page. ",
                         span![
-                            if model.players.len() <= 64 && model.players.len() >= 4{
+                            if model.players.len() <= 64 && (if let Some(tables) = model.tables {model.players.len() >= tables * 2} else {true}){
                                 style![St::Color => "green"]
                             } else {
                                 style![St::Color => "red"]
                             },
-                            format!("{} / 64", model.players.len())
+                            model.players.len().to_string(),
+                            " players",
+                            if model.players.len() > 64 {
+                                " - Above maximum of 64"
+                            } else if {
+                                    if let Some(tables) = model.tables {
+                                        model.players.len() < tables * 2
+                                    } else {
+                                        false
+                                    }
+                                } {
+                                " - Less than minimum of 2 players per table"
+                            } else {""}
                         ]
                     ],
                     li!["Click Generate Schedule to start the schedule generation process using the entered information"],
