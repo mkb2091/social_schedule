@@ -214,15 +214,11 @@ St::Overflow => "auto";],
         h1![
             style![St::PaddingLeft => "20px";],
             match model.page {
-                Page::ManagePlayers => "Manage Players",
-                Page::ManageGroups => "Manage Groups",
-                Page::ManageEvents => "Manage Events",
-                Page::CreateEvent => match model.create_event.stage {
-                    manage_events_page::CreateEventStages::Details => "Create Event",
-                    manage_events_page::CreateEventStages::GenerateSchedule =>
-                        "Generating Schedule...",
-                },
-                Page::Preferences => "Preferences",
+                Page::ManagePlayers => "Manage Players".to_string(),
+                Page::ManageGroups => "Manage Groups".to_string(),
+                Page::ManageEvents => "Manage Events".to_string(),
+                Page::CreateEvent => model.create_event.title(&model.generate_schedule),
+                Page::Preferences => "Preferences".to_string(),
             }
         ],
         div![
@@ -232,11 +228,7 @@ St::Overflow => "auto";],
                 model.style_control.button_style(),
                 &tab_style,
                 simple_ev(Ev::Click, Msg::ChangePage(Page::CreateEvent)),
-                match model.create_event.stage {
-                    manage_events_page::CreateEventStages::Details => "Create Event",
-                    manage_events_page::CreateEventStages::GenerateSchedule =>
-                        "Generating Schedule...",
-                }
+                model.create_event.title(&model.generate_schedule),
             ],
             button![
                 model.style_control.button_style(),

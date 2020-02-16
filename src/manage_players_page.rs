@@ -69,7 +69,7 @@ St::FlexGrow=> "1";];
 
     div![
         style![St::Display => "Flex";
-        St::FlexWrap => "Wrap"],
+        St::FlexWrap => "WrapReverse"],
         div![
             &box_style,
             h2!["Player List"],
@@ -133,7 +133,7 @@ St::FlexGrow=> "1";];
             button![
                 style.button_style(),
                 simple_ev(Ev::Click, Msg::MPAddPlayer),
-                "Add to player list"
+                "Add to player database"
             ],
         ],
     ]

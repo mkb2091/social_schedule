@@ -19,6 +19,7 @@ pub struct GenerateSchedule {
     event_name: String,
     event_date: String,
     last_paused: f64,
+    pub found_ideal: bool,
 }
 
 impl Default for GenerateSchedule {
@@ -44,6 +45,7 @@ impl Default for GenerateSchedule {
             event_name: String::new(),
             event_date: String::new(),
             last_paused: 0.0,
+            found_ideal: false,
         }
     }
 }
@@ -62,6 +64,9 @@ impl GenerateSchedule {
             self.event_name = String::from(event_name);
             self.event_date = String::from(event_date);
             self.running = true;
+            self.operations_per_second = 0;
+            self.operation_history = [0.0; 35];
+            self.total_operations = 1;
             self.schedule = Some(schedule::Generator::new(
                 rng,
                 self.players.len(),
@@ -92,9 +97,9 @@ impl GenerateSchedule {
     pub fn generate(&mut self) {
         if let Some(schedule) = &mut self.schedule {
             if !self.running
+                || self.found_ideal
                 || schedule.get_player_count() == 0
                 || schedule.get_tables() < 2
-                || schedule.best.is_ideal()
             {
                 next_tick(100.0);
                 self.iteration += 1;
@@ -118,6 +123,9 @@ impl GenerateSchedule {
                     (self.operation_history.iter().sum::<f64>() / 35.0) as u32;
             }
             next_tick(100.0 - self.cpu_usage);
+            if schedule.best.is_ideal() {
+                self.found_ideal = true
+            }
         } else {
             next_tick(100.0);
             self.operations_per_second = 0;
@@ -143,7 +151,7 @@ St::FlexGrow=> "1";];
 
     div![
         style![St::Display => "Flex";
-        St::FlexWrap => "Wrap";],
+        St::FlexWrap => "Wrap-Reverse";],
         div![
             &box_style,
             style![St::FlexGrow=> "0";
@@ -153,7 +161,7 @@ St::FlexGrow=> "1";];
                 p![
                     p![
                         style![St::FontWeight => "bold";],
-                        if schedule.best.is_ideal() {
+                        if model.found_ideal {
                             "Found ideal schedule for "
                         } else {
                             "Generating schedules for "
@@ -165,7 +173,11 @@ St::FlexGrow=> "1";];
                         li![format!("{} players", model.players.len())],
                         li![format!("{} tables", model.tables)]
                     ],
-                    p!["While the algorithm is running it is continuously trying to find better schedules. Leaving it running longer can result in better schedules being generated. When happy with the current best generated schedule, then click 'Finalise Event'"],
+                    p![
+                    "The algorithm will attempt to generate a schedule maximise the number of unique games each player plays, \
+                    while simultaneously attempting to maximise the number of unique opponents each player has",
+                    ],
+                    p!["Leaving the algorithm running longer can result in better schedules being generated. When happy with the current best generated schedule, then click 'Accept Schedule'"],
                     div![
                         style![St::Border => "6px inset grey";
                     St::Padding => "10px";
@@ -273,7 +285,7 @@ St::FlexGrow=> "1";];
                 writer.push_str(" schedules");
                 writer
             }],
-            p![if model.running {
+            p![if !model.found_ideal {if model.running {
                 button![
                     style.button_style(),
                     span![
@@ -291,7 +303,7 @@ St::FlexGrow=> "1";];
                         "RESUME"
                     ]
                 ]
-            }],
+            }} else {span![]}],
             p![
                 button![
                     style.button_style(),
@@ -299,7 +311,7 @@ St::FlexGrow=> "1";];
                     "Back / Edit Details"
                 ],
                 button![style.button_style(), "Create New Event"],
-                button![style.button_style(), "Finalise Event"],
+                button![style.button_style(), style![St::FontWeight => "bold";], "Accept Schedule"],
             ]
         ]
     ]

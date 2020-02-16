@@ -26,8 +26,9 @@ impl ManageGroups {
     pub fn add_group(&mut self, database: &mut database::Database) {
         let group_name = &self.add_group_name_input;
         if !group_name.is_empty() {
-            database.add_group(group_name.to_string());
+            let id = database.add_group(group_name.to_string());
             self.add_group_name_input = String::new();
+            self.expand(id);
         }
     }
 
@@ -41,7 +42,7 @@ impl ManageGroups {
         }
     }
 
-    pub fn add_player(&self, database: &mut database::Database, id: u32) {
+    pub fn add_player(&mut self, database: &mut database::Database, id: u32) {
         if let Some(player_id) = self.add_player_to_group_input.get(&id) {
             database.add_player_to_group(id, *player_id);
         }
@@ -75,7 +76,7 @@ St::FlexGrow=> "1";];
 
     div![
         style![St::Display => "Flex";
-        St::FlexWrap => "Wrap"],
+        St::FlexWrap => "Wrap-Reverse"],
         div![
             &box_style,
             h2!["Group List"],
@@ -92,7 +93,7 @@ St::FlexGrow=> "1";];
                         }
                     });
                     node_list.push(tr![
-                        td![h3![group.name], format!(" ({} players)", players.len())],
+                        td![h3![group.name],],
                         td![button![
                             style.button_style(),
                             raw_ev(Ev::Click, move |_| Msg::MGChangeName(id)),
@@ -101,7 +102,7 @@ St::FlexGrow=> "1";];
                         td![button![
                             style.button_style(),
                             raw_ev(Ev::Click, move |_| Msg::MGRemoveGroup(id)),
-                            "Remove"
+                            "Delete from database"
                         ]],
                         td![if model.expanded.contains(&id) {
                             button![
@@ -113,18 +114,19 @@ St::FlexGrow=> "1";];
                             button![
                                 style.button_style(),
                                 raw_ev(Ev::Click, move |_| Msg::MGExpand(id)),
-                                "Show players in group"
+                                "Show / Edit players"
                             ]
                         }]
                     ]);
+                    node_list.push(tr![td![format!("({} players)", players.len())]]);
 
                     if model.expanded.contains(&id) {
                         node_list.push(tr![td![
                             style![St::Border => "6px inset grey";
                         St::Padding => "10px";
-                        St::Width => "max-content";],
+                        St::Width => "min-content";],
                             attrs! {At::ColSpan => 3},
-                            "Add player to group",
+                            "Add player to group from database. Add new players to database via Manage Players page",
                             br![],
                             select![
                                 style.button_style(),

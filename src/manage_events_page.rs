@@ -98,7 +98,7 @@ impl CreateEvent {
                 "Has {} players, which is above the maximum of 64",
                 self.players.len()
             ));
-        } else if self.players.len() <= 4 {
+        } else if self.players.len() < 4 {
             alert(&format!(
                 "Has {} players, which is below minimium of 4",
                 self.players.len()
@@ -188,6 +188,22 @@ impl CreateEvent {
         generate_schedule_model.stop();
         self.stage = CreateEventStages::Details;
     }
+    pub fn title(
+        &self,
+        generate_schedule_model: &generate_schedule_page::GenerateSchedule,
+    ) -> String {
+        match self.stage {
+            CreateEventStages::Details => "Create Event",
+            CreateEventStages::GenerateSchedule => {
+                if generate_schedule_model.found_ideal {
+                    "Found ideal schedule"
+                } else {
+                    "Generating Schedule..."
+                }
+            }
+        }
+        .to_string()
+    }
 }
 
 fn view_create_event_details(
@@ -204,7 +220,7 @@ St::FlexGrow=> "1";];
         St::FlexWrap => "Wrap"],
         div![
             &box_style,
-            style![St::Width => "min-content"],
+            style![St::FlexGrow=> "1"; St::Width => "min-content"],
             h2!["Event Details"],
             table![
                 tr![
@@ -274,7 +290,7 @@ St::FlexGrow=> "1";];
                         }
                     ],
                     li![
-                        "Add the players ",
+                        "Add the players. Players can be added to the database via the Manage Players page. ",
                         span![
                             if model.players.len() <= 64 && model.players.len() >= 4{
                                 style![St::Color => "green"]
@@ -287,18 +303,28 @@ St::FlexGrow=> "1";];
                     li!["Click Generate Schedule to start the schedule generation process using the entered information"],
                 ],
             ],
+            div![
+                style![
+                    St::Display => "Flex";
+                ],
+                button![
+                    style.button_style(),
+                    style![St::FontWeight => "bold"; St::FlexGrow => "0"; St::Padding => "1em", St::Margin => "auto"],
+                    simple_ev(Ev::Click, Msg::CEGenerateSchedule),
+                    "Generate Schedule"
+                ],
+            ],
             p![
                 "The algorithm will attempt to generate a schedule maximise the number of unique games each player plays, \
                 while simultaneously attempting to maximise the number of unique opponents each player has",
             ],
-            button![
-                style.button_style(),
-                simple_ev(Ev::Click, Msg::CEGenerateSchedule),
-                "Generate Schedule"
-            ],
+            div![
+                style![St::PaddingBottom => "5em"],
+            ],//Adds space at end of page
         ],
         div![
             &box_style,
+            style![St::FlexGrow => "0"],
             p![
                 style![St::Border => "6px inset grey";
                     St::Padding => "10px";
@@ -358,6 +384,7 @@ St::FlexGrow=> "1";];
         ],
         div![
             &box_style,
+            style![St::FlexGrow => "0"],
             h2![format!("Players to be in the event: {}", model.players.len())],
             p![if !model.players.is_empty() {"Hover over player name to see player ID"} else {""}],
             table![style![St::PaddingBottom => "5px";], {

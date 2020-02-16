@@ -156,7 +156,7 @@ impl Database {
         }
     }
 
-    pub fn add_group(&mut self, name: String) {
+    pub fn add_group(&mut self, name: String) -> u32 {
         for id in (self.groups.len() as u32)..std::u32::MAX {
             if !self.groups.contains_key(&id) {
                 self.groups.insert(
@@ -167,9 +167,11 @@ impl Database {
                     },
                 );
                 self.dump();
-                return;
+                return id;
             }
         }
+
+        panic!("Group database full");
     }
 
     pub fn remove_group(&mut self, id: u32) -> Option<Group> {
