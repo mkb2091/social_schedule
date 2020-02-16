@@ -270,7 +270,7 @@ St::FlexGrow=> "1";];
                         if !model.event_name.is_empty() {
                             span![style![St::Color => "green"], "✔"]
                         } else {
-                            span![style![St::Color => "red"], "✕"]
+                            span![]
                         }
                     ],
                     li![
@@ -278,7 +278,7 @@ St::FlexGrow=> "1";];
                         if !model.event_date.is_empty() {
                             span![style![St::Color => "green"], "✔"]
                         } else {
-                            span![style![St::Color => "red"], "✕"]
+                            span![]
                         }
                     ],
                     li![
@@ -286,7 +286,7 @@ St::FlexGrow=> "1";];
                         if model.tables.is_some() {
                             span![style![St::Color => "green"], "✔"]
                         } else {
-                            span![style![St::Color => "red"], "✕"]
+                            span![]
                         }
                     ],
                     li![
