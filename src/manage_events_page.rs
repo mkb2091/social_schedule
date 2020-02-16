@@ -268,18 +268,18 @@ St::FlexGrow=> "1";];
                 ol![
                     li![
                         "Enter event name ",
-                        if !model.event_name.is_empty() {
-                            span![style![St::Color => "green"], "✔"]
-                        } else {
+                        if model.event_name.is_empty() {
                             span![]
+                        } else {
+                            span![style![St::Color => "green"], "✔"]
                         }
                     ],
                     li![
                         "Enter event date ",
-                        if !model.event_date.is_empty() {
-                            span![style![St::Color => "green"], "✔"]
-                        } else {
+                        if model.event_date.is_empty() {
                             span![]
+                        } else {
+                            span![style![St::Color => "green"], "✔"]
                         }
                     ],
                     li![
@@ -392,7 +392,7 @@ St::FlexGrow=> "1";];
             &box_style,
             style![St::FlexGrow => "0"],
             h2![format!("Players to be in the event: {}", model.players.len())],
-            p![if !model.players.is_empty() {"Hover over player name to see player ID"} else {""}],
+            p![if model.players.is_empty() {""} else {"Hover over player name to see player ID"}],
             table![style![St::PaddingBottom => "5px";], {
                 let mut players_list: Vec<Node<Msg>> = Vec::with_capacity(model.players.len());
                 for &player_id in &model.players {

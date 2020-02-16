@@ -285,7 +285,7 @@ St::FlexGrow=> "1";];
                 writer.push_str(" schedules");
                 writer
             }],
-            p![if !model.found_ideal {if model.running {
+            p![if model.found_ideal {span![]} else {if model.running {
                 button![
                     style.button_style(),
                     span![
@@ -303,7 +303,7 @@ St::FlexGrow=> "1";];
                         "RESUME"
                     ]
                 ]
-            }} else {span![]}],
+            }}],
             p![
                 button![
                     style.button_style(),

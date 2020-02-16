@@ -50,10 +50,10 @@ impl Schedule {
         }
         let ideal_unique_opponents = (player_count
             * tables
-            * (1.max(if player_count % tables != 0 {
-                player_count / tables + 1
-            } else {
+            * (1.max(if player_count % tables == 0 {
                 player_count / tables
+            } else {
+                player_count / tables + 1
             }) - 1)) as u32;
         debug_assert!(if player_count <= tables {
             ideal_unique_opponents == 0
@@ -654,11 +654,9 @@ mod tests {
         let mut rng = rand_xorshift::XorShiftRng::from_seed(seed.data);
         schedule.generate_random(&mut rng);
         let game_size = schedule.get_players_from_game(0, 0).len();
-    if player_count % tables != 0 {
+        if player_count % tables == 0 {game_size == player_count / tables} else {
                 game_size == player_count / tables || game_size == (player_count / tables + 1)
-            } else {
-                game_size == player_count / tables
-            }
+        }
     }}
 
     quickcheck! {fn score_doesnt_decrease_after_process(tables: i8, player_count: i8, seed: Seed) -> bool{

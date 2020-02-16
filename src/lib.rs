@@ -208,10 +208,10 @@ fn player_select_box(
                 } else {
                     attrs! {}
                 },
-                if !ignored_players.contains(id) {
-                    format!("{} (ID: {})", player.name, id)
-                } else {
+                if ignored_players.contains(id) {
                     "".to_string()
+                } else {
+                    format!("{} (ID: {})", player.name, id)
                 }
             ]);
         }
