@@ -292,13 +292,11 @@ St::FlexGrow=> "1";];
                             " players",
                             if model.players.len() > 64 {
                                 " - Above maximum of 64"
-                            } else if {
-                                    if let Some(tables) = model.tables {
-                                        model.players.len() < tables * 2
-                                    } else {
-                                        false
-                                    }
-                                } {
+                            } else if if let Some(tables) = model.tables {
+                                model.players.len() < tables * 2
+                            } else {
+                                false
+                            } {
                                 " - Less than minimum of 2 players per table"
                             } else {""}
                         ]
