@@ -80,7 +80,7 @@ impl Schedule {
      */
     pub fn from_vec(player_count: usize, tables: usize, data: Vec<Vec<Vec<usize>>>) -> Self {
         let mut new = Self::new(player_count, tables);
-        new.import_vec(data);
+        new.import_vec(&data);
         new
     }
 
@@ -90,7 +90,7 @@ impl Schedule {
     Games in a round as Vec of Players in a games, stored as Vec<Vec<usize>>
     Rounds in an event as Vec of Games in a Round, stored as Vec<Vec<Vec<usize>>>
      */
-    pub fn import_vec(&mut self, data: Vec<Vec<Vec<usize>>>) {
+    pub fn import_vec(&mut self, data: &[Vec<Vec<usize>>]) {
         self.matches = Vec::with_capacity(self.tables * self.tables);
         for _ in 0..(self.tables * self.tables) {
             self.matches.push(0);
@@ -134,7 +134,7 @@ impl Schedule {
             }
             game.push(round);
         }
-        self.import_vec(game);
+        self.import_vec(&game);
     }
 
     /** Deterministic method which results in everyone maximising the number unique of games
@@ -153,7 +153,7 @@ impl Schedule {
             }
             game.push(round);
         }
-        self.import_vec(game);
+        self.import_vec(&game);
     }
 
     fn get(&self, round: usize, table: usize) -> u64 {
@@ -233,7 +233,7 @@ impl Schedule {
     pub fn find_unique_opponents(&mut self) -> u32 {
         let mut total: u32 = 0;
         for player in 0..self.player_count {
-            total += self.player_unique_opponents(player) as u32;
+            total += u32::from(self.player_unique_opponents(player));
         }
         self.unique_opponent_sum_cache = total;
         total
@@ -243,7 +243,7 @@ impl Schedule {
         self.unique_opponent_sum_cache = self
             .player_opponent_cache
             .iter()
-            .map(|&val| val as u32)
+            .map(|&val| u32::from(val))
             .sum::<u32>();
     }
     /** Use cached results to get total number of unique opponents */
@@ -321,9 +321,9 @@ impl Schedule {
         let t2_players: Vec<usize> = self.get_players_from_game(round, table2);
 
         let mut new_player_opponent_cache = self.player_opponent_cache.clone();
-        for player1 in t1_players.iter() {
+        for player1 in &t1_players {
             let player_number1: u64 = 1_u64 << player1;
-            for player2 in t2_players.iter() {
+            for player2 in &t2_players {
                 let player_number2: u64 = 1_u64 << player2;
                 // Swap 1 player from each of the two tables
                 *self.get_mut(round, table1) = original_t1 - player_number1 + player_number2;
@@ -331,10 +331,10 @@ impl Schedule {
                 self.player_positions
                     .swap(player1 * self.tables + round, player2 * self.tables + round);
                 // Regenerate results for players in those two tables, since they are the only affected players
-                for p1 in t1_players.iter() {
+                for p1 in &t1_players {
                     self.player_unique_opponents(*p1);
                 }
-                for p2 in t2_players.iter() {
+                for p2 in &t2_players {
                     self.player_unique_opponents(*p2);
                 }
                 self.sum_unique_opponent();
@@ -602,7 +602,7 @@ mod tests {
     impl quickcheck::Arbitrary for Seed {
         fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
             let mut data: [u8; 16] = [0; 16];
-            for val in data.iter_mut() {
+            for val in &mut data {
                 *val = u8::arbitrary(g);
             }
             Self { data }
