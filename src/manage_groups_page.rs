@@ -127,7 +127,9 @@ St::FlexGrow=> "1";];
                         St::Padding => "10px";
                         St::Width => "min-content";],
                             attrs! {At::ColSpan => 3},
-                            "Add player to group from database. Add new players to database via Manage Players page",
+                            "Add a player to this group using the drop down menu.",
+                            br![],
+                            "If a player has not previously been added to the database, go to Manage Players to add a new player to the database.",
                             br![],
                             select![
                                 style.button_style(),
