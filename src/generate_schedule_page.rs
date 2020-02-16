@@ -64,6 +64,7 @@ impl GenerateSchedule {
             self.event_name = String::from(event_name);
             self.event_date = String::from(event_date);
             self.running = true;
+            self.found_ideal = false;
             self.operations_per_second = 0;
             self.operation_history = [0.0; 35];
             self.total_operations = 1;
