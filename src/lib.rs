@@ -188,12 +188,26 @@ fn player_select_box(
     let mut player_list = database.get_players();
     player_list.sort_by_key(|(_, player)| &player.name);
     let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(player_list.len() + 1);
-    node_list.push(option![style.option_style(), attrs! {At::Value => ""}, ""]);
+    node_list.push(option![
+        style.option_style(),
+        attrs! {At::Value => ""},
+        if selected.is_some() {
+            attrs! {}
+        } else {
+            attrs! {At::Selected => "selected"}
+        },
+        ""
+    ]);
     for (id, player) in &player_list {
         if !ignored_players.contains(id) || Some(**id) == selected {
             node_list.push(option![
                 style.option_style(),
                 attrs! {At::Value => id},
+                if Some(**id) == selected {
+                    attrs! {At::Selected => "selected"}
+                } else {
+                    attrs! {}
+                },
                 if !ignored_players.contains(id) {
                     format!("{} (ID: {})", player.name, id)
                 } else {

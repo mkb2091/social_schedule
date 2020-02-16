@@ -45,6 +45,7 @@ impl ManageGroups {
     pub fn add_player(&mut self, database: &mut database::Database, id: u32) {
         if let Some(player_id) = self.add_player_to_group_input.get(&id) {
             database.add_player_to_group(id, *player_id);
+            self.add_player_to_group_input.remove(&id);
         }
     }
     pub fn remove_group(&self, database: &mut database::Database, id: u32) {
@@ -133,6 +134,11 @@ St::FlexGrow=> "1";];
                                 input_ev("input", move |player_id| Msg::MGAddPlayerInput(
                                     id, player_id
                                 )),
+                                attrs!{At::Value => if let Some(&player_id) = model.add_player_to_group_input.get(&id) {
+                                        player_id.to_string()
+                                    } else {
+                                        "".to_string()
+                                    }},
                                 player_select_box(
                                     database,
                                     style,

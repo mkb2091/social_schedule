@@ -55,7 +55,7 @@ pub struct CreateEvent {
     event_date: String,
     players: std::collections::HashSet<u32>,
     add_player_select_box: Option<u32>,
-    add_group_select_box: String,
+    add_group_select_box: Option<u32>,
     tables: Option<usize>,
     pub stage: CreateEventStages,
 }
@@ -67,7 +67,7 @@ impl Default for CreateEvent {
             event_date: String::new(),
             players: std::collections::HashSet::new(),
             add_player_select_box: None,
-            add_group_select_box: String::new(),
+            add_group_select_box: None,
             tables: None,
             stage: CreateEventStages::Details,
         }
@@ -128,6 +128,7 @@ impl CreateEvent {
         if let Some(id) = self.add_player_select_box {
             if database.contains_player(id) {
                 self.players.insert(id);
+                self.add_player_select_box = None;
             } else {
                 alert("Player with specified ID does not exist");
             }
@@ -142,22 +143,22 @@ impl CreateEvent {
         };
     }
     pub fn set_add_group_select_box_input(&mut self, id: String) {
-        self.add_group_select_box = id;
+        if let Ok(id) = id.parse::<u32>() {
+            self.add_group_select_box = Some(id)
+        } else {
+            self.add_group_select_box = None;
+        }
     }
 
     pub fn add_group(&mut self, database: &database::Database) {
-        let group_id = &self.add_group_select_box;
-        if !group_id.is_empty() {
-            if let Ok(id) = group_id.parse::<u32>() {
-                if let Some(group) = database.get_group(id) {
-                    for player in group.get_players() {
-                        self.players.insert(*player);
-                    }
-                } else {
-                    alert("Player does not exist");
+        if let Some(id) = self.add_group_select_box {
+            if let Some(group) = database.get_group(id) {
+                for player in group.get_players() {
+                    self.players.insert(*player);
                 }
+                self.add_group_select_box = None;
             } else {
-                alert("Failed to convert ID to integer");
+                alert("Player does not exist");
             }
         }
         if self.players.len() > 64 {
@@ -333,7 +334,7 @@ St::FlexGrow=> "1";];
                 br![],
                 select![
                     style.button_style(),
-                    attrs! {At::Value => ""},
+                    attrs! {At::Value => if let Some(val) = model.add_group_select_box {val.to_string()} else {"".to_string()}},
                     input_ev(Ev::Input, Msg::CEAddGroupSelectBoxInput),
                     {
                         let mut group_list = database.get_groups();
@@ -346,6 +347,11 @@ St::FlexGrow=> "1";];
                             node_list.push(option![
                                 style.option_style(),
                                 attrs! {At::Value => id},
+                                if Some(id) == model.add_group_select_box {
+                                    attrs!{At::Selected => "selected"}
+                                } else {
+                                    attrs! {}
+                                },
                                 format!("{} ({} players)", group.name, player_count)
                             ]);
                         }
@@ -366,7 +372,7 @@ St::FlexGrow=> "1";];
                 br![],
                 select![
                     style.button_style(),
-                    attrs! {At::Value => ""},
+                    attrs! {At::Value => if let Some(val) = model.add_player_select_box {val.to_string()} else {"".to_string()}},
                     input_ev(Ev::Input, Msg::CEAddPlayerSelectBoxInput),
                     player_select_box(database, style, &model.players, model.add_player_select_box),
                 ],
