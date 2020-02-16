@@ -581,18 +581,18 @@ mod tests {
     #[test]
     #[should_panic]
     fn too_high_player_count_panics() {
-        let schedule = Schedule::new(65, 6);
+        Schedule::new(65, 6);
     }
 
     #[test]
     #[should_panic]
     fn too_low_table_count_panics_0() {
-        let schedule = Schedule::new(24, 0);
+        Schedule::new(24, 0);
     }
     #[test]
     #[should_panic]
     fn too_low_table_count_panics_1() {
-        let schedule = Schedule::new(24, 1);
+        Schedule::new(24, 1);
     }
 
     #[derive(Clone, Debug)]
