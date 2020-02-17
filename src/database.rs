@@ -55,7 +55,7 @@ pub struct Group {
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct Event {
     pub name: String,
-    schedule: schedule::Schedule,
+    schedule: schedule::SerdeSchedule,
     pub players: Vec<u32>,
 }
 
@@ -69,7 +69,7 @@ impl Event {
     pub fn from(name: String, schedule: schedule::Schedule, players: Vec<u32>) -> Option<Self> {
         Some(Self {
             name,
-            schedule,
+            schedule: schedule.to_serde_schedule(),
             players,
         })
     }

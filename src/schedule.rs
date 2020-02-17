@@ -9,6 +9,19 @@ testing this seemed to result in overall better (higher total unique games playe
 /** Structure for storing a schedule, and performing operations on it
 */
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
+pub struct SerdeSchedule {
+    player_count: usize,
+    tables: usize,
+    matches: Vec<u64>,
+}
+
+impl SerdeSchedule {
+    pub fn to_schedule(&self) -> Schedule {
+        Schedule::new(self.player_count, self.tables)
+    }
+}
+
+#[derive(Clone)]
 pub struct Schedule {
     /**The number of players*/
     player_count: usize,
@@ -72,6 +85,15 @@ impl Schedule {
             ideal_unique_opponents,
         }
     }
+
+    pub fn to_serde_schedule(&self) -> SerdeSchedule {
+        SerdeSchedule {
+            player_count: self.player_count,
+            tables: self.tables,
+            matches: self.matches.clone(),
+        }
+    }
+
     /**Create a new Schedule object with the specified player count,  table count, and schedule which is in the following form:
     Player number as usize,
     Players in a game as Vec of players, stored as Vec<usize>,
