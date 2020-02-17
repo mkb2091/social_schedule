@@ -771,9 +771,9 @@ checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
 
 [[package]]
 name = "seed"
-version = "0.5.1"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "516cdd85cdde01a3769edc1d921aff431e024ab82b0e608c59e178d8747f902a"
+checksum = "cd5d8fd7f12f565f639caf4b6d74a3853d5d7234d0543ec3beae81311492623e"
 dependencies = [
  "console_error_panic_hook",
  "cookie",
