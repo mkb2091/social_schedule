@@ -34,7 +34,7 @@ St::FlexGrow=> "1";];
                         td![format!("{:} players", event.players.len())],
                         td![button![
                             style.button_style(),
-                            raw_ev(Ev::Click, move |_| Msg::MPChangeName(id)),
+                            ev(Ev::Click, move |_| Msg::MPChangeName(id)),
                             "Change Name"
                         ]],
                     ]);
@@ -405,7 +405,7 @@ St::FlexGrow=> "1";];
                         }],
                         td![button![
                             style.button_style(),
-                            raw_ev(Ev::Click, move |_| Msg::CERemovePlayer(player_id)),
+                            ev(Ev::Click, move |_| Msg::CERemovePlayer(player_id)),
                             "Remove"
                         ]]
                     ]);

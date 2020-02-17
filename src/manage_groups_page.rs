@@ -97,24 +97,24 @@ St::FlexGrow=> "1";];
                         td![h3![group.name],],
                         td![button![
                             style.button_style(),
-                            raw_ev(Ev::Click, move |_| Msg::MGChangeName(id)),
+                            ev(Ev::Click, move |_| Msg::MGChangeName(id)),
                             "Change Name"
                         ]],
                         td![button![
                             style.button_style(),
-                            raw_ev(Ev::Click, move |_| Msg::MGRemoveGroup(id)),
+                            ev(Ev::Click, move |_| Msg::MGRemoveGroup(id)),
                             "Delete from database"
                         ]],
                         td![if model.expanded.contains(&id) {
                             button![
                                 style.button_style(),
-                                raw_ev(Ev::Click, move |_| Msg::MGHide(id)),
+                                ev(Ev::Click, move |_| Msg::MGHide(id)),
                                 "Hide players in group"
                             ]
                         } else {
                             button![
                                 style.button_style(),
-                                raw_ev(Ev::Click, move |_| Msg::MGExpand(id)),
+                                ev(Ev::Click, move |_| Msg::MGExpand(id)),
                                 "Show / Edit players"
                             ]
                         }]
@@ -156,7 +156,7 @@ St::FlexGrow=> "1";];
                             ],
                             button![
                                 style.button_style(),
-                                raw_ev(Ev::Click, move |_| Msg::MGAddPlayer(id)),
+                                ev(Ev::Click, move |_| Msg::MGAddPlayer(id)),
                                 "Add Player"
                             ],
                             {
@@ -173,7 +173,7 @@ St::FlexGrow=> "1";];
                                             ],
                                             td![button![
                                                 style.button_style(),
-                                                raw_ev(Ev::Click, move |_| {
+                                                ev(Ev::Click, move |_| {
                                                     Msg::MGRemovePlayerFromGroup(id, player_id)
                                                 }),
                                                 "Remove from group"

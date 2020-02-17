@@ -95,17 +95,17 @@ St::FlexGrow=> "1";];
                         }],
                         td![button![
                             style.button_style(),
-                            raw_ev(Ev::Click, move |_| Msg::MPChangeName(id)),
+                            ev(Ev::Click, move |_| Msg::MPChangeName(id)),
                             "Edit Name"
                         ]],
                         td![button![
                             style.button_style(),
-                            raw_ev(Ev::Click, move |_| Msg::MPChangeEmail(id)),
+                            ev(Ev::Click, move |_| Msg::MPChangeEmail(id)),
                             "Edit Email"
                         ]],
                         td![button![
                             style.button_style(),
-                            raw_ev(Ev::Click, move |_| Msg::MPRemovePlayer(id)),
+                            ev(Ev::Click, move |_| Msg::MPRemovePlayer(id)),
                             "Delete from database"
                         ]],
                     ]);

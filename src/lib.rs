@@ -299,7 +299,9 @@ St::Overflow => "auto";],
     ]
 }
 
-fn window_events(_model: &Model) -> Vec<seed::virtual_dom::listener::Listener<Msg>> {
+fn window_events(
+    _model: &Model,
+) -> Vec<seed::virtual_dom::event_handler_manager::event_handler::EventHandler<Msg>> {
     let mut result = Vec::new();
     result.push(simple_ev(Ev::Playing, Msg::GSGenerate));
     result
