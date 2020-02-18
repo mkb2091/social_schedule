@@ -11,6 +11,7 @@ pub struct GenerateSchedule {
     schedule: Option<schedule::Generator<rand_xorshift::XorShiftRng>>,
     rng: rand_xorshift::XorShiftRng,
     cpu_usage: f64,
+    loops_per_milli: u32,
     operations_per_second: u32,
     operation_history: [f64; 35],
     total_operations: u64,
@@ -37,6 +38,7 @@ impl Default for GenerateSchedule {
                 rand_xorshift::XorShiftRng::from_seed(seed)
             },
             cpu_usage: 99.0,
+            loops_per_milli: 1,
             operations_per_second: 0,
             operation_history: [0.0; 35],
             total_operations: 0,
@@ -112,9 +114,14 @@ impl GenerateSchedule {
             let now = performance_now();
             let ideal = now + self.cpu_usage;
             let mut operations: u32 = 0;
+            let mut loops: u32 = 0;
             while performance_now() < ideal {
-                operations += schedule.process();
+                for _ in 0..(self.loops_per_milli / 2 + 1) {
+                    operations += schedule.process();
+                    loops += 1;
+                }
             }
+            self.loops_per_milli = 1.max(loops / (self.cpu_usage as u32));
             self.total_operations += operations as u64;
             self.iteration += 1;
             self.iteration %= 35;
