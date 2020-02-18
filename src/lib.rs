@@ -144,7 +144,7 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         Msg::GSSetCpuUsage(cpu_usage) => model.generate_schedule.set_cpu_usage(cpu_usage),
         Msg::GSStop => model.generate_schedule.stop(),
         Msg::GSResume => model.generate_schedule.resume(),
-        Msg::GSGenerate => model.generate_schedule.generate(),
+        Msg::GSGenerate => model.generate_schedule.generate(&model.database),
         Msg::GSBack => model.create_event.back(&mut model.generate_schedule),
         Msg::GSMakeEvent => model.generate_schedule.make_event(&mut model.database),
         Msg::MPAddPlayerNameInput(player_name) => {

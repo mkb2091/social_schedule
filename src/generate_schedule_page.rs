@@ -21,6 +21,7 @@ pub struct GenerateSchedule {
     event_date: String,
     last_paused: f64,
     pub found_ideal: bool,
+    current_best: Node<Msg>,
 }
 
 impl Default for GenerateSchedule {
@@ -48,6 +49,7 @@ impl Default for GenerateSchedule {
             event_date: String::new(),
             last_paused: 0.0,
             found_ideal: false,
+            current_best: div![],
         }
     }
 }
@@ -97,14 +99,68 @@ impl GenerateSchedule {
         }
     }
 
-    pub fn generate(&mut self) {
+    fn generate_table_display(&mut self, database: &database::Database) {
+        self.current_best = if let Some(schedule) = &self.schedule {
+            let best = &schedule.best;
+            div![
+                style![St::Border => "6px inset grey";
+                    St::Padding => "10px";
+                    St::Width => "max-content";],
+                h3!["Current best schedule solution found"],
+                p![format!(
+                    "Average number of unique games played: {}",
+                    best.unique_games_played() as f32 / schedule.get_player_count() as f32
+                )],
+                p![format!(
+                    "Average number of unique opponents/teammates played with: {}",
+                    (best.unique_opponents() as f32 / schedule.get_player_count() as f32)
+                )],
+                table![style![St::BorderSpacing => "5px 10px"; ], {
+                    let tables = best.get_tables();
+
+                    let mut table: Vec<Node<Msg>> = Vec::with_capacity(tables + 1);
+                    let mut heading: Vec<Node<Msg>> = Vec::with_capacity(tables + 1);
+                    heading.push(td![]);
+                    for game in 1..=tables {
+                        heading.push(th![format!("Table {:}", game)]);
+                    }
+                    table.push(tr![heading]);
+                    for round in 0..tables {
+                        table.push(tr![{
+                            let mut row: Vec<Node<Msg>> = Vec::with_capacity(tables + 1);
+                            row.push(td![format!("Round {:}", round + 1)]);
+                            for table in 0..tables {
+                                row.push(td![{
+                                    let players = best.get_players_from_game(round, table);
+                                    let mut data: Vec<Node<Msg>> = Vec::new();
+                                    for player_number in players {
+                                        let id = self.players[player_number];
+                                        if let Some(player) = database.get_player(id) {
+                                            data.push(span![player.name, br![]]);
+                                        }
+                                    }
+                                    data
+                                }]);
+                            }
+                            row
+                        }]);
+                    }
+                    table
+                }]
+            ]
+        } else {
+            div![]
+        }
+    }
+
+    pub fn generate(&mut self, database: &database::Database) {
         if let Some(schedule) = &mut self.schedule {
             if !self.running
                 || self.found_ideal
                 || schedule.get_player_count() == 0
                 || schedule.get_tables() < 2
             {
-                next_tick(100.0);
+                next_tick(500.0);
                 self.iteration += 1;
                 self.iteration %= 35;
                 self.operation_history[self.iteration] = 0.0;
@@ -112,16 +168,21 @@ impl GenerateSchedule {
                 return;
             }
             let now = performance_now();
-            let ideal = now + self.cpu_usage;
+            let ideal = if self.cpu_usage < 50.0 {
+                now + self.cpu_usage * 2.0
+            } else {
+                now + self.cpu_usage
+            };
             let mut operations: u32 = 0;
             let mut loops: u32 = 0;
+            let old_score = schedule.best.get_score();
             while performance_now() < ideal {
-                for _ in 0..(self.loops_per_milli / 2 + 1) {
+                for _ in 0..(1.max(self.loops_per_milli / 2)) {
                     operations += schedule.process();
                     loops += 1;
                 }
             }
-            self.loops_per_milli = 1.max(loops / (self.cpu_usage as u32));
+            self.loops_per_milli = 1.max(loops / (self.cpu_usage as u32 + 1));
             self.total_operations += operations as u64;
             self.iteration += 1;
             self.iteration %= 35;
@@ -130,9 +191,16 @@ impl GenerateSchedule {
                 self.operations_per_second =
                     (self.operation_history.iter().sum::<f64>() / 35.0) as u32;
             }
-            next_tick(100.0 - self.cpu_usage);
+            if self.cpu_usage < 50.0 {
+                next_tick(200.0 - self.cpu_usage * 2.0);
+            } else {
+                next_tick(100.0 - self.cpu_usage);
+            }
             if schedule.best.is_ideal() {
                 self.found_ideal = true
+            }
+            if schedule.best.get_score() > old_score {
+                self.generate_table_display(&database);
             }
         } else {
             next_tick(100.0);
@@ -150,7 +218,6 @@ impl GenerateSchedule {
 
 pub fn view_generate_schedule(
     model: &GenerateSchedule,
-    database: &database::Database,
     style: &style_control::StyleControl,
 ) -> Node<Msg> {
     let box_style = style![St::PaddingLeft => "15px";
@@ -164,78 +231,28 @@ St::FlexGrow=> "1";];
             &box_style,
             style![St::FlexGrow=> "0";
             St::Width => "min-content"],
-            if let Some(schedule) = &model.schedule {
-                let best = &schedule.best;
+            p![
                 p![
-                    p![
-                        style![St::FontWeight => "bold";],
-                        if model.found_ideal {
-                            "Found ideal schedule for "
-                        } else {
-                            "Generating schedules for "
-                        },
-                        model.event_name,
-                    ],
-                    ul![
-                        li![format!("On {}", model.event_date)],
-                        li![format!("{} players", model.players.len())],
-                        li![format!("{} tables", model.tables)]
-                    ],
-                    p![
-                    "The algorithm will attempt to generate a schedule maximise the number of unique games each player plays, \
-                    while simultaneously attempting to maximise the number of unique opponents each player has",
-                    ],
-                    p!["Leaving the algorithm running longer can result in better schedules being generated. When happy with the current best generated schedule, then click 'Accept Schedule'"],
-                    div![
-                        style![St::Border => "6px inset grey";
-                    St::Padding => "10px";
-                    St::Width => "max-content";],
-                        h3!["Current best schedule solution found"],
-                        p![format!(
-                            "Average number of unique games played: {}",
-                            best.unique_games_played() as f32 / schedule.get_player_count() as f32
-                        )],
-                        p![format!(
-                            "Average number of unique opponents/teammates played with: {}",
-                            (best.unique_opponents() as f32 / schedule.get_player_count() as f32)
-                        )],
-                        table![style![St::BorderSpacing => "5px 10px"; ], {
-                            let tables = best.get_tables();
-
-                            let mut table: Vec<Node<Msg>> = Vec::with_capacity(tables + 1);
-                            let mut heading: Vec<Node<Msg>> = Vec::with_capacity(tables + 1);
-                            heading.push(td![]);
-                            for game in 1..=tables {
-                                heading.push(th![format!("Table {:}", game)]);
-                            }
-                            table.push(tr![heading]);
-                            for round in 0..tables {
-                                table.push(tr![{
-                                    let mut row: Vec<Node<Msg>> = Vec::with_capacity(tables + 1);
-                                    row.push(td![format!("Round {:}", round + 1)]);
-                                    for table in 0..tables {
-                                        row.push(td![{
-                                            let players = best.get_players_from_game(round, table);
-                                            let mut data: Vec<Node<Msg>> = Vec::new();
-                                            for player_number in players {
-                                                let id = model.players[player_number];
-                                                if let Some(player) = database.get_player(id) {
-                                                    data.push(span![player.name, br![]]);
-                                                }
-                                            }
-                                            data
-                                        }]);
-                                    }
-                                    row
-                                }]);
-                            }
-                            table
-                        }]
-                    ],
-                ]
-            } else {
-                p![]
-            }
+                    style![St::FontWeight => "bold";],
+                    if model.found_ideal {
+                        "Found ideal schedule for "
+                    } else {
+                        "Generating schedules for "
+                    },
+                    model.event_name,
+                ],
+                ul![
+                    li![format!("On {}", model.event_date)],
+                    li![format!("{} players", model.players.len())],
+                    li![format!("{} tables", model.tables)]
+                ],
+                p![
+                "The algorithm will attempt to generate a schedule maximise the number of unique games each player plays, \
+                while simultaneously attempting to maximise the number of unique opponents each player has",
+                ],
+                p!["Leaving the algorithm running longer can result in better schedules being generated. When happy with the current best generated schedule, then click 'Accept Schedule'"],
+                model.current_best.clone(),
+            ]
         ],
         div![
             &box_style,

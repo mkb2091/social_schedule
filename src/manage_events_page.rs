@@ -425,7 +425,7 @@ pub fn view_create_event(
     match model.stage {
         CreateEventStages::Details => view_create_event_details(model, database, style),
         CreateEventStages::GenerateSchedule => {
-            generate_schedule_page::view_generate_schedule(generate_schedule_model, database, style)
+            generate_schedule_page::view_generate_schedule(generate_schedule_model, style)
         }
     }
 }
