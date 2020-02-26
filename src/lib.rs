@@ -103,6 +103,8 @@ pub enum Msg {
     GSGenerate,
     GSBack,
     GSMakeEvent,
+    MEExpandSchedule(u32),
+    MEHideSchedule(u32),
     MPAddPlayer,
     MPAddPlayerNameInput(String),
     MPAddPlayerEmailInput(String),
@@ -147,6 +149,8 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         Msg::GSGenerate => model.generate_schedule.generate(&model.database),
         Msg::GSBack => model.create_event.back(&mut model.generate_schedule),
         Msg::GSMakeEvent => model.generate_schedule.make_event(&mut model.database),
+        Msg::MEExpandSchedule(id) => model.manage_events.expand_schedule(id),
+        Msg::MEHideSchedule(id) => model.manage_events.hide_schedule(id),
         Msg::MPAddPlayerNameInput(player_name) => {
             model.manage_players.set_player_name_input(player_name)
         }
@@ -217,6 +221,45 @@ fn player_select_box(
         }
     }
     node_list
+}
+
+fn view_schedule<T: schedule::ScheduleStructure>(
+    schedule: &T,
+    players: &[u32],
+    database: &database::Database,
+) -> Node<Msg> {
+    table![style![St::BorderSpacing => "5px 10px"; ], {
+        let tables = schedule.get_tables();
+
+        let mut table: Vec<Node<Msg>> = Vec::with_capacity(tables + 1);
+        let mut heading: Vec<Node<Msg>> = Vec::with_capacity(tables + 1);
+        heading.push(td![]);
+        for game in 1..=tables {
+            heading.push(th![format!("Table {:}", game)]);
+        }
+        table.push(tr![heading]);
+        for round in 0..tables {
+            table.push(tr![{
+                let mut row: Vec<Node<Msg>> = Vec::with_capacity(tables + 1);
+                row.push(td![format!("Round {:}", round + 1)]);
+                for table in 0..tables {
+                    row.push(td![{
+                        let player_list = schedule.get_players_from_game(round, table);
+                        let mut data: Vec<Node<Msg>> = Vec::new();
+                        for player_number in player_list {
+                            let id = players[player_number];
+                            if let Some(player) = database.get_player(id) {
+                                data.push(span![player.name, br![]]);
+                            }
+                        }
+                        data
+                    }]);
+                }
+                row
+            }]);
+        }
+        table
+    }]
 }
 
 fn view(model: &Model) -> impl View<Msg> {

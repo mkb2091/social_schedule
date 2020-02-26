@@ -2,20 +2,11 @@ use seed::prelude::*;
 
 use crate::{alert, database, player_select_box, prompt, style_control, Msg};
 
+#[derive(Default)]
 pub struct ManageGroups {
     pub add_group_name_input: String,
     pub add_player_to_group_input: std::collections::HashMap<u32, u32>,
     expanded: std::collections::HashSet<u32>,
-}
-
-impl Default for ManageGroups {
-    fn default() -> Self {
-        Self {
-            add_group_name_input: String::new(),
-            add_player_to_group_input: std::collections::HashMap::new(),
-            expanded: std::collections::HashSet::new(),
-        }
-    }
 }
 
 impl ManageGroups {

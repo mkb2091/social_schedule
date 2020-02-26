@@ -1,17 +1,25 @@
 use seed::prelude::*;
 
-use crate::{alert, database, generate_schedule_page, player_select_box, style_control, Msg};
+use crate::{
+    alert, database, generate_schedule_page, player_select_box, style_control, view_schedule, Msg,
+};
 
-pub struct ManageEvents {}
+#[derive(Default)]
+pub struct ManageEvents {
+    expanded_schedules: std::collections::HashSet<u32>,
+}
 
-impl Default for ManageEvents {
-    fn default() -> Self {
-        Self {}
+impl ManageEvents {
+    pub fn expand_schedule(&mut self, id: u32) {
+        self.expanded_schedules.insert(id);
+    }
+    pub fn hide_schedule(&mut self, id: u32) {
+        self.expanded_schedules.remove(&id);
     }
 }
 
 pub fn view_manage_events(
-    _model: &ManageEvents,
+    model: &ManageEvents,
     database: &database::Database,
     style: &style_control::StyleControl,
 ) -> Node<Msg> {
@@ -20,27 +28,57 @@ St::PaddingRight => "15px";
 St::FlexGrow=> "1";];
 
     div![
-        style![St::Display => "Flex";
-        St::FlexWrap => "Wrap"],
-        div![
-            &box_style,
-            table![style![St::PaddingBottom => "5px";], {
+        h2!["Event List"],
+        table![
+            style![St::PaddingBottom => "5px";],
+            tr![
+                td![style![St::PaddingRight => "25px";], "ID"],
+                td![style![St::PaddingRight => "25px";], "Name"],
+                td![style![St::PaddingRight => "25px";], "Date"],
+            ],
+            {
                 let events_list = database.get_events();
                 let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(events_list.len());
                 for (&id, event) in &events_list {
                     node_list.push(tr![
                         td![id.to_string()],
                         td![event.name],
+                        td![event.date],
                         td![format!("{:} players", event.players.len())],
-                        td![button![
-                            style.button_style(),
-                            ev(Ev::Click, move |_| Msg::MPChangeName(id)),
-                            "Change Name"
-                        ]],
+                        td![button![style.button_style(), "Change Name"]],
+                        td![button![style.button_style(), "Delete from database"]],
+                        td![if model.expanded_schedules.contains(&id) {
+                            button![
+                                style.button_style(),
+                                ev(Ev::Click, move |_| Msg::MEHideSchedule(id)),
+                                "Hide Schedule"
+                            ]
+                        } else {
+                            button![
+                                style.button_style(),
+                                ev(Ev::Click, move |_| Msg::MEExpandSchedule(id)),
+                                "Show Schedule"
+                            ]
+                        }]
                     ]);
+                    node_list.push(tr![td![
+                        attrs! {At::ColSpan => 10},
+                        div![
+                            style![St::Display => "Flex";
+        St::FlexWrap => "Wrap"],
+                            div![
+                                &box_style,
+                                if model.expanded_schedules.contains(&id) {
+                                    view_schedule(&event.schedule, &event.players, database)
+                                } else {
+                                    div![]
+                                }
+                            ]
+                        ],
+                    ]]);
                 }
                 node_list
-            }],
+            }
         ],
     ]
 }

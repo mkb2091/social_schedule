@@ -8,11 +8,50 @@ testing this seemed to result in overall better (higher total unique games playe
 
 /** Structure for storing a schedule, and performing operations on it
 */
+
+pub trait ScheduleStructure {
+    fn get_player_count(&self) -> usize;
+    fn get_tables(&self) -> usize;
+    fn get(&self, round: usize, table: usize) -> u64;
+
+    /** Get a vector of all players in the game at specified round and table
+     */
+    fn get_players_from_game(&self, round: usize, table: usize) -> Vec<usize> {
+        debug_assert!(round < self.get_tables());
+        debug_assert!(table < self.get_tables());
+        let game = self.get(round, table);
+        let game_size = game.count_ones() as usize;
+        let mut players: Vec<usize> = Vec::with_capacity(game_size);
+        for player in 0..self.get_player_count() {
+            let player_number = 1 << player;
+            if game & player_number != 0 {
+                players.push(player);
+                if players.len() >= game_size {
+                    return players;
+                }
+            }
+        }
+        players
+    }
+}
+
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct SerdeSchedule {
     player_count: usize,
     tables: usize,
     matches: Vec<u64>,
+}
+
+impl ScheduleStructure for SerdeSchedule {
+    fn get_player_count(&self) -> usize {
+        self.player_count
+    }
+    fn get_tables(&self) -> usize {
+        self.tables
+    }
+    fn get(&self, round: usize, table: usize) -> u64 {
+        self.matches[round * self.tables + table]
+    }
 }
 
 impl SerdeSchedule {
@@ -41,6 +80,18 @@ pub struct Schedule {
     pub ideal_unique_games: u32,
     /**Calculated max possible total unique opponents*/
     pub ideal_unique_opponents: u32,
+}
+
+impl ScheduleStructure for Schedule {
+    fn get_player_count(&self) -> usize {
+        self.player_count
+    }
+    fn get_tables(&self) -> usize {
+        self.tables
+    }
+    fn get(&self, round: usize, table: usize) -> u64 {
+        self.matches[round * self.tables + table]
+    }
 }
 
 impl Schedule {

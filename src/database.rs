@@ -55,8 +55,10 @@ pub struct Group {
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct Event {
     pub name: String,
-    schedule: schedule::SerdeSchedule,
+    pub date: String,
+    pub schedule: schedule::SerdeSchedule,
     pub players: Vec<u32>,
+    pub tables: usize,
 }
 
 impl Group {
@@ -66,11 +68,19 @@ impl Group {
 }
 
 impl Event {
-    pub fn from(name: String, schedule: schedule::Schedule, players: Vec<u32>) -> Option<Self> {
+    pub fn from(
+        name: String,
+        date: String,
+        schedule: schedule::Schedule,
+        players: Vec<u32>,
+        tables: usize,
+    ) -> Option<Self> {
         Some(Self {
             name,
+            date,
             schedule: schedule.to_serde_schedule(),
             players,
+            tables,
         })
     }
 }
@@ -215,10 +225,12 @@ impl Database {
     pub fn add_event(
         &mut self,
         name: String,
+        date: String,
         event_schedule: schedule::Schedule,
         players: Vec<u32>,
+        tables: usize,
     ) {
-        if let Some(event) = Event::from(name, event_schedule, players) {
+        if let Some(event) = Event::from(name, date, event_schedule, players, tables) {
             for id in (self.events.len() as u32)..std::u32::MAX {
                 if !self.events.contains_key(&id) {
                     self.events.insert(id, event);

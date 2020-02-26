@@ -3,7 +3,9 @@ use seed::prelude::*;
 
 use num_format::{Locale, WriteFormatted};
 
-use crate::{alert, database, next_tick, performance_now, prompt, schedule, style_control, Msg};
+use crate::{
+    alert, database, next_tick, performance_now, schedule, style_control, view_schedule, Msg,
+};
 
 pub struct GenerateSchedule {
     players: Vec<u32>,
@@ -115,38 +117,7 @@ impl GenerateSchedule {
                     "Average number of unique opponents/teammates played with: {}",
                     (best.unique_opponents() as f32 / schedule.get_player_count() as f32)
                 )],
-                table![style![St::BorderSpacing => "5px 10px"; ], {
-                    let tables = best.get_tables();
-
-                    let mut table: Vec<Node<Msg>> = Vec::with_capacity(tables + 1);
-                    let mut heading: Vec<Node<Msg>> = Vec::with_capacity(tables + 1);
-                    heading.push(td![]);
-                    for game in 1..=tables {
-                        heading.push(th![format!("Table {:}", game)]);
-                    }
-                    table.push(tr![heading]);
-                    for round in 0..tables {
-                        table.push(tr![{
-                            let mut row: Vec<Node<Msg>> = Vec::with_capacity(tables + 1);
-                            row.push(td![format!("Round {:}", round + 1)]);
-                            for table in 0..tables {
-                                row.push(td![{
-                                    let players = best.get_players_from_game(round, table);
-                                    let mut data: Vec<Node<Msg>> = Vec::new();
-                                    for player_number in players {
-                                        let id = self.players[player_number];
-                                        if let Some(player) = database.get_player(id) {
-                                            data.push(span![player.name, br![]]);
-                                        }
-                                    }
-                                    data
-                                }]);
-                            }
-                            row
-                        }]);
-                    }
-                    table
-                }]
+                view_schedule(best, &self.players, &database),
             ]
         } else {
             div![]
@@ -208,10 +179,13 @@ impl GenerateSchedule {
         }
     }
     pub fn make_event(&self, database: &mut database::Database) {
-        if let Some(schedule) = &self.schedule {
-            if let Some(name) = prompt("Event name") {
-                database.add_event(name, schedule.best.clone(), self.players.clone());
-            }
+        if let Some(schedule_generator) = &self.schedule {
+            let name = self.event_name.clone();
+            let date = self.event_date.clone();
+            let schedule = schedule_generator.best.clone();
+            let players = self.players.clone();
+            let tables = self.tables;
+            database.add_event(name, date, schedule, players, tables);
         }
     }
 }
@@ -336,7 +310,7 @@ St::FlexGrow=> "1";];
                     "Back / Edit Details"
                 ],
                 button![style.button_style(), "Create New Event"],
-                button![style.button_style(), style![St::FontWeight => "bold";], "Accept Schedule"],
+                button![style.button_style(), style![St::FontWeight => "bold";], simple_ev(Ev::Click, Msg::GSMakeEvent), "Accept Schedule"],
             ]
         ]
     ]
