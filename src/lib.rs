@@ -105,6 +105,7 @@ pub enum Msg {
     GSMakeEvent,
     MEExpandSchedule(u32),
     MEHideSchedule(u32),
+    MEDelete(u32),
     MPAddPlayer,
     MPAddPlayerNameInput(String),
     MPAddPlayerEmailInput(String),
@@ -122,6 +123,8 @@ pub enum Msg {
     MGHide(u32),
     PSetThemeInput(String),
     PSetTheme,
+    PExportDatabase,
+    PImportDatabase,
 }
 
 fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
@@ -151,6 +154,7 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         Msg::GSMakeEvent => model.generate_schedule.make_event(&mut model.database),
         Msg::MEExpandSchedule(id) => model.manage_events.expand_schedule(id),
         Msg::MEHideSchedule(id) => model.manage_events.hide_schedule(id),
+        Msg::MEDelete(id) => model.manage_events.delete(id, &mut model.database),
         Msg::MPAddPlayerNameInput(player_name) => {
             model.manage_players.set_player_name_input(player_name)
         }
@@ -180,6 +184,8 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         Msg::MGHide(group_id) => model.manage_groups.hide(group_id),
         Msg::PSetThemeInput(theme) => model.preferences.set_theme_input(theme),
         Msg::PSetTheme => model.preferences.set_theme(&mut model.style_control),
+        Msg::PExportDatabase => model.preferences.export_database(&model.database),
+        Msg::PImportDatabase => model.preferences.import_database(&mut model.database),
     }
 }
 

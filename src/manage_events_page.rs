@@ -16,6 +16,10 @@ impl ManageEvents {
     pub fn hide_schedule(&mut self, id: u32) {
         self.expanded_schedules.remove(&id);
     }
+    pub fn delete(&mut self, id: u32, database: &mut database::Database) {
+        self.expanded_schedules.remove(&id);
+        database.remove_event(id);
+    }
 }
 
 pub fn view_manage_events(
@@ -46,7 +50,11 @@ St::FlexGrow=> "1";];
                         td![event.date],
                         td![format!("{:} players", event.players.len())],
                         td![button![style.button_style(), "Change Name"]],
-                        td![button![style.button_style(), "Delete from database"]],
+                        td![button![
+                            style.button_style(),
+                            ev(Ev::Click, move |_| Msg::MEDelete(id)),
+                            "Delete from database"
+                        ]],
                         td![if model.expanded_schedules.contains(&id) {
                             button![
                                 style.button_style(),

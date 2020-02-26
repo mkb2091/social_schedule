@@ -108,6 +108,15 @@ impl Database {
         }
     }
 
+    pub fn import(&mut self, data: &str) -> Result<(), ()> {
+        if let Ok(database) = serde_json::from_str::<Database>(data) {
+            *self = database;
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
+
     pub fn dump(&self) {
         if let Ok(string_form) = serde_json::to_string(&self) {
             if let Some(storage) = seed::storage::get_storage() {
@@ -116,6 +125,10 @@ impl Database {
                 }
             }
         }
+    }
+
+    pub fn dump_to_string(&self) -> String {
+        serde_json::to_string(&self).unwrap()
     }
     pub fn add_player(&mut self, name: String, email: Option<Email>) {
         for id in (self.players.len() as u32)..std::u32::MAX {
@@ -242,5 +255,9 @@ impl Database {
     }
     pub fn get_events(&self) -> Vec<(&u32, &Event)> {
         self.events.iter().collect()
+    }
+    pub fn remove_event(&mut self, event_id: u32) {
+        self.events.remove(&event_id);
+        self.dump();
     }
 }

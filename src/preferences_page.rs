@@ -1,7 +1,7 @@
 use seed::prelude::*;
 
 use crate::style_control::Theme;
-use crate::{style_control, Msg};
+use crate::{alert, database, prompt, style_control, Msg};
 
 pub struct Preferences {
     theme_input: Option<Theme>,
@@ -27,22 +27,44 @@ impl Preferences {
             style_control.set_theme(theme);
         }
     }
+    pub fn export_database(&self, database: &database::Database) {
+        alert(&database.dump_to_string())
+    }
+    pub fn import_database(&self, database: &mut database::Database) {
+        if let Some(data) = prompt("Database") {
+            if database.import(&data).is_err() {
+                alert("Failed to parse data")
+            }
+        }
+    }
 }
 
 pub fn view_preferences(_model: &Preferences, style: &style_control::StyleControl) -> Node<Msg> {
     div![
-        span!["Theme: "],
-        select![
-            style.button_style(),
-            input_ev(Ev::Input, Msg::PSetThemeInput),
-            option![style.option_style(), ""],
-            option![style.option_style(), "Light"],
-            option![style.option_style(), "Dark"]
+        p![
+            span!["Theme: "],
+            select![
+                style.button_style(),
+                input_ev(Ev::Input, Msg::PSetThemeInput),
+                option![style.option_style(), ""],
+                option![style.option_style(), "Light"],
+                option![style.option_style(), "Dark"]
+            ],
+            button![
+                style.button_style(),
+                simple_ev(Ev::Click, Msg::PSetTheme),
+                "Set"
+            ]
         ],
-        button![
+        p![button![
             style.button_style(),
-            simple_ev(Ev::Click, Msg::PSetTheme),
-            "Set"
-        ]
+            simple_ev(Ev::Click, Msg::PExportDatabase),
+            "Export database"
+        ]],
+        p![button![
+            style.button_style(),
+            simple_ev(Ev::Click, Msg::PImportDatabase),
+            "Import database"
+        ]],
     ]
 }
