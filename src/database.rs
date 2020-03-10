@@ -111,6 +111,7 @@ impl Database {
     pub fn import(&mut self, data: &str) -> Result<(), ()> {
         if let Ok(database) = serde_json::from_str::<Database>(data) {
             *self = database;
+            self.dump();
             Ok(())
         } else {
             Err(())
