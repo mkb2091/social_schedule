@@ -53,11 +53,17 @@ pub struct Group {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
+pub struct Match {
+    players_and_scores: Vec<(u32, usize)>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct Event {
     pub name: String,
     pub date: String,
     pub schedule: schedule::SerdeSchedule,
     pub players: Vec<u32>,
+    pub matches: Vec<Vec<u32>>,
     pub tables: usize,
 }
 
@@ -80,6 +86,7 @@ impl Event {
             date,
             schedule: schedule.to_serde_schedule(),
             players,
+            matches: Vec::new(),
             tables,
         })
     }
@@ -90,6 +97,7 @@ pub struct Database {
     players: std::collections::HashMap<u32, Player>,
     groups: std::collections::HashMap<u32, Group>,
     events: std::collections::HashMap<u32, Event>,
+    matches: std::collections::HashMap<u32, Match>,
 }
 
 impl Database {
@@ -105,6 +113,7 @@ impl Database {
             players: std::collections::HashMap::new(),
             groups: std::collections::HashMap::new(),
             events: std::collections::HashMap::new(),
+            matches: std::collections::HashMap::new(),
         }
     }
 
