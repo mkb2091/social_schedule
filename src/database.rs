@@ -266,6 +266,9 @@ impl Database {
     pub fn get_events(&self) -> Vec<(&u32, &Event)> {
         self.events.iter().collect()
     }
+    pub fn get_event(&self, id: u32) -> Option<&Event> {
+        self.events.get(&id)
+    }
     pub fn remove_event(&mut self, event_id: u32) {
         self.events.remove(&event_id);
         self.dump();

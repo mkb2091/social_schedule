@@ -113,6 +113,7 @@ pub enum Msg {
     ARExpandSchedule(u32),
     ARHideSchedule(u32),
     ARSetScore(u32, usize, usize, usize, String),
+    ARAddMatchResults(u32),
     MPAddPlayer,
     MPAddPlayerNameInput(String),
     MPAddPlayerEmailInput(String),
@@ -167,6 +168,7 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         Msg::ARSetScore(id, round, table, player_number, score) => model
             .add_match_results
             .set_score(id, round, table, player_number, score),
+        Msg::ARAddMatchResults(id) => model.add_match_results.add_results(id, &mut model.database),
         Msg::MPAddPlayerNameInput(player_name) => {
             model.manage_players.set_player_name_input(player_name)
         }

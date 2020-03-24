@@ -5,6 +5,8 @@ use crate::{
     view_schedule, Msg,
 };
 
+use schedule::ScheduleStructure;
+
 #[derive(Default)]
 pub struct AddMatchResults {
     expanded_schedules: std::collections::HashSet<u32>,
@@ -27,11 +29,42 @@ impl AddMatchResults {
         player_number: usize,
         score: String,
     ) {
-        if let Ok(score) = score.parse::<usize>() {
+        if score.is_empty() {
             self.score_inputs
                 .entry(id)
                 .or_default()
-                .insert((round, table, player_number), score);
+                .remove(&(round, table, player_number));
+        } else {
+            if let Ok(score) = score.parse::<usize>() {
+                self.score_inputs
+                    .entry(id)
+                    .or_default()
+                    .insert((round, table, player_number), score);
+            } else {
+                alert(&("Not a Number: ".to_owned() + &score))
+            }
+        }
+    }
+    pub fn add_results(&mut self, id: u32, database: &mut database::Database) {
+        if let Some(event) = database.get_event(id) {
+            if let Some(event_matches) = self.score_inputs.get(&id) {
+                for round in 0..event.tables {
+                    for table in 0..event.tables {
+                        for player_number in event.schedule.get_players_from_game(round, table) {
+                            if let Some(score) = event_matches.get(&(round, table, player_number)) {
+                            } else {
+                                alert("Haven't entered all scores");
+                                return;
+                            }
+                        }
+                    }
+                }
+                alert("Success")
+            } else {
+                alert("Haven't entered any scores");
+            }
+        } else {
+            alert("Schedule is not in the database")
         }
     }
 }
@@ -65,8 +98,8 @@ fn view_schedule_with_result_boxes<T: schedule::ScheduleStructure>(
                         let player_list = schedule.get_players_from_game(round, table);
                         let mut data: Vec<Node<Msg>> = Vec::new();
                         for player_number in player_list {
-                            let id = players[player_number];
-                            if let Some(player) = database.get_player(id) {
+                            let player_id = players[player_number];
+                            if let Some(player) = database.get_player(player_id) {
                                 data.push(span![
                                     style![St::Display => "Flex";
 		St::FlexWrap => "Wrap";],
@@ -140,17 +173,24 @@ St::FlexGrow=> "1";];
                             td![event.date],
                             td![format!("{:} players", event.players.len())],
                             td![if model.expanded_schedules.contains(&id) {
-                                button![
-                                    style.button_style(),
-                                    ev(Ev::Click, move |_| Msg::ARHideSchedule(id)),
-                                    "Hide Schedule"
+                                vec![
+                                    button![
+                                        style.button_style(),
+                                        ev(Ev::Click, move |_| Msg::ARHideSchedule(id)),
+                                        "Hide Schedule"
+                                    ],
+                                    button![
+                                        style.button_style(),
+                                        ev(Ev::Click, move |_| Msg::ARAddMatchResults(id)),
+                                        "Add Entered Match Results"
+                                    ],
                                 ]
                             } else {
-                                button![
+                                vec![button![
                                     style.button_style(),
                                     ev(Ev::Click, move |_| Msg::ARExpandSchedule(id)),
                                     "Show Schedule"
-                                ]
+                                ]]
                             }],
                         ]);
                         node_list.push(tr![td![
