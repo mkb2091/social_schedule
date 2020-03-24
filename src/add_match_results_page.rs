@@ -8,6 +8,8 @@ use crate::{
 #[derive(Default)]
 pub struct AddMatchResults {
     expanded_schedules: std::collections::HashSet<u32>,
+    score_inputs:
+        std::collections::HashMap<u32, std::collections::HashMap<(usize, usize, usize), usize>>,
 }
 
 impl AddMatchResults {
@@ -17,12 +19,32 @@ impl AddMatchResults {
     pub fn hide_schedule(&mut self, id: u32) {
         self.expanded_schedules.remove(&id);
     }
+    pub fn set_score(
+        &mut self,
+        id: u32,
+        round: usize,
+        table: usize,
+        player_number: usize,
+        score: String,
+    ) {
+        if let Ok(score) = score.parse::<usize>() {
+            self.score_inputs
+                .entry(id)
+                .or_default()
+                .insert((round, table, player_number), score);
+        }
+    }
 }
 
 fn view_schedule_with_result_boxes<T: schedule::ScheduleStructure>(
     schedule: &T,
     players: &[u32],
     database: &database::Database,
+    id: u32,
+    score_inputs: &std::collections::HashMap<
+        u32,
+        std::collections::HashMap<(usize, usize, usize), usize>,
+    >,
 ) -> Node<Msg> {
     table![style![St::BorderSpacing => "5px 10px"; ], {
         let tables = schedule.get_tables();
@@ -50,6 +72,28 @@ fn view_schedule_with_result_boxes<T: schedule::ScheduleStructure>(
 		St::FlexWrap => "Wrap";],
                                     span![style![St::FlexGrow => "1"], player.name],
                                     input![
+                                        {
+                                            if let Some(event_matches) = score_inputs.get(&id) {
+                                                if let Some(score) = event_matches.get(&(
+                                                    round,
+                                                    table,
+                                                    player_number,
+                                                )) {
+                                                    attrs! {At::Value => score}
+                                                } else {
+                                                    attrs! {}
+                                                }
+                                            } else {
+                                                attrs! {}
+                                            }
+                                        },
+                                        input_ev(Ev::Input, move |score| Msg::ARSetScore(
+                                            id,
+                                            round,
+                                            table,
+                                            player_number,
+                                            score
+                                        )),
                                         attrs! {At::Type => "number"},
                                         style! {St::Width => "3em"; St::FlexGrow => "0"}
                                     ],
@@ -121,6 +165,8 @@ St::FlexGrow=> "1";];
                                             &event.schedule,
                                             &event.players,
                                             database,
+                                            id,
+                                            &model.score_inputs,
                                         )
                                     } else {
                                         div![]

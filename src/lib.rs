@@ -112,6 +112,7 @@ pub enum Msg {
     MEDelete(u32),
     ARExpandSchedule(u32),
     ARHideSchedule(u32),
+    ARSetScore(u32, usize, usize, usize, String),
     MPAddPlayer,
     MPAddPlayerNameInput(String),
     MPAddPlayerEmailInput(String),
@@ -163,6 +164,9 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         Msg::MEDelete(id) => model.manage_events.delete(id, &mut model.database),
         Msg::ARExpandSchedule(id) => model.add_match_results.expand_schedule(id),
         Msg::ARHideSchedule(id) => model.add_match_results.hide_schedule(id),
+        Msg::ARSetScore(id, round, table, player_number, score) => model
+            .add_match_results
+            .set_score(id, round, table, player_number, score),
         Msg::MPAddPlayerNameInput(player_name) => {
             model.manage_players.set_player_name_input(player_name)
         }
