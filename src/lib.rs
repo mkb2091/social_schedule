@@ -1,3 +1,4 @@
+pub mod add_match_results_page;
 pub mod database;
 pub mod generate_schedule_page;
 pub mod manage_events_page;
@@ -53,6 +54,7 @@ pub enum Page {
     ManagePlayers,
     ManageGroups,
     ManageEvents,
+    AddMatchResults,
     Preferences,
 }
 
@@ -63,6 +65,7 @@ struct Model {
     manage_groups: manage_groups_page::ManageGroups,
     manage_events: manage_events_page::ManageEvents,
     create_event: manage_events_page::CreateEvent,
+    add_match_results: add_match_results_page::AddMatchResults,
     preferences: preferences_page::Preferences,
     style_control: style_control::StyleControl,
     database: database::Database,
@@ -77,6 +80,7 @@ impl Default for Model {
             manage_groups: manage_groups_page::ManageGroups::default(),
             manage_events: manage_events_page::ManageEvents::default(),
             create_event: manage_events_page::CreateEvent::default(),
+            add_match_results: add_match_results_page::AddMatchResults::default(),
             preferences: preferences_page::Preferences::default(),
             style_control: style_control::StyleControl::default(),
             database: database::Database::load(),
@@ -106,6 +110,8 @@ pub enum Msg {
     MEExpandSchedule(u32),
     MEHideSchedule(u32),
     MEDelete(u32),
+    ARExpandSchedule(u32),
+    ARHideSchedule(u32),
     MPAddPlayer,
     MPAddPlayerNameInput(String),
     MPAddPlayerEmailInput(String),
@@ -155,6 +161,8 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         Msg::MEExpandSchedule(id) => model.manage_events.expand_schedule(id),
         Msg::MEHideSchedule(id) => model.manage_events.hide_schedule(id),
         Msg::MEDelete(id) => model.manage_events.delete(id, &mut model.database),
+        Msg::ARExpandSchedule(id) => model.add_match_results.expand_schedule(id),
+        Msg::ARHideSchedule(id) => model.add_match_results.hide_schedule(id),
         Msg::MPAddPlayerNameInput(player_name) => {
             model.manage_players.set_player_name_input(player_name)
         }
@@ -281,6 +289,7 @@ St::Overflow => "auto";],
                 Page::ManageGroups => "Manage Groups".to_string(),
                 Page::ManageEvents => "Manage Events".to_string(),
                 Page::CreateEvent => model.create_event.title(&model.generate_schedule),
+                Page::AddMatchResults => "Add Match Results".to_string(),
                 Page::Preferences => "Preferences".to_string(),
             }
         ],
@@ -314,6 +323,18 @@ St::Overflow => "auto";],
             button![
                 model.style_control.button_style(),
                 &tab_style,
+                simple_ev(Ev::Click, Msg::ChangePage(Page::ManageEvents)),
+                "View Past Matches"
+            ],
+            button![
+                model.style_control.button_style(),
+                &tab_style,
+                simple_ev(Ev::Click, Msg::ChangePage(Page::AddMatchResults)),
+                "Add Match Results"
+            ],
+            button![
+                model.style_control.button_style(),
+                &tab_style,
                 simple_ev(Ev::Click, Msg::ChangePage(Page::Preferences)),
                 "Preferences"
             ]
@@ -340,7 +361,11 @@ St::Overflow => "auto";],
                 &model.database,
                 &model.style_control,
             ),
-
+            Page::AddMatchResults => add_match_results_page::view_add_match_results(
+                &model.add_match_results,
+                &model.database,
+                &model.style_control,
+            ),
             Page::Preferences => {
                 preferences_page::view_preferences(&model.preferences, &model.style_control)
             }
