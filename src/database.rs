@@ -273,4 +273,20 @@ impl Database {
         self.events.remove(&event_id);
         self.dump();
     }
+    pub fn add_match(&mut self, players_and_scores: Vec<(u32, usize)>) -> u32 {
+        let current_match = Match { players_and_scores };
+        let mut id = self.matches.len() as u32;
+        while self.matches.contains_key(&id) {
+            id += 1;
+        }
+        self.matches.insert(id, current_match);
+        self.dump();
+        id
+    }
+    pub fn set_matches(&mut self, id: u32, matches: Vec<Vec<u32>>) {
+        if let Some(event) = self.events.get_mut(&id) {
+            event.matches = matches;
+            self.dump();
+        }
+    }
 }

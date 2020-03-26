@@ -1,8 +1,7 @@
 use seed::prelude::*;
 
 use crate::{
-    alert, database, generate_schedule_page, player_select_box, schedule, style_control,
-    view_schedule, Msg,
+    alert, database, generate_schedule_page, player_select_box, schedule, style_control, Msg,
 };
 
 use schedule::ScheduleStructure;
@@ -47,19 +46,36 @@ impl AddMatchResults {
     }
     pub fn add_results(&mut self, id: u32, database: &mut database::Database) {
         if let Some(event) = database.get_event(id) {
+            let event = event.clone();
             if let Some(event_matches) = self.score_inputs.get(&id) {
+                let mut data: Vec<Vec<Vec<(u32, usize)>>> = Vec::with_capacity(event.tables);
                 for round in 0..event.tables {
+                    let mut round_vec: Vec<Vec<(u32, usize)>> = Vec::with_capacity(event.tables);
                     for table in 0..event.tables {
+                        let mut table_vec: Vec<(u32, usize)> = Vec::new();
                         for player_number in event.schedule.get_players_from_game(round, table) {
+                            let player_id = event.players[player_number];
                             if let Some(score) = event_matches.get(&(round, table, player_number)) {
+                                table_vec.push((player_id, *score));
                             } else {
                                 alert("Haven't entered all scores");
                                 return;
                             }
                         }
+                        round_vec.push(table_vec);
                     }
+                    data.push(round_vec);
                 }
-                alert("Success")
+                let mut match_ids: Vec<Vec<u32>> = Vec::with_capacity(event.tables);
+                for round in 0..event.tables {
+                    let mut round_vec: Vec<u32> = Vec::with_capacity(event.tables);
+                    for table in 0..event.tables {
+                        let id = database.add_match(data[round][table].clone());
+                        round_vec.push(id);
+                    }
+                    match_ids.push(round_vec);
+                }
+                database.set_matches(id, match_ids);
             } else {
                 alert("Haven't entered any scores");
             }
