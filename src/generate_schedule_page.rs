@@ -117,7 +117,7 @@ impl GenerateSchedule {
                     "Average number of unique opponents/teammates played with: {}",
                     (best.unique_opponents() as f32 / schedule.get_player_count() as f32)
                 )],
-                view_schedule(best, &self.players, &database),
+                view_schedule(best, &self.players, &database, None),
             ]
         } else {
             div![]

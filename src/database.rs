@@ -54,7 +54,7 @@ pub struct Group {
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct Match {
-    players_and_scores: Vec<(u32, usize)>,
+    pub players_and_scores: Vec<(u32, usize)>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
@@ -288,5 +288,8 @@ impl Database {
             event.matches = matches;
             self.dump();
         }
+    }
+    pub fn get_match(&self, id: u32) -> Option<&Match> {
+        self.matches.get(&id)
     }
 }

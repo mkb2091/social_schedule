@@ -77,7 +77,16 @@ St::FlexGrow=> "1";];
                             div![
                                 &box_style,
                                 if model.expanded_schedules.contains(&id) {
-                                    view_schedule(&event.schedule, &event.players, database)
+                                    view_schedule(
+                                        &event.schedule,
+                                        &event.players,
+                                        database,
+                                        if event.matches.is_empty() {
+                                            None
+                                        } else {
+                                            Some(&event.matches)
+                                        },
+                                    )
                                 } else {
                                     div![]
                                 }
