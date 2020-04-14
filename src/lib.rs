@@ -279,7 +279,7 @@ fn view_schedule<T: schedule::ScheduleStructure>(
                                 if let Some(temp_match) = database.get_match(match_id) {
                                     current_match = Some(
                                         temp_match
-                                            .players_and_scores
+                                            .ps
                                             .iter()
                                             .cloned()
                                             .collect::<std::collections::HashMap<u32, usize>>(),

@@ -54,7 +54,7 @@ pub struct Group {
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct Match {
-    pub players_and_scores: Vec<(u32, usize)>,
+    pub ps: Vec<(u32, usize)>,// Players and scores, since name is included in generated JSON, using full name had resulted in far larger stored size
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
@@ -274,7 +274,7 @@ impl Database {
         self.dump();
     }
     pub fn add_match(&mut self, players_and_scores: Vec<(u32, usize)>) -> u32 {
-        let current_match = Match { players_and_scores };
+        let current_match = Match { ps: players_and_scores };
         let mut id = self.matches.len() as u32;
         while self.matches.contains_key(&id) {
             id += 1;
