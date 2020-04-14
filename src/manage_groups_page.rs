@@ -136,13 +136,6 @@ St::FlexGrow=> "1";];
                                     database,
                                     style,
                                     &players.iter().copied().collect(),
-                                    if let Some(&player_id) =
-                                        model.add_player_to_group_input.get(&id)
-                                    {
-                                        Some(player_id)
-                                    } else {
-                                        None
-                                    }
                                 )
                             ],
                             button![

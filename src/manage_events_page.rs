@@ -47,15 +47,7 @@ St::FlexGrow=> "1";];
                 style.button_style(),
                 input_ev(Ev::Input, Msg::MESetPlayerFilter),
                 attrs! {At::Value => if let Some(filter_by_player) = model.filter_by_player {format!("{:}", filter_by_player)} else {"".to_string()}},
-                {
-                    let players = database.get_players();
-                    let mut options: Vec<Node<Msg>> = Vec::with_capacity(players.len() + 1);
-                    options.push(option![attrs! {At::Value => ""}, "None"]);
-                    for (player_id, player) in players.iter() {
-                        options.push(option![attrs! {At::Value => player_id}, player.name]);
-                    }
-                    options
-                }
+                { player_select_box(&database, &style, &std::collections::HashSet::new()) }
             ]
         ],
         table![
@@ -459,7 +451,7 @@ St::FlexGrow=> "1";];
                     style.button_style(),
                     attrs! {At::Value => if let Some(val) = model.add_player_select_box {val.to_string()} else {"".to_string()}},
                     input_ev(Ev::Input, Msg::CEAddPlayerSelectBoxInput),
-                    player_select_box(database, style, &model.players, model.add_player_select_box),
+                    player_select_box(database, style, &model.players),
                 ],
                 button![
                     style.button_style(),
