@@ -7,8 +7,8 @@ use crate::{
 #[derive(Default)]
 pub struct ManageEvents {
     expanded_schedules: std::collections::HashSet<u32>,
+    filter_by_player: Option<u32>,
 }
-
 impl ManageEvents {
     pub fn expand_schedule(&mut self, id: u32) {
         self.expanded_schedules.insert(id);
@@ -19,6 +19,14 @@ impl ManageEvents {
     pub fn delete(&mut self, id: u32, database: &mut database::Database) {
         self.expanded_schedules.remove(&id);
         database.remove_event(id);
+    }
+
+    pub fn set_filter_by_player(&mut self, id: String) {
+        if let Ok(id) = id.parse::<u32>() {
+            self.filter_by_player = Some(id);
+        } else {
+            self.filter_by_player = None;
+        }
     }
 }
 
@@ -33,6 +41,23 @@ St::FlexGrow=> "1";];
 
     div![
         h2!["Event List"],
+        p![
+            "Filter by player:",
+            select![
+                style.button_style(),
+                input_ev(Ev::Input, Msg::MESetPlayerFilter),
+                attrs! {At::Value => if let Some(filter_by_player) = model.filter_by_player {format!("{:}", filter_by_player)} else {"".to_string()}},
+                {
+                    let players = database.get_players();
+                    let mut options: Vec<Node<Msg>> = Vec::with_capacity(players.len() + 1);
+                    options.push(option![attrs! {At::Value => ""}, "None"]);
+                    for (player_id, player) in players.iter() {
+                        options.push(option![attrs! {At::Value => player_id}, player.name]);
+                    }
+                    options
+                }
+            ]
+        ],
         table![
             style![St::PaddingBottom => "5px";],
             tr![
@@ -44,6 +69,11 @@ St::FlexGrow=> "1";];
                 let events_list = database.get_events();
                 let mut node_list: Vec<Node<Msg>> = Vec::with_capacity(events_list.len());
                 for (&id, event) in &events_list {
+                    if let Some(filter_by_player) = model.filter_by_player {
+                        if !event.players.contains(&filter_by_player) {
+                            continue;
+                        }
+                    };
                     node_list.push(tr![
                         td![id.to_string()],
                         td![event.name],
