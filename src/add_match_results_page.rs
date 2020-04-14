@@ -70,7 +70,9 @@ impl AddMatchResults {
                 for round in 0..event.tables {
                     let mut round_vec: Vec<u32> = Vec::with_capacity(event.tables);
                     for table in 0..event.tables {
-                        let id = database.add_match(data[round][table].clone());
+                        let id = database.add_match(
+                            data[round][table].iter().map(|(_, score)| *score).collect(),
+                        );
                         round_vec.push(id);
                     }
                     match_ids.push(round_vec);

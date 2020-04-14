@@ -272,18 +272,15 @@ fn view_schedule<T: schedule::ScheduleStructure>(
                 row.push(td![format!("Round {:}", round + 1)]);
                 for table in 0..tables {
                     let current_match = {
-                        let mut current_match: Option<std::collections::HashMap<u32, usize>> = None;
+                        let mut current_match: Vec<usize> = Vec::new();
 
                         if let Some(matches_in_round) = matches_in_round {
                             if let Some(&match_id) = matches_in_round.get(table) {
                                 if let Some(temp_match) = database.get_match(match_id) {
-                                    current_match = Some(
+                                    current_match =
                                         temp_match
-                                            .ps
-                                            .iter()
-                                            .cloned()
-                                            .collect::<std::collections::HashMap<u32, usize>>(),
-                                    )
+                                            .s.clone()
+
                                 }
                             }
                         }
@@ -292,7 +289,7 @@ fn view_schedule<T: schedule::ScheduleStructure>(
                     row.push(td![{
                         let player_list = schedule.get_players_from_game(round, table);
                         let mut data: Vec<Node<Msg>> = Vec::new();
-                        for player_number in player_list {
+                        for (i, &player_number) in player_list.iter().enumerate() {
                             let id = players[player_number];
                             if let Some(player) = database.get_player(id) {
                                 data.push(span![
@@ -301,15 +298,11 @@ fn view_schedule<T: schedule::ScheduleStructure>(
                                     span![style![St::FlexGrow => "1"], player.name],
                                     span![
                                         style! {St::Width => "3em"; St::FlexGrow => "0", St::PaddingLeft => "2em"},
-                                        if let Some(current_match) = &current_match {
-                                            if let Some(score) = current_match.get(&id) {
+                                            if let Some(score) = current_match.get(i) {
                                                 format!("{}", score)
                                             } else {
                                                 "".to_string()
                                             }
-                                        } else {
-                                            "".to_string()
-                                        }
                                     ],
                                     br![]
                                 ]);
