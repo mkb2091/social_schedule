@@ -63,11 +63,11 @@ impl AddMatchResults {
                     data.push(round_vec);
                 }
                 let mut match_ids: Vec<Vec<u32>> = Vec::with_capacity(event.tables);
-                for round in data.iter().take(event.tables) {
+                for round in data.iter() {
                     let mut round_vec: Vec<u32> = Vec::with_capacity(event.tables);
-                    for table in 0..event.tables {
-                        let id = database
-                            .add_match(round[table].iter().map(|(_, score)| *score).collect());
+                    for table in round.iter() {
+                        let id =
+                            database.add_match(table.iter().map(|(_, score)| *score).collect());
                         round_vec.push(id);
                     }
                     match_ids.push(round_vec);
