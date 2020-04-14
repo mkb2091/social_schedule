@@ -1,8 +1,6 @@
 use seed::prelude::*;
 
-use crate::{
-    alert, database, generate_schedule_page, player_select_box, schedule, style_control, Msg,
-};
+use crate::{alert, database, schedule, style_control, Msg};
 
 use schedule::ScheduleStructure;
 
@@ -33,15 +31,13 @@ impl AddMatchResults {
                 .entry(id)
                 .or_default()
                 .remove(&(round, table, player_number));
+        } else if let Ok(score) = score.parse::<usize>() {
+            self.score_inputs
+                .entry(id)
+                .or_default()
+                .insert((round, table, player_number), score);
         } else {
-            if let Ok(score) = score.parse::<usize>() {
-                self.score_inputs
-                    .entry(id)
-                    .or_default()
-                    .insert((round, table, player_number), score);
-            } else {
-                alert(&("Not a Number: ".to_owned() + &score))
-            }
+            alert(&("Not a Number: ".to_owned() + &score))
         }
     }
     pub fn add_results(&mut self, id: u32, database: &mut database::Database) {
@@ -67,12 +63,11 @@ impl AddMatchResults {
                     data.push(round_vec);
                 }
                 let mut match_ids: Vec<Vec<u32>> = Vec::with_capacity(event.tables);
-                for round in 0..event.tables {
+                for round in data.iter().take(event.tables) {
                     let mut round_vec: Vec<u32> = Vec::with_capacity(event.tables);
                     for table in 0..event.tables {
-                        let id = database.add_match(
-                            data[round][table].iter().map(|(_, score)| *score).collect(),
-                        );
+                        let id = database
+                            .add_match(round[table].iter().map(|(_, score)| *score).collect());
                         round_vec.push(id);
                     }
                     match_ids.push(round_vec);
