@@ -179,6 +179,7 @@ St::FlexGrow=> "1";];
             p![
                 span!["Group Name: "],
                 input![
+                    style.input_style(),
                     attrs! {At::Value => model.add_group_name_input},
                     input_ev(Ev::Input, Msg::MGAddGroupNameInput)
                 ],

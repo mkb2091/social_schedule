@@ -294,12 +294,14 @@ St::FlexGrow=> "1";];
                 tr![
                     td!["Event Name: "],
                     td![input![
+                        style.input_style(),
                         attrs! {At::Value => model.event_name},
                             input_ev(Ev::Input, Msg::CESetEventName)]]
                 ],
                 tr![
                     td!["Event date: "],
-                    td![input![attrs!{At::Value => model.event_date},
+                    td![input![
+                        style.input_style(),attrs!{At::Value => model.event_date},
                         input_ev(Ev::Input, Msg::CESetEventDate)]]
                 ],
                 tr![

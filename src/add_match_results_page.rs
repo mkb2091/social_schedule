@@ -91,6 +91,7 @@ fn view_schedule_with_result_boxes<T: schedule::ScheduleStructure>(
         u32,
         std::collections::HashMap<(usize, usize, usize), usize>,
     >,
+    style: &style_control::StyleControl,
 ) -> Node<Msg> {
     table![style![St::BorderSpacing => "5px 10px"; ], {
         let tables = schedule.get_tables();
@@ -118,6 +119,7 @@ fn view_schedule_with_result_boxes<T: schedule::ScheduleStructure>(
 		St::FlexWrap => "Wrap";],
                                     span![style![St::FlexGrow => "1"], player.name],
                                     input![
+                                        style.input_style(),
                                         {
                                             if let Some(event_matches) = score_inputs.get(&id) {
                                                 if let Some(score) = event_matches.get(&(
@@ -220,6 +222,7 @@ St::FlexGrow=> "1";];
                                             database,
                                             id,
                                             &model.score_inputs,
+                                            &style,
                                         )
                                     } else {
                                         div![]

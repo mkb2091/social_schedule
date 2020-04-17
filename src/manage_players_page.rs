@@ -119,6 +119,7 @@ St::FlexGrow=> "1";];
             p![
                 span!["Player Name: "],
                 input![
+                    style.input_style(),
                     attrs! {At::Value => model.add_player_name_input},
                     input_ev(Ev::Input, Msg::MPAddPlayerNameInput)
                 ],
@@ -126,6 +127,7 @@ St::FlexGrow=> "1";];
             p![
                 span!["Email: "],
                 input![
+                    style.input_style(),
                     attrs! {At::Value => model.add_player_email_input},
                     input_ev(Ev::Input, Msg::MPAddPlayerEmailInput)
                 ]
