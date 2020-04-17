@@ -76,6 +76,7 @@ pub struct Schedule {
     unique_games_played_cache: u32,
     /**Cache of sum of how many unique opponents each player has*/
     unique_opponent_sum_cache: u32,
+    unique_opponent_min_cache: u32,
     /**Calculated max possible total unique games played*/
     pub ideal_unique_games: u32,
     /**Calculated max possible total unique opponents*/
@@ -132,6 +133,7 @@ impl Schedule {
             player_opponent_cache,
             unique_games_played_cache: 0,
             unique_opponent_sum_cache: 0,
+            unique_opponent_min_cache: 0,
             ideal_unique_games: (player_count * tables) as u32,
             ideal_unique_opponents,
         }
@@ -187,6 +189,7 @@ impl Schedule {
         }
         self.find_unique_opponents(); // Fill cache of unique opponents with correct data
         self.find_unique_games_played(); // Fill cache of unique games played with correct data
+        self.find_min_unique_opponents();
     }
 
     /**
@@ -319,10 +322,22 @@ impl Schedule {
             .map(|&val| u32::from(val))
             .sum::<u32>();
     }
+
     /** Use cached results to get total number of unique opponents */
     pub const fn unique_opponents(&self) -> u32 {
         self.unique_opponent_sum_cache
     }
+
+    fn find_min_unique_opponents(&mut self) -> u32 {
+        self.unique_opponent_min_cache =
+            *self.player_opponent_cache.iter().min().unwrap_or(&0) as u32;
+        self.unique_opponent_min_cache
+    }
+
+    pub const fn min_unique_opponents(&self) -> u32 {
+        self.unique_opponent_min_cache
+    }
+
     /** Get the number of tables*/
     pub const fn get_tables(&self) -> usize {
         self.tables
@@ -354,6 +369,9 @@ impl Schedule {
     /** Calculate score and cache results*/
     pub fn generate_score(&mut self) -> u32 {
         self.find_unique_opponents() * self.ideal_unique_games
+            + self.find_min_unique_opponents()
+                * self.ideal_unique_games
+                * (self.player_count as u32)
             + self.find_unique_games_played()
                 * self.ideal_unique_opponents
                 * UNIQUE_GAMES_MULTIPLIER
@@ -362,6 +380,7 @@ impl Schedule {
     /** Get score using cached results */
     pub const fn get_score(&self) -> u32 {
         self.unique_opponents() * self.ideal_unique_games
+            + self.min_unique_opponents() * self.ideal_unique_games * (self.player_count as u32)
             + self.unique_games_played() * self.ideal_unique_opponents * UNIQUE_GAMES_MULTIPLIER
     }
 
@@ -411,6 +430,7 @@ impl Schedule {
                     self.player_unique_opponents(*p2);
                 }
                 self.sum_unique_opponent();
+                self.find_min_unique_opponents();
                 let new_unique_games_played = self.find_unique_games_played();
                 let new_score = self.get_score();
                 self.player_positions
@@ -448,6 +468,7 @@ impl Schedule {
             self.unique_games_played_cache = old_unique_games_played;
         }
         self.sum_unique_opponent();
+        self.find_min_unique_opponents();
         // Regenerate sum caches
         debug_assert!(self.get_score() == self.generate_score()); // Check that cache still represents most recent data
         (
