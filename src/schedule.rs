@@ -1,7 +1,7 @@
 use rand::seq::SliceRandom;
 use std::ops::IndexMut;
 
-const UNIQUE_GAMES_MULTIPLIER: u32 = 2;
+const UNIQUE_GAMES_MULTIPLIER: u32 = 4;
 /* Results in the program favouring schedules with higher total unique games played, during
 testing this seemed to result in overall better (higher total unique games played and higher total unique opponents) generated schedules.
 */
