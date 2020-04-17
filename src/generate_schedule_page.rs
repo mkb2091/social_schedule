@@ -63,6 +63,7 @@ impl GenerateSchedule {
         tables: usize,
         event_name: &str,
         event_date: &str,
+        database: &database::Database
     ) {
         if let Ok(rng) = rand_xorshift::XorShiftRng::from_rng(&mut self.rng) {
             self.players = players;
@@ -79,6 +80,7 @@ impl GenerateSchedule {
                 self.players.len(),
                 self.tables,
             ));
+            self.generate_table_display(&database);
         }
     }
 

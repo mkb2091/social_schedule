@@ -165,6 +165,7 @@ impl CreateEvent {
     pub fn go_to_generate_schedule_page(
         &mut self,
         generate_schedule_model: &mut generate_schedule_page::GenerateSchedule,
+        database: &database::Database
     ) {
         if let Some(tables) = self.tables {
             if self.event_name.is_empty() {
@@ -189,6 +190,7 @@ impl CreateEvent {
                     tables,
                     &self.event_name,
                     &self.event_date,
+                    &database
                 )
             }
         } else {

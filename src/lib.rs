@@ -154,7 +154,7 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         Msg::CESetTables(tables) => model.create_event.set_tables(tables),
         Msg::CEGenerateSchedule => model
             .create_event
-            .go_to_generate_schedule_page(&mut model.generate_schedule),
+            .go_to_generate_schedule_page(&mut model.generate_schedule, &model.database),
         Msg::GSSetCpuUsage(cpu_usage) => model.generate_schedule.set_cpu_usage(cpu_usage),
         Msg::GSStop => model.generate_schedule.stop(),
         Msg::GSResume => model.generate_schedule.resume(),
