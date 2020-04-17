@@ -551,10 +551,11 @@ impl<T: rand::Rng + rand_core::RngCore> Generator<T> {
                         );
                         evaluated_schedules += ops;
                         self.current_score = self.next_score;
-                        if self.current_score > self.best_score
+                        if (self.current_score > self.best_score
                             || (self.current_score == self.best_score
                                 && self.current.unique_games_played()
-                                    > self.best.unique_games_played())
+                                    > self.best.unique_games_played()))
+                            && self.current.unique_games_played() >= self.best.unique_games_played()
                         {
                             self.best_score = self.current_score;
                             self.best = self.current.clone();
@@ -566,10 +567,11 @@ impl<T: rand::Rng + rand_core::RngCore> Generator<T> {
                         self.current_score = self.current.get_score();
                         evaluated_schedules += 1;
                         self.next_score = self.current_score;
-                        if self.current_score > self.best_score
+                        if (self.current_score > self.best_score
                             || (self.current_score == self.best_score
                                 && self.current.unique_games_played()
-                                    > self.best.unique_games_played())
+                                    > self.best.unique_games_played()))
+                            && self.current.unique_games_played() >= self.best.unique_games_played()
                         {
                             self.best_score = self.current_score;
                             self.best = self.current.clone();
