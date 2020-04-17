@@ -100,6 +100,7 @@ impl Schedule {
     Contains blank schedule, so either generate_random, normal_fill, or import_vec will need to be called before it can be used */
     pub fn new(player_count: usize, tables: usize) -> Self {
         assert!(player_count <= 64);
+        assert!(player_count >= 2 * tables);
         assert!(tables >= 2); // Cannot swap two different tables, if there are less than two tables.
         let mut matches: Vec<u64> = Vec::with_capacity(tables * tables);
         for _ in 0..(tables * tables) {
@@ -412,6 +413,29 @@ impl Schedule {
         let t1_players: Vec<usize> = self.get_players_from_game(round, table1);
         let t2_players: Vec<usize> = self.get_players_from_game(round, table2);
 
+        let (other_unique_games_played_sum, other_unique_games_played_min) = {
+            let mut other_unique_games_played_sum: u32 = 0;
+            let mut other_unique_games_played_min: u32 = 0;
+            let other_players: u64 = original_t1 | original_t2;
+            debug_assert!(other_players != 0);
+            for player in 0..self.player_count {
+                let player_number = 1 << player;
+                if other_players & player_number == 0 {
+                    debug_assert!(!t1_players.contains(&player));
+                    debug_assert!(!t2_players.contains(&player));
+                    let opponent_count = self.player_opponent_cache[player] as u32;
+                    debug_assert!(opponent_count > 0);
+                    other_unique_games_played_sum += opponent_count;
+                    if (opponent_count < other_unique_games_played_min)
+                        || other_unique_games_played_min == 0
+                    {
+                        other_unique_games_played_min = opponent_count;
+                    }
+                }
+            }
+            (other_unique_games_played_sum, other_unique_games_played_min)
+        };
+
         let mut new_player_opponent_cache = self.player_opponent_cache.clone();
         for player1 in &t1_players {
             let player_number1: u64 = 1_u64 << player1;
@@ -422,17 +446,21 @@ impl Schedule {
                 *self.get_mut(round, table2) = original_t2 - player_number2 + player_number1;
                 self.player_positions
                     .swap(player1 * self.tables + round, player2 * self.tables + round);
+                let mut current_sum = other_unique_games_played_sum;
+                let mut current_min = other_unique_games_played_min;
                 // Regenerate results for players in those two tables, since they are the only affected players
-                for p1 in &t1_players {
-                    self.player_unique_opponents(*p1);
+                for p in t1_players.iter().chain(t2_players.iter()) {
+                    let opponent_count = self.player_unique_opponents(*p) as u32;
+                    current_sum += opponent_count;
+                    if opponent_count < current_min || current_min == 0 {
+                        current_min = opponent_count;
+                    }
                 }
-                for p2 in &t2_players {
-                    self.player_unique_opponents(*p2);
-                }
-                self.sum_unique_opponent();
-                self.find_min_unique_opponents();
+                self.unique_opponent_sum_cache = current_sum;
+                self.unique_opponent_min_cache = current_min;
                 let new_unique_games_played = self.find_unique_games_played();
                 let new_score = self.get_score();
+                debug_assert!(new_score == self.generate_score()); // Check that cache still represents most recent data
                 self.player_positions
                     .swap(player1 * self.tables + round, player2 * self.tables + round); // Swap players back to original position
                 if new_score > score
@@ -706,8 +734,8 @@ mod tests {
     }
 
     quickcheck! {fn get_score_matches_generate_score(tables: i8, player_count: i8, seed: Seed) -> bool{
-        let tables = (tables.abs() % 65).max(2) as usize;
-        let player_count = (player_count.abs() % 65) as usize;
+        let tables = (tables.abs() % 33).max(2) as usize;
+        let player_count = (player_count.abs() % 65).max((tables * 2) as i8) as usize;
         let mut schedule = Schedule::new(player_count as usize, tables as usize);
         let mut rng = rand_xorshift::XorShiftRng::from_seed(seed.data);
         schedule.generate_random(&mut rng);
@@ -715,8 +743,8 @@ mod tests {
     }}
 
     quickcheck! {fn unique_games_played_less_equal_ideal(tables: i8, player_count: i8, seed: Seed) -> bool{
-        let tables = (tables.abs() % 65).max(2) as usize;
-        let player_count = (player_count.abs() % 65) as usize;
+        let tables = (tables.abs() % 33).max(2) as usize;
+        let player_count = (player_count.abs() % 65).max((tables * 2) as i8) as usize;
         let mut schedule = Schedule::new(player_count as usize, tables as usize);
         let mut rng = rand_xorshift::XorShiftRng::from_seed(seed.data);
         schedule.generate_random(&mut rng);
@@ -724,8 +752,8 @@ mod tests {
     }}
 
     quickcheck! {fn unique_opponents_played_less_equal_ideal(tables: i8, player_count: i8, seed: Seed) -> bool{
-        let tables = (tables.abs() % 65).max(2) as usize;
-        let player_count = (player_count.abs() % 65) as usize;
+        let tables = (tables.abs() % 33).max(2) as usize;
+        let player_count = (player_count.abs() % 65).max((tables * 2) as i8) as usize;
         let mut schedule = Schedule::new(player_count as usize, tables as usize);
         let mut rng = rand_xorshift::XorShiftRng::from_seed(seed.data);
         schedule.generate_random(&mut rng);
@@ -733,8 +761,8 @@ mod tests {
     }}
 
     quickcheck! {fn normal_fill_maxes_unique_games(tables: i8, player_count: i8, seed: Seed) -> bool{
-        let tables = (tables.abs() % 65).max(2) as usize;
-        let player_count = (player_count.abs() % 65) as usize;
+        let tables = (tables.abs() % 33).max(2) as usize;
+        let player_count = (player_count.abs() % 65).max((tables * 2) as i8) as usize;
         let mut schedule = Schedule::new(player_count as usize, tables as usize);
         let mut rng = rand_xorshift::XorShiftRng::from_seed(seed.data);
         schedule.generate_random(&mut rng);
@@ -743,8 +771,8 @@ mod tests {
     }}
 
     quickcheck! {fn game_length_is_expected(tables: i8, player_count: i8, seed: Seed) -> bool{
-        let tables = (tables.abs() % 65).max(2) as usize;
-        let player_count = (player_count.abs() % 65) as usize;
+        let tables = (tables.abs() % 33).max(2) as usize;
+        let player_count = (player_count.abs() % 65).max((tables * 2) as i8) as usize;
 
         let mut schedule = Schedule::new(player_count as usize, tables as usize);
         let mut rng = rand_xorshift::XorShiftRng::from_seed(seed.data);
@@ -756,8 +784,8 @@ mod tests {
     }}
 
     quickcheck! {fn score_doesnt_decrease_after_process(tables: i8, player_count: i8, seed: Seed) -> bool{
-        let tables = (tables.abs() % 65).max(2) as usize;
-        let player_count = (player_count.abs() % 65) as usize;
+        let tables = (tables.abs() % 33).max(2) as usize;
+        let player_count = (player_count.abs() % 65).max((tables * 2) as i8) as usize;
         let rng = rand_xorshift::XorShiftRng::from_seed(seed.data);
         let mut generator = Generator::new(rng, player_count as usize, tables as usize);
         let old_score = generator.best_score;
@@ -766,8 +794,8 @@ mod tests {
     }}
 
     quickcheck! {fn score_doesnt_decrease_after_repeated_process(tables: i8, player_count: i8, seed: Seed, reps: u16) -> bool{
-        let tables = (tables.abs() % 65).max(2) as usize;
-        let player_count = (player_count.abs() % 65) as usize;
+        let tables = (tables.abs() % 33).max(2) as usize;
+        let player_count = (player_count.abs() % 65).max((tables * 2) as i8) as usize;
         let rng = rand_xorshift::XorShiftRng::from_seed(seed.data);
         let mut generator = Generator::new(rng, player_count as usize, tables as usize);
         let old_score = generator.best_score;
