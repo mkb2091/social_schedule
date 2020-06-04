@@ -22,14 +22,17 @@ struct Opts {
     tables: usize,
 }
 
-fn display_schedule(schedule: &schedule::Schedule, operations: u64, nanos: u128) {
+fn display_schedule(schedule: &schedule::Schedule, operations: u64, random_starts: u64, nanos: u128) {
     let mut output = String::new();
     output.push_str("Testing ");
-    let per_second = (operations as f64 / (nanos as f64 / 1000.0 / 1000.0 / 1000.0)) as u64;
+    let per_second = (operations as f64 / (nanos as f64 / 10_f64.powi(9))) as u64;
     output.write_formatted(&per_second, &Locale::en).unwrap();
     output.push_str(" schedules per second\n");
     output.push_str("Total schedules tested:");
     output.write_formatted(&operations, &Locale::en).unwrap();
+    output.push('\n');
+	output.push_str("Total random starts:");
+    output.write_formatted(&random_starts, &Locale::en).unwrap();
     output.push('\n');
     output.push_str(&format!(
         "Average number of unique games played: {}\n",
@@ -45,7 +48,7 @@ fn display_schedule(schedule: &schedule::Schedule, operations: u64, nanos: u128)
     ));
     output.push_str("     ");
     for table in 0..schedule.get_tables() {
-        let now = table.to_string();
+        let now = (table + 1).to_string();
         output.push('|');
         for _ in 0..(3 - now.len()) {
             output.push(' ');
@@ -63,7 +66,7 @@ fn display_schedule(schedule: &schedule::Schedule, operations: u64, nanos: u128)
         for i in 0..(schedule.get_player_count() / schedule.get_tables() + 1) {
             if i == (schedule.get_player_count() / schedule.get_tables() + 1) / 2 {
                 output.push('\n');
-                let now = i.to_string();
+                let now = (round + 1).to_string();
                 for _ in 0..(3 - now.len()) {
                     output.push(' ');
                 }
@@ -97,20 +100,26 @@ fn main() {
         let opts: Opts = Opts::parse();
         let (tx, rx) = std::sync::mpsc::channel::<schedule::Schedule>();
         let operations = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
+        let random_starts = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
         for i in 0..num_cpus::get() {
             let tx = tx.clone();
             let operations = std::sync::Arc::clone(&operations);
+			let random_starts = std::sync::Arc::clone(&random_starts);
             let mut rng = rand_xorshift::XorShiftRng::from_rng(&mut rand::thread_rng()).unwrap();
             let mut schedule_generator = schedule::Generator::new(rng, opts.players, opts.tables);
             tx.send(schedule_generator.best.clone()).unwrap();
             std::thread::spawn(move || loop {
                 let old_score = schedule_generator.best.get_score();
                 let mut local_operations: u64 = 0;
+				let mut local_random_starts: u64 = 0;
                 for _ in 0..PROCESS_LOOP_COUNT {
-                    local_operations += schedule_generator.process() as u64;
+                    let (ops, rs) = schedule_generator.process();
+					local_operations += ops as u64;
+					local_random_starts += rs as u64;
                 }
 
                 operations.fetch_add(local_operations, std::sync::atomic::Ordering::SeqCst);
+				random_starts.fetch_add(local_random_starts, std::sync::atomic::Ordering::SeqCst);
 
                 if schedule_generator.best.get_score() > old_score {
                     tx.send(schedule_generator.best.clone()).unwrap();
@@ -134,6 +143,7 @@ fn main() {
             display_schedule(
                 &*best_schedule.lock().unwrap(),
                 operations.load(std::sync::atomic::Ordering::Relaxed),
+				random_starts.load(std::sync::atomic::Ordering::Relaxed),
                 instant.elapsed().as_nanos(),
             );
             std::thread::sleep(std::time::Duration::from_millis(2000));

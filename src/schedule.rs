@@ -570,9 +570,12 @@ impl<T: rand::Rng + rand_core::RngCore> Generator<T> {
         self.tables
     }
 
-    /**Find next table pair swap to try and evaluate if improved*/
-    pub fn process(&mut self) -> u32 {
+    /**Find next table pair swap to try and evaluate if improved
+    Return value is (number of evaluated schedules, number of random starts)
+    */
+    pub fn process(&mut self) -> (u32, u32) {
         let mut evaluated_schedules = 0;
+        let mut random_starts = 0;
         self.table2 += 1;
         if self.table2 >= self.tables {
             self.table2 = self.table1 + 2;
@@ -609,6 +612,7 @@ impl<T: rand::Rng + rand_core::RngCore> Generator<T> {
                         }
                     } else {
                         // If best single-step change is not an improvement, then generate a new random schedule
+                        random_starts += 1;
                         self.current = Schedule::new(self.player_count, self.tables);
                         self.current.generate_random(&mut self.rng);
                         self.current_score = self.current.get_score();
@@ -642,7 +646,7 @@ impl<T: rand::Rng + rand_core::RngCore> Generator<T> {
             self.next_score = new_score;
             self.next_unique_games = new_unique_games_played;
         }
-        evaluated_schedules
+        (evaluated_schedules, random_starts)
     }
 }
 

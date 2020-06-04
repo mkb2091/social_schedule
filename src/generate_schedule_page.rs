@@ -155,7 +155,7 @@ impl GenerateSchedule {
             let old_score = schedule.best.get_score();
             while performance_now() < ideal {
                 for _ in 0..(1.max(self.loops_per_milli / 2)) {
-                    operations += schedule.process();
+                    operations += schedule.process().0;
                     loops += 1;
                 }
             }
