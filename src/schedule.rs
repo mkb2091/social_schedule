@@ -415,7 +415,7 @@ impl Schedule {
 
         let (other_unique_games_played_sum, other_unique_games_played_min) = {
             let mut other_unique_games_played_sum: u32 = 0;
-            let mut other_unique_games_played_min: u32 = 0;
+            let mut other_unique_games_played_min: u32 = std::u32::MAX;
             let other_players: u64 = original_t1 | original_t2;
             debug_assert!(other_players != 0);
             for player in 0..self.player_count {
@@ -426,9 +426,7 @@ impl Schedule {
                     let opponent_count = self.player_opponent_cache[player] as u32;
                     debug_assert!(opponent_count > 0);
                     other_unique_games_played_sum += opponent_count;
-                    if (opponent_count < other_unique_games_played_min)
-                        || other_unique_games_played_min == 0
-                    {
+                    if opponent_count < other_unique_games_played_min {
                         other_unique_games_played_min = opponent_count;
                     }
                 }
@@ -452,7 +450,7 @@ impl Schedule {
                 for p in t1_players.iter().chain(t2_players.iter()) {
                     let opponent_count = self.player_unique_opponents(*p) as u32;
                     current_sum += opponent_count;
-                    if opponent_count < current_min || current_min == 0 {
+                    if opponent_count < current_min {
                         current_min = opponent_count;
                     }
                 }
