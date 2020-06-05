@@ -16,14 +16,15 @@ seed = {version = "0.6", optional = true}
 wasm-bindgen =  {version = "0.2", optional = true}
 web-sys = {version = "0.3", optional = true}
  
-serde = { version = "1.0", features = ['derive'], optional = true}
-serde_json = {version = "1.0", optional = true}
+serde = { version = "1.0", features = ['derive']}
+serde_json = "1.0"
 futures = {version = "0.3", optional = true}
 num-format = "0.4"
 
 
 clap = { version = "3.0.0-beta.1", optional = true}
 num_cpus = { version = "1.0", optional = true}
+dirs = {version = "2.0", optional = true}
 
 [dev-dependencies]
 quickcheck = "0.9"
@@ -31,8 +32,8 @@ criterion = "0.3"
 rand_xorshift = "0.2"
 
 [features]
-default = ["seed", "wasm-bindgen", 'web-sys', "serde", "serde_json", "rand_xorshift", "getrandom", "futures"]
-cli = ["clap", "num_cpus"]
+default = ["seed", "wasm-bindgen", 'web-sys', "rand_xorshift", "getrandom", "futures"]
+cli = ["clap", "num_cpus", "dirs"]
 
 [[bench]]
 name = "bench"
@@ -41,5 +42,5 @@ harness = false
 [profile.release]
 lto = true
 opt-level = 3
-debug = false
+debug = true
 debug-assertions = false

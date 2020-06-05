@@ -1,6 +1,8 @@
 #[cfg(feature = "cli")]
 extern crate clap;
 #[cfg(feature = "cli")]
+extern crate dirs;
+#[cfg(feature = "cli")]
 extern crate num_cpus;
 extern crate num_format;
 extern crate rand;
@@ -12,8 +14,8 @@ extern crate quickcheck;
 #[cfg(feature = "cli")]
 use clap::Clap;
 use num_format::{Locale, WriteFormatted};
-use rand::SeedableRng;
 
+use std::io::prelude::*;
 
 #[cfg(feature = "cli")]
 pub mod schedule;
@@ -28,41 +30,8 @@ struct Opts {
     tables: usize,
 }
 
-
 #[cfg(feature = "cli")]
-fn display_schedule(
-    schedule: &schedule::Schedule,
-    operations: u64,
-    random_starts: u64,
-    nanos: u128,
-) {
-    let mut output = String::new();
-    output.push_str("Testing ");
-    let per_second = (10_f64.powi(9) * operations as f64 / nanos as f64) as u64;
-    output.write_formatted(&per_second, &Locale::en).unwrap();
-    output.push_str(" schedules per second\n");
-    output.push_str("Total schedules tested:");
-    output.write_formatted(&operations, &Locale::en).unwrap();
-    output.push('\n');
-    output.push_str("Using ");
-    let per_second = (random_starts as f64 / (nanos as f64 / 10_f64.powi(9))) as u64;
-    output.write_formatted(&per_second, &Locale::en).unwrap();
-    output.push_str(" random starts per second\n");
-    output.push_str("Total random starts:");
-    output.write_formatted(&random_starts, &Locale::en).unwrap();
-    output.push('\n');
-    output.push_str(&format!(
-        "Average number of unique games played: {}\n",
-        schedule.unique_games_played() as f32 / schedule.get_player_count() as f32
-    ));
-    output.push_str(&format!(
-        "Average number of unique opponents/teammates played with: {}\n",
-        (schedule.unique_opponents() as f32 / schedule.get_player_count() as f32)
-    ));
-    output.push_str(&format!(
-        "Minimum number of unique opponents/teammates played with: {}\n",
-        schedule.min_unique_opponents()
-    ));
+fn display_schedule<T: schedule::ScheduleStructure>(output: &mut String, schedule: &T) {
     output.push_str("     ");
     for table in 0..schedule.get_tables() {
         let now = (table + 1).to_string();
@@ -108,12 +77,84 @@ fn display_schedule(
             }
         }
     }
-    println!("{}", output);
+}
+
+#[cfg(feature = "cli")]
+fn display_performance(
+    output: &mut String,
+    schedule: &schedule::Schedule,
+    operations: u64,
+    random_starts: u64,
+    nanos: u128,
+) {
+    output.push_str("Testing ");
+    let per_second = (10_f64.powi(9) * operations as f64 / nanos as f64) as u64;
+    output.write_formatted(&per_second, &Locale::en).unwrap();
+    output.push_str(" schedules per second\n");
+    output.push_str("Total schedules tested:");
+    output.write_formatted(&operations, &Locale::en).unwrap();
+    output.push('\n');
+    output.push_str("Using ");
+    let per_second = (random_starts as f64 / (nanos as f64 / 10_f64.powi(9))) as u64;
+    output.write_formatted(&per_second, &Locale::en).unwrap();
+    output.push_str(" random starts per second\n");
+    output.push_str("Total random starts:");
+    output.write_formatted(&random_starts, &Locale::en).unwrap();
+    output.push('\n');
+    output.push_str(&format!(
+        "Average number of unique games played: {}\n",
+        schedule.unique_games_played() as f32 / schedule.get_player_count() as f32
+    ));
+    output.push_str(&format!(
+        "Average number of unique opponents/teammates played with: {}\n",
+        (schedule.unique_opponents() as f32 / schedule.get_player_count() as f32)
+    ));
+    output.push_str(&format!(
+        "Minimum number of unique opponents/teammates played with: {}\n",
+        schedule.min_unique_opponents()
+    ));
 }
 
 #[cfg(feature = "cli")]
 fn main() {
     let opts: Opts = Opts::parse();
+    let path = match dirs::data_local_dir() {
+        Some(path) => [path, std::path::PathBuf::from("social_schedule")]
+            .iter()
+            .collect(),
+        None => std::path::PathBuf::from("."),
+    };
+    let ideal_path_base: std::path::PathBuf =
+        [path, std::path::PathBuf::from("ideal")].iter().collect();
+    let _ = std::fs::create_dir_all(&ideal_path_base);
+    let ideal_path: std::path::PathBuf = [
+        ideal_path_base,
+        std::path::PathBuf::from(format!("{}_players_{}_tables", opts.players, opts.tables)),
+    ]
+    .iter()
+    .collect();
+    {
+        let search_paths = [
+            &ideal_path,
+            &std::path::PathBuf::from(format!(
+                "cache/ideal/{}_players_{}_tables",
+                opts.players, opts.tables
+            )),
+        ];
+        for path in search_paths.iter() {
+            println!("Attempting to loading cache from {}", path.display());
+            if let Ok(mut file) = std::fs::File::open(&path) {
+                let mut contents = String::new();
+                let _ = file.read_to_string(&mut contents);
+                if let Ok(schedule) = serde_json::from_str::<schedule::SerdeSchedule>(&contents) {
+                    let mut output = String::new();
+                    display_schedule(&mut output, &schedule);
+                    println!("Found ideal from cache: \n{}", output);
+                    return;
+                }
+            }
+        }
+    }
     let (tx, rx) = std::sync::mpsc::channel::<schedule::Schedule>();
     let operations = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
     let random_starts = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
@@ -162,12 +203,33 @@ fn main() {
     }
     let instant = std::time::Instant::now();
     loop {
-        display_schedule(
-            &*best_schedule.lock().unwrap(),
-            operations.load(std::sync::atomic::Ordering::Relaxed),
-            random_starts.load(std::sync::atomic::Ordering::Relaxed),
-            instant.elapsed().as_nanos(),
-        );
+        if let Ok(schedule) = best_schedule.lock() {
+            if schedule.is_ideal() {
+                println!("\n\nFound ideal schedule\n");
+            }
+            let mut output = String::new();
+            display_performance(
+                &mut output,
+                &*schedule,
+                operations.load(std::sync::atomic::Ordering::Relaxed),
+                random_starts.load(std::sync::atomic::Ordering::Relaxed),
+                instant.elapsed().as_nanos(),
+            );
+            display_schedule(&mut output, &*schedule);
+            println!("{}", output);
+            if schedule.is_ideal() {
+                let serde_schedule = schedule.to_serde_schedule();
+
+                if let Ok(string_form) = serde_json::to_string(&serde_schedule) {
+                    if let Ok(mut file) = std::fs::File::create(ideal_path) {
+                        file.write_all(string_form.as_bytes()).unwrap();
+                    }
+                }
+                break;
+            }
+        } else {
+            panic!("Failed");
+        }
         std::thread::sleep(std::time::Duration::from_millis(1000));
     }
 }
