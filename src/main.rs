@@ -5,6 +5,10 @@ extern crate num_cpus;
 extern crate num_format;
 extern crate rand;
 
+#[cfg(test)]
+#[macro_use]
+extern crate quickcheck;
+
 #[cfg(feature = "cli")]
 use clap::Clap;
 use num_format::{Locale, WriteFormatted};
