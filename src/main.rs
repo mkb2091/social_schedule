@@ -76,7 +76,7 @@ fn display_schedule(
 
     for round in 0..schedule.get_tables() {
         output.push_str("\n-----");
-        for table in 0..schedule.get_tables() {
+        for _ in 0..schedule.get_tables() {
             output.push('+');
             output.push_str("-----")
         }
@@ -151,8 +151,8 @@ fn main() {
     let best_schedule = std::sync::Arc::new(std::sync::Mutex::new(rx.recv().unwrap()));
     {
         let best_schedule = std::sync::Arc::clone(&best_schedule);
+        let mut best_score = best_schedule.lock().unwrap().get_score();
         std::thread::spawn(move || loop {
-            let mut best_score = best_schedule.lock().unwrap().get_score();
             let schedule = rx.recv().unwrap();
             if schedule.get_score() > best_score {
                 *best_schedule.lock().unwrap() = schedule;
