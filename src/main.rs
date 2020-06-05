@@ -14,7 +14,9 @@ use clap::Clap;
 use num_format::{Locale, WriteFormatted};
 use rand::SeedableRng;
 
-mod schedule;
+
+#[cfg(feature = "cli")]
+pub mod schedule;
 
 const PROCESS_LOOP_COUNT: usize = 1000;
 
@@ -26,6 +28,8 @@ struct Opts {
     tables: usize,
 }
 
+
+#[cfg(feature = "cli")]
 fn display_schedule(
     schedule: &schedule::Schedule,
     operations: u64,

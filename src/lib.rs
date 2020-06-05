@@ -13,14 +13,13 @@ pub mod manage_players_page;
 #[cfg(feature = "default")]
 pub mod preferences_page;
 #[cfg(feature = "default")]
-pub mod schedule;
-#[cfg(feature = "default")]
 pub mod style_control;
+
+pub mod schedule;
+extern crate rand;
 
 #[cfg(feature = "default")]
 extern crate getrandom;
-#[cfg(feature = "default")]
-extern crate rand;
 #[cfg(feature = "default")]
 extern crate rand_core;
 #[cfg(feature = "default")]
