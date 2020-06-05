@@ -6,6 +6,8 @@ const UNIQUE_GAMES_MULTIPLIER: u32 = 4;
 testing this seemed to result in overall better (higher total unique games played and higher total unique opponents) generated schedules.
 */
 
+const MAX_PLAYERS: usize = 64;
+
 /** Structure for storing a schedule, and performing operations on it
 */
 
@@ -99,7 +101,7 @@ impl Schedule {
     /**Create a new Schedule object with specified player count and table count. Panics if player count >= 64, or table count <= 2.
     Contains blank schedule, so either generate_random, normal_fill, or import_vec will need to be called before it can be used */
     pub fn new(player_count: usize, tables: usize) -> Self {
-        assert!(player_count <= 64);
+        assert!(player_count <= MAX_PLAYERS);
         assert!(player_count >= 2 * tables);
         assert!(tables >= 2); // Cannot swap two different tables, if there are less than two tables.
         let mut matches: Vec<u64> = Vec::with_capacity(tables * tables);
@@ -601,6 +603,7 @@ impl<T: rand::Rng + rand_core::RngCore> Generator<T> {
                         );
                         evaluated_schedules += ops;
                         self.current_score = self.next_score;
+                        debug_assert_eq!(self.current_score, self.current.generate_score());
                         if (self.current_score > self.best_score
                             || (self.current_score == self.best_score
                                 && self.current.unique_games_played()
