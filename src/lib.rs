@@ -1,48 +1,71 @@
+#[cfg(feature = "default")]
 pub mod add_match_results_page;
+#[cfg(feature = "default")]
 pub mod database;
+#[cfg(feature = "default")]
 pub mod generate_schedule_page;
+#[cfg(feature = "default")]
 pub mod manage_events_page;
+#[cfg(feature = "default")]
 pub mod manage_groups_page;
+#[cfg(feature = "default")]
 pub mod manage_players_page;
+#[cfg(feature = "default")]
 pub mod preferences_page;
+#[cfg(feature = "default")]
 pub mod schedule;
+#[cfg(feature = "default")]
 pub mod style_control;
 
+#[cfg(feature = "default")]
 extern crate getrandom;
+#[cfg(feature = "default")]
 extern crate rand;
+#[cfg(feature = "default")]
 extern crate rand_core;
+#[cfg(feature = "default")]
 extern crate rand_xorshift;
 
+#[cfg(feature = "default")]
 extern crate serde;
+#[cfg(feature = "default")]
 extern crate serde_json;
 
 #[macro_use]
+#[cfg(feature = "default")]
 extern crate seed;
+#[cfg(feature = "default")]
 use seed::prelude::*;
 
+#[cfg(feature = "default")]
 extern crate wasm_bindgen;
 
+#[cfg(feature = "default")]
 extern crate num_format;
 
 #[cfg(test)]
 #[macro_use]
 extern crate quickcheck;
 
+#[cfg(feature = "default")]
 #[wasm_bindgen]
 extern "C" {
     fn alert(s: &str);
 }
 
+#[cfg(feature = "default")]
 #[wasm_bindgen]
 extern "C" {
     fn prompt(text: &str) -> Option<String>;
 }
 
+#[cfg(feature = "default")]
 #[wasm_bindgen]
 extern "C" {
     fn next_tick(delay: f64);
 }
 
+#[cfg(feature = "default")]
 #[wasm_bindgen]
 extern "C" {
     fn performance_now() -> f64;
@@ -58,6 +81,7 @@ pub enum Page {
     Preferences,
 }
 
+#[cfg(feature = "default")]
 struct Model {
     pub page: Page,
     pub generate_schedule: generate_schedule_page::GenerateSchedule,
@@ -70,7 +94,7 @@ struct Model {
     style_control: style_control::StyleControl,
     database: database::Database,
 }
-
+#[cfg(feature = "default")]
 impl Default for Model {
     fn default() -> Self {
         Self {
@@ -136,6 +160,7 @@ pub enum Msg {
     PImportDatabase,
 }
 
+#[cfg(feature = "default")]
 fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
     match msg {
         Msg::ChangePage(page) => {
@@ -205,6 +230,7 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
     }
 }
 
+#[cfg(feature = "default")]
 fn player_select_box(
     database: &database::Database,
     style: &style_control::StyleControl,
@@ -230,6 +256,7 @@ fn player_select_box(
     node_list
 }
 
+#[cfg(feature = "default")]
 fn view_schedule<T: schedule::ScheduleStructure>(
     schedule: &T,
     players: &[u32],
@@ -305,6 +332,7 @@ fn view_schedule<T: schedule::ScheduleStructure>(
     }]
 }
 
+#[cfg(feature = "default")]
 fn view(model: &Model) -> impl View<Msg> {
     let tab_style = style![St::FlexGrow => "1";];
     div![
@@ -396,6 +424,7 @@ St::Overflow => "auto";],
     ]
 }
 
+#[cfg(feature = "default")]
 fn window_events(
     _model: &Model,
 ) -> Vec<seed::virtual_dom::event_handler_manager::event_handler::EventHandler<Msg>> {
@@ -403,7 +432,7 @@ fn window_events(
     result.push(simple_ev(Ev::Playing, Msg::GSGenerate));
     result
 }
-
+#[cfg(feature = "default")]
 #[wasm_bindgen(start)]
 pub fn render() {
     seed::app::App::builder(update, view)

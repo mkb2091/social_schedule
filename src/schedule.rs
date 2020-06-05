@@ -34,14 +34,14 @@ pub trait ScheduleStructure {
         players
     }
 }
-
+#[cfg(feature = "default")]
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct SerdeSchedule {
     player_count: usize,
     tables: usize,
     matches: Vec<u64>,
 }
-
+#[cfg(feature = "default")]
 impl ScheduleStructure for SerdeSchedule {
     fn get_player_count(&self) -> usize {
         self.player_count
@@ -53,7 +53,7 @@ impl ScheduleStructure for SerdeSchedule {
         self.matches[round * self.tables + table]
     }
 }
-
+#[cfg(feature = "default")]
 impl SerdeSchedule {
     pub fn to_schedule(&self) -> Schedule {
         Schedule::new(self.player_count, self.tables)
@@ -139,7 +139,7 @@ impl Schedule {
             ideal_unique_opponents,
         }
     }
-
+    #[cfg(feature = "default")]
     pub fn to_serde_schedule(&self) -> SerdeSchedule {
         SerdeSchedule {
             player_count: self.player_count,
