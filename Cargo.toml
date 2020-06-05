@@ -8,9 +8,9 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 rand = {version = "0.7", default-features = false, features = ['alloc']}
-rand_xorshift = "0.2"
+rand_xorshift = {version = "0.2", optional = true}
 rand_core = "0.5"
-getrandom = {version = "0.1", features = ['wasm-bindgen']}
+getrandom = {version = "0.1", features = ['wasm-bindgen'], optional = true}
 
 seed = {version = "0.6", optional = true}
 wasm-bindgen =  {version = "0.2", optional = true}
@@ -18,7 +18,7 @@ web-sys = {version = "0.3", optional = true}
  
 serde = { version = "1.0", features = ['derive'], optional = true}
 serde_json = {version = "1.0", optional = true}
-futures = "0.3"
+futures = {version = "0.3", optional = true}
 num-format = "0.4"
 
 
@@ -30,7 +30,7 @@ quickcheck = "0.9"
 criterion = "0.3"
 
 [features]
-default = ["seed", "wasm-bindgen", 'web-sys', "serde", "serde_json"]
+default = ["seed", "wasm-bindgen", 'web-sys', "serde", "serde_json", "rand_xorshift", "getrandom", "futures"]
 cli = ["clap", "num_cpus"]
 
 [[bench]]
