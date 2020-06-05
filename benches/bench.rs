@@ -7,7 +7,6 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use rand::SeedableRng;
 
 fn criterion_benchmark(c: &mut Criterion) {
-    let mut seed: [u8; 16] = [0; 16];
     let rng = rand::thread_rng();
     let mut generator = social_schedule::schedule::Generator::new(rng, 24, 6);
     c.bench_function("6 by 4 process", |b| b.iter(|| generator.process()));
