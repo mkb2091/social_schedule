@@ -32,6 +32,19 @@ struct Opts {
 
 #[cfg(feature = "cli")]
 fn display_schedule<T: schedule::ScheduleStructure>(output: &mut String, schedule: &T) {
+    let schedule = schedule.to_schedule();
+    output.push_str(&format!(
+        "Average number of unique games played: {}\n",
+        schedule.unique_games_played() as f32 / schedule.get_player_count() as f32
+    ));
+    output.push_str(&format!(
+        "Average number of unique opponents/teammates played with: {}\n",
+        (schedule.unique_opponents() as f32 / schedule.get_player_count() as f32)
+    ));
+    output.push_str(&format!(
+        "Minimum number of unique opponents/teammates played with: {}\n",
+        schedule.min_unique_opponents()
+    ));
     output.push_str("     ");
     for table in 0..schedule.get_tables() {
         let now = (table + 1).to_string();
@@ -101,18 +114,6 @@ fn display_performance(
     output.push_str("Total random starts:");
     output.write_formatted(&random_starts, &Locale::en).unwrap();
     output.push('\n');
-    output.push_str(&format!(
-        "Average number of unique games played: {}\n",
-        schedule.unique_games_played() as f32 / schedule.get_player_count() as f32
-    ));
-    output.push_str(&format!(
-        "Average number of unique opponents/teammates played with: {}\n",
-        (schedule.unique_opponents() as f32 / schedule.get_player_count() as f32)
-    ));
-    output.push_str(&format!(
-        "Minimum number of unique opponents/teammates played with: {}\n",
-        schedule.min_unique_opponents()
-    ));
 }
 
 #[cfg(feature = "cli")]

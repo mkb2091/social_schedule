@@ -14,33 +14,18 @@ const MAX_PLAYERS: usize = 64;
 pub trait ScheduleStructure {
     fn get_player_count(&self) -> usize;
     fn get_tables(&self) -> usize;
-    fn get(&self, round: usize, table: usize) -> u64;
 
     /** Get a vector of all players in the game at specified round and table
      */
-    fn get_players_from_game(&self, round: usize, table: usize) -> Vec<usize> {
-        debug_assert!(round < self.get_tables());
-        debug_assert!(table < self.get_tables());
-        let game = self.get(round, table);
-        let game_size = game.count_ones() as usize;
-        let mut players: Vec<usize> = Vec::with_capacity(game_size);
-        for player in 0..self.get_player_count() {
-            let player_number = 1 << player;
-            if game & player_number != 0 {
-                players.push(player);
-                if players.len() >= game_size {
-                    return players;
-                }
-            }
-        }
-        players
-    }
+    fn get_players_from_game(&self, round: usize, table: usize) -> Vec<usize>;
+
+    fn to_schedule(&self) -> Schedule;
 }
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct SerdeSchedule {
     player_count: usize,
     tables: usize,
-    matches: Vec<u64>,
+    matches: Vec<Vec<Vec<usize>>>,
 }
 impl ScheduleStructure for SerdeSchedule {
     fn get_player_count(&self) -> usize {
@@ -49,16 +34,16 @@ impl ScheduleStructure for SerdeSchedule {
     fn get_tables(&self) -> usize {
         self.tables
     }
-    fn get(&self, round: usize, table: usize) -> u64 {
-        self.matches[round * self.tables + table]
+    fn get_players_from_game(&self, round: usize, table: usize) -> Vec<usize> {
+        self.matches[round][table].clone()
+    }
+
+    fn to_schedule(&self) -> Schedule {
+        Schedule::from_vec(self.player_count, self.tables, &self.matches)
     }
 }
 #[cfg(feature = "default")]
-impl SerdeSchedule {
-    pub fn to_schedule(&self) -> Schedule {
-        Schedule::new(self.player_count, self.tables)
-    }
-}
+impl SerdeSchedule {}
 
 #[derive(Clone)]
 pub struct Schedule {
@@ -90,8 +75,26 @@ impl ScheduleStructure for Schedule {
     fn get_tables(&self) -> usize {
         self.tables
     }
-    fn get(&self, round: usize, table: usize) -> u64 {
-        self.matches[round * self.tables + table]
+    fn get_players_from_game(&self, round: usize, table: usize) -> Vec<usize> {
+        debug_assert!(round < self.get_tables());
+        debug_assert!(table < self.get_tables());
+        let game = self.get(round, table);
+        let game_size = game.count_ones() as usize;
+        let mut players: Vec<usize> = Vec::with_capacity(game_size);
+        for player in 0..self.get_player_count() {
+            let player_number = 1 << player;
+            if game & player_number != 0 {
+                players.push(player);
+                if players.len() >= game_size {
+                    return players;
+                }
+            }
+        }
+        players
+    }
+
+    fn to_schedule(&self) -> Schedule {
+        self.clone()
     }
 }
 
@@ -140,10 +143,18 @@ impl Schedule {
         }
     }
     pub fn to_serde_schedule(&self) -> SerdeSchedule {
+        let mut matches: Vec<Vec<Vec<usize>>> = Vec::with_capacity(self.tables);
+        for round_number in 0..self.tables {
+            let mut round: Vec<Vec<usize>> = Vec::with_capacity(self.tables);
+            for table_number in 0..self.tables {
+                round.push(self.get_players_from_game(round_number, table_number));
+            }
+            matches.push(round);
+        }
         SerdeSchedule {
             player_count: self.player_count,
             tables: self.tables,
-            matches: self.matches.clone(),
+            matches: matches,
         }
     }
 
@@ -153,7 +164,7 @@ impl Schedule {
     Games in a round as Vec of Players in a games, stored as Vec<Vec<usize>>
     Rounds in an event as Vec of Games in a Round, stored as Vec<Vec<Vec<usize>>>
      */
-    pub fn from_vec(player_count: usize, tables: usize, data: Vec<Vec<Vec<usize>>>) -> Self {
+    pub fn from_vec(player_count: usize, tables: usize, data: &[Vec<Vec<usize>>]) -> Self {
         let mut new = Self::new(player_count, tables);
         new.import_vec(&data);
         new
