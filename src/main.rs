@@ -95,7 +95,6 @@ fn display_schedule<T: schedule::ScheduleStructure>(output: &mut String, schedul
 #[cfg(feature = "cli")]
 fn display_performance(
     output: &mut String,
-    schedule: &schedule::Schedule,
     operations: u64,
     random_starts: u64,
     nanos: u128,
@@ -211,7 +210,6 @@ fn main() {
             let mut output = String::new();
             display_performance(
                 &mut output,
-                &*schedule,
                 operations.load(std::sync::atomic::Ordering::Relaxed),
                 random_starts.load(std::sync::atomic::Ordering::Relaxed),
                 instant.elapsed().as_nanos(),

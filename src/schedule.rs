@@ -363,17 +363,13 @@ impl Schedule {
     pub fn get_players_from_game(&self, round: usize, table: usize) -> Vec<usize> {
         debug_assert!(round < self.tables);
         debug_assert!(table < self.tables);
-        let game = self.get(round, table);
+        let mut game = self.get(round, table);
         let game_size = game.count_ones() as usize;
         let mut players: Vec<usize> = Vec::with_capacity(game_size);
-        for player in 0..self.player_count {
-            let player_number = 1 << player;
-            if game & player_number != 0 {
-                players.push(player);
-                if players.len() >= game_size {
-                    return players;
-                }
-            }
+        while game != 0 {
+             let player = game.trailing_zeros();
+             game -= 1 << player;
+             players.push(player as usize);
         }
         players
     }
@@ -680,7 +676,7 @@ mod tests {
         for _ in 0..6 {
             game.push(round.clone());
         }
-        let mut schedule = Schedule::from_vec(24, 6, game);
+        let mut schedule = Schedule::from_vec(24, 6, &game);
         assert_eq!(24, schedule.find_unique_games_played());
     }
 
@@ -698,7 +694,7 @@ mod tests {
         for _ in 0..6 {
             game.push(round.clone());
         }
-        let mut schedule = Schedule::from_vec(24, 6, game);
+        let mut schedule = Schedule::from_vec(24, 6, &game);
         assert_eq!(3 * 24, schedule.find_unique_opponents());
     }
 
@@ -709,7 +705,7 @@ mod tests {
             vec![vec![4, 5], vec![0, 3], vec![1, 2]],
             vec![vec![2, 3], vec![1, 4], vec![0, 5]],
         ];
-        let schedule = Schedule::from_vec(6, 3, ideal);
+        let schedule = Schedule::from_vec(6, 3, &ideal);
         assert!(schedule.is_ideal());
     }
 
