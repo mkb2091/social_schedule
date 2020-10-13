@@ -367,9 +367,9 @@ impl Schedule {
         let game_size = game.count_ones() as usize;
         let mut players: Vec<usize> = Vec::with_capacity(game_size);
         while game != 0 {
-             let player = game.trailing_zeros();
-             game -= 1 << player;
-             players.push(player as usize);
+            let player = game.trailing_zeros();
+            game -= 1 << player;
+            players.push(player as usize);
         }
         players
     }

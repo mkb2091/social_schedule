@@ -93,12 +93,7 @@ fn display_schedule<T: schedule::ScheduleStructure>(output: &mut String, schedul
 }
 
 #[cfg(feature = "cli")]
-fn display_performance(
-    output: &mut String,
-    operations: u64,
-    random_starts: u64,
-    nanos: u128,
-) {
+fn display_performance(output: &mut String, operations: u64, random_starts: u64, nanos: u128) {
     output.push_str("Testing ");
     let per_second = (10_f64.powi(9) * operations as f64 / nanos as f64) as u64;
     output.write_formatted(&per_second, &Locale::en).unwrap();
