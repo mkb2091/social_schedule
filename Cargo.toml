@@ -7,7 +7,7 @@ authors = ["Hugh Williams <mkb2191@protonmail.com"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-rand = {version = "0.7", default-features = false, features = ['alloc']}
+rand = {version = "0.8", default-features = false, features = ['alloc']}
 rand_xorshift = {version = "0.2", optional = true}
 rand_core = "0.5"
 getrandom = {version = "0.1", features = ['wasm-bindgen'], optional = true}
