@@ -41,7 +41,7 @@ fn set_schedule_frame(state: Arc<State>) -> String {
     let guard = state.scheduler.lock().unwrap();
     let rounds = guard.1;
     let tables = &guard.0;
-    let mut nodes: Vec<Node<()>> = vec![td![div!["Rounds"]]];
+    let mut nodes: Vec<Node<()>> = vec![td![div!["Tables"]]];
     for (i, table) in tables.iter().enumerate() {
         nodes.push(td![form![
             attrs! {At::Action => format!("/html/iframe/set_schedule/remove/{}", i)},
@@ -55,7 +55,14 @@ fn set_schedule_frame(state: Arc<State>) -> String {
         input![attrs! {At::Name => "add"}],
         button![attrs! {At::Action => "submit"}, "Add"]
     ]]);
-    div![table![tr![nodes]]].to_string()
+    let rounds = form![
+        attrs! {At::Action => "/html/iframe/set_schedule/set_rounds"},
+        input![attrs! {At::Name => "rounds", At::Value => rounds}],
+        button![attrs! {At::Action => "submit"}, "Change number of rounds"]
+    ];
+    let html = div![table![tr![nodes]], rounds];
+
+    html.to_string()
 }
 
 #[derive(serde::Deserialize)]
@@ -63,9 +70,9 @@ struct AddArg {
     add: usize,
 }
 
-fn set_schedule_frame_add(state: Arc<State>, add: AddArg) -> String {
-    println!("Adding {}", add.add);
-    state.scheduler.lock().unwrap().0.push(add.add);
+fn set_schedule_frame_add(state: Arc<State>, arg: AddArg) -> String {
+    println!("Adding {}", arg.add);
+    state.scheduler.lock().unwrap().0.push(arg.add);
     set_schedule_frame(state)
 }
 
@@ -80,6 +87,17 @@ fn set_schedule_frame_remove(state: Arc<State>, param: usize) -> String {
     set_schedule_frame(state)
 }
 
+#[derive(serde::Deserialize)]
+struct SetRoundsArg {
+    rounds: usize,
+}
+
+fn set_schedule_frame_set_rounds(state: Arc<State>, arg: SetRoundsArg) -> String {
+    println!("Setting rounds: {}", arg.rounds);
+    state.scheduler.lock().unwrap().1 = arg.rounds;
+    set_schedule_frame(state)
+}
+
 pub fn get_html_filter(state: Arc<State>) -> BoxedFilter<(impl Reply,)> {
     let state2 = state.clone();
     let add_filter = warp::path("add")
@@ -89,6 +107,10 @@ pub fn get_html_filter(state: Arc<State>) -> BoxedFilter<(impl Reply,)> {
     let remove_filter = warp::path("remove")
         .and(warp::path::param())
         .map(move |param: usize| set_schedule_frame_remove(state2.clone(), param));
+    let state2 = state.clone();
+    let set_rounds_filter = warp::path("set_rounds")
+        .and(warp::query())
+        .map(move |param: SetRoundsArg| set_schedule_frame_set_rounds(state2.clone(), param));
 
     let state2 = state.clone();
     let iframe = warp::path("iframe")
@@ -96,6 +118,7 @@ pub fn get_html_filter(state: Arc<State>) -> BoxedFilter<(impl Reply,)> {
             warp::path("set_schedule").and(
                 add_filter
                     .or(remove_filter)
+                    .or(set_rounds_filter)
                     .or(warp::any().map(move || set_schedule_frame(state2.clone()))),
             ),
         )
