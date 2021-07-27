@@ -38,7 +38,7 @@ name = "bench"
 harness = false
 
 [workspace]
-members = ["server", "schedule_solver"]
+members = ["server", "client", "schedule_solver"]
 
 [profile.release]
 #lto = 'thin'
