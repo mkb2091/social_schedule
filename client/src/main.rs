@@ -99,7 +99,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut threads = Vec::new();
     let (tx, rx) = std::sync::mpsc::channel();
-    for i in 0..4 {
+    for i in 0..num_cpus::get() {
         let tables = tables.clone();
         let tx = tx.clone();
         let (local_tx, local_rx) = std::sync::mpsc::channel();
