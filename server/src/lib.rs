@@ -1,7 +1,7 @@
 pub mod api;
 pub mod ui_pages;
 
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, VecDeque};
 use std::sync::{atomic::*, Arc, Mutex};
 
 pub use seed;

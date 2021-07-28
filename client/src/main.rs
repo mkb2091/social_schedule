@@ -1,10 +1,9 @@
 use clap::Clap;
 
 use futures::{SinkExt, StreamExt};
-use std::collections::VecDeque;
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
-    Arc, Mutex,
+    Arc,
 };
 
 use tokio_tungstenite::tungstenite::protocol::Message;
@@ -38,12 +37,15 @@ fn solving_thread(
     let scheduler = schedule_solver::Scheduler::new(&tables, rounds);
     while let Ok(next) = in_queue.recv() {
         in_queue_size.fetch_sub(1, Ordering::Relaxed);
-        buffer.extend(&next);
+        if buffer.len() < next.len() {
+            buffer.resize(next.len(), 0);
+        }
+        buffer[..next.len()].copy_from_slice(&next);
         let mut current_depth = 0;
         let mut steps = 0;
         let start = std::time::Instant::now();
         let mut emptied = false;
-        'inner_loop: while steps < steps_per_sync {
+        'inner_loop: while steps <= steps_per_sync {
             let target_size = (current_depth + 2) * scheduler.get_block_size();
             if target_size > buffer.len() {
                 buffer.resize(target_size, 0);
@@ -81,6 +83,7 @@ fn solving_thread(
                         .to_vec(),
                 );
             }
+            assert_eq!(output.len(), current_depth + 1);
         }
         let stats = schedule_util::Stats {
             steps,
@@ -125,7 +128,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let queue_size_base = Arc::new(AtomicUsize::new(0));
         let queue_size = queue_size_base.clone();
         let _thread = std::thread::spawn(move || {
-            solving_thread(tables, rounds, 100, local_rx, queue_size, tx)
+            solving_thread(tables, rounds, 10_000, local_rx, queue_size, tx)
         });
         threads.push((queue_size_base, local_tx));
     }

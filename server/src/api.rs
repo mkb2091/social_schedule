@@ -42,7 +42,7 @@ async fn client_connected(mut ws: WebSocket, state: Arc<State>) {
     let solve_state = state.get_schedule_solve_state(arg);
     let (mut ws_tx, mut ws_rx) = ws.split();
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
-    let mut forward_messages = async move {
+    let forward_messages = async move {
         while let Some(next) = rx.recv().await {
             ws_tx.send(next).await?;
         }
@@ -50,14 +50,14 @@ async fn client_connected(mut ws: WebSocket, state: Arc<State>) {
     };
     let (block_request_tx, mut block_request_rx) = tokio::sync::mpsc::unbounded_channel::<()>();
     let solve_state_clone = solve_state.clone();
-    let mut block_request = async move {
+    let block_request = async move {
         while let Some(_) = block_request_rx.recv().await {
             send_block(client_id, solve_state_clone.clone(), &tx).await?
         }
         Ok::<(), Box<dyn std::error::Error>>(())
     };
     let solve_state_clone = solve_state.clone();
-    let mut input_handler = async move {
+    let input_handler = async move {
         block_request_tx.send(())?;
         while let Some(next) = ws_rx.next().await {
             if let Ok(next) = next?.to_str() {
