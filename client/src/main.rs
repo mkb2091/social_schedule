@@ -127,8 +127,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let (local_tx, local_rx) = std::sync::mpsc::channel();
         let queue_size_base = Arc::new(AtomicUsize::new(0));
         let queue_size = queue_size_base.clone();
+        let iterations_per_sync = opts.iterations_per_sync;
         let _thread = std::thread::spawn(move || {
-            solving_thread(tables, rounds, 10_000, local_rx, queue_size, tx)
+            solving_thread(
+                tables,
+                rounds,
+                iterations_per_sync,
+                local_rx,
+                queue_size,
+                tx,
+            )
         });
         threads.push((queue_size_base, local_tx));
     }
@@ -150,11 +158,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         while let Some(batch_result) = rx.recv().await {
             let encoded = serde_json::to_string(&batch_result).unwrap();
             ws_tx.send(Message::Text(encoded)).await?;
-            for (queue_size, _queue) in threads.iter() {
-                if queue_size.load(Ordering::Relaxed) < 20 {
-                    ws_tx.send(Message::Text("request".to_string())).await?;
-                }
-            }
             total_steps += batch_result.stats.steps;
             if last_print.elapsed().as_millis() > 300 {
                 println!(

@@ -21,17 +21,6 @@ impl ScheduleArg {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
-pub struct ClientId {
-    id: usize,
-}
-
-impl ClientId {
-    pub fn new(id: usize) -> Self {
-        Self { id }
-    }
-}
-
 #[derive(serde::Deserialize, serde::Serialize, Debug, Default)]
 pub struct Stats {
     pub steps: usize,

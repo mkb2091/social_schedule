@@ -1,7 +1,10 @@
 pub mod api;
+pub mod solve_state;
 pub mod ui_pages;
 
-use std::collections::{HashMap, VecDeque};
+pub use solve_state::ScheduleState;
+
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{atomic::*, Arc, Mutex};
 
 pub use seed;
@@ -18,105 +21,64 @@ impl std::fmt::Display for Completed {
 
 impl std::error::Error for Completed {}
 
-pub struct ScheduleState {
-    arg: Arc<schedule_util::ScheduleArg>,
-    unclaimed: Mutex<Vec<Vec<usize>>>,
-    claimed: Mutex<HashMap<Vec<usize>, (schedule_util::ClientId, std::time::Instant)>>,
-    queue: Mutex<VecDeque<(schedule_util::ClientId, OneShotSender)>>,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ClientId {
+    id: usize,
 }
 
-type OneShotSender = tokio::sync::oneshot::Sender<Vec<usize>>;
+impl ClientId {
+    pub fn new(id: usize) -> Self {
+        Self { id }
+    }
+}
 
-impl ScheduleState {
-    pub fn new(arg: Arc<schedule_util::ScheduleArg>) -> Self {
-        let scheduler = schedule_solver::Scheduler::new(arg.get_tables(), arg.get_rounds());
-        let mut init = vec![0; scheduler.get_block_size()];
-        let _ = scheduler.initialise_buffer(&mut init);
+impl std::fmt::Display for ClientId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ClientID({})", self.id)
+    }
+}
+
+#[derive(Debug)]
+pub struct Client {
+    id: ClientId,
+    last_message: Mutex<std::time::Instant>,
+    claimed: Mutex<HashSet<Vec<usize>>>,
+}
+
+impl std::cmp::PartialEq for Client {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.id.eq(&rhs.id)
+    }
+}
+
+impl std::cmp::Eq for Client {}
+
+impl std::hash::Hash for Client {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
+}
+
+impl Client {
+    pub fn new(id: usize) -> Self {
         Self {
-            arg,
-            unclaimed: Mutex::new(vec![init]),
-            claimed: Mutex::new(Default::default()),
-            queue: Mutex::new(Default::default()),
+            id: ClientId::new(id),
+            last_message: Mutex::new(std::time::Instant::now()),
+            claimed: Mutex::new(HashSet::new()),
         }
     }
-
-    pub async fn get_block(
-        &self,
-        client_id: schedule_util::ClientId,
-    ) -> Result<Vec<usize>, Completed> {
-        {
-            let mut unclaimed = self.unclaimed.lock().unwrap();
-            let mut claimed = self.claimed.lock().unwrap();
-            if let Some(next) = unclaimed.pop() {
-                claimed.insert(next.clone(), (client_id, std::time::Instant::now()));
-                return Ok(next);
-            }
-            if claimed.is_empty() {
-                return Err(Completed {});
-            }
-        }
-
-        let (tx, rx) = tokio::sync::oneshot::channel();
-        self.queue.lock().unwrap().push_back((client_id, tx));
-        rx.await.map_err(|_| Completed {})
+    pub fn get_id(&self) -> ClientId {
+        self.id
     }
-
-    pub fn get_counts(&self) -> (usize, usize, usize) {
-        (
-            self.unclaimed.lock().unwrap().len(),
-            self.claimed.lock().unwrap().len(),
-            self.queue.lock().unwrap().len(),
-        )
+    pub fn claimed_len(&self) -> usize {
+        self.claimed.lock().unwrap().len()
     }
-
-    fn add_single_block(&self, block: Vec<usize>) {
-        if let Some((client_id, listener)) = self.queue.lock().unwrap().pop_front() {
-            if listener.send(block.clone()).is_ok() {
-                self.claimed
-                    .lock()
-                    .unwrap()
-                    .insert(block, (client_id, std::time::Instant::now()));
-                return;
-            }
-        }
-        let scheduler =
-            schedule_solver::Scheduler::new(self.arg.get_tables(), self.arg.get_rounds());
-        let mut unclaimed = self.unclaimed.lock().unwrap();
-        unclaimed.push(block);
-        unclaimed.sort_unstable_by_key(|block| scheduler.get_players_placed(block));
+    pub fn get_claimed(&self) -> &Mutex<HashSet<Vec<usize>>> {
+        &self.claimed
     }
-
-    pub fn add_batch_result(&self, result: schedule_util::BatchOutput) {
-        if self.claimed.lock().unwrap().remove(&result.base).is_some() {
-            if result.children.len() == 0
-                && self.claimed.lock().unwrap().is_empty()
-                && self.unclaimed.lock().unwrap().is_empty()
-            {
-                self.queue.lock().unwrap().clear();
-            }
-            for child in result.children.into_iter() {
-                if &child != &result.base {
-                    self.add_single_block(child);
-                } else {
-                    panic!();
-                }
-            }
-            // TODO: Handle notable
-        } else {
-            panic!("Invalid batch result");
-        }
-    }
-    pub fn free_all_from_client(&self, client_id: schedule_util::ClientId) {
-        let mut unclaimed = self.unclaimed.lock().unwrap();
-        let mut claimed = self.claimed.lock().unwrap();
-        claimed.retain(|block, (other_id, _)| {
-            if *other_id == client_id {
-                unclaimed.push(block.to_vec());
-                false
-            } else {
-                true
-            }
-        });
+    pub fn claim_block(&self, block: Vec<usize>) {
+        self.claimed.lock().unwrap().insert(block);
+        *self.last_message.lock().unwrap() = std::time::Instant::now();
     }
 }
 
@@ -124,6 +86,7 @@ pub struct State {
     pub scheduler: Mutex<(Vec<usize>, usize)>,
     schedule_solve_states: Mutex<HashMap<Arc<schedule_util::ScheduleArg>, Arc<ScheduleState>>>,
     pub next_client_id: AtomicUsize,
+    pub client_buffer_size: AtomicUsize,
 }
 
 impl State {
@@ -131,10 +94,12 @@ impl State {
         let scheduler = Mutex::new((vec![], 0));
         let schedule_solve_states = Mutex::new(HashMap::new());
         let next_client_id = AtomicUsize::new(0);
+        let client_buffer_size = AtomicUsize::new(100);
         State {
             scheduler,
             schedule_solve_states,
             next_client_id,
+            client_buffer_size,
         }
     }
 

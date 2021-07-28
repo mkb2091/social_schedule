@@ -51,12 +51,17 @@ impl Page for Status {
         let mut nodes = Vec::new();
         let solve_states = state.all_schedule_solve_states();
         for (arg, solve_state) in solve_states.iter() {
-            let (unclaimed, claimed, queue) = solve_state.get_counts();
+            let unclaimed = solve_state.get_unclaimed_len();
+            let queue = solve_state.get_queue_len();
             let node: Node<()> = div![format!(
-                "{:?}: {} unclaimed, {} claimed, {} in queue",
-                arg, unclaimed, claimed, queue
+                "{:?}: {} unclaimed, {} in queue",
+                arg, unclaimed, queue
             )];
-            nodes.push(node);
+            let mut clients = Vec::new();
+            for client in solve_state.get_clients().iter() {
+                clients.push(tr![td![client.get_id().to_string()], td![client.claimed_len()]]);
+            }
+            nodes.push(div![node, table![clients]]);
         }
         div![nodes]
     }

@@ -18,6 +18,6 @@ async fn main() {
     println!("Server Launched");
 
     warp::serve(favicon.or(html).or(api))
-        .run(([127, 0, 0, 1], 3000))
+        .run(([0, 0, 0, 0], 3000))
         .await;
 }

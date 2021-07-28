@@ -7,20 +7,21 @@ use futures::SinkExt;
 use futures::StreamExt;
 
 async fn send_block(
-    client_id: schedule_util::ClientId,
+    client: &Arc<Client>,
     solve_state: Arc<ScheduleState>,
     tx: &tokio::sync::mpsc::UnboundedSender<Message>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let block = solve_state.get_block(client_id).await?;
+    let block = solve_state.get_block(client).await?;
     let message = serde_json::to_string(&block)?;
     tx.send(Message::text(message))?;
     Ok(())
 }
 
 async fn client_connected(mut ws: WebSocket, state: Arc<State>) {
-    let client_id =
-        schedule_util::ClientId::new(state.next_client_id.fetch_add(1, Ordering::Relaxed));
-    println!("New client: {:?}", client_id);
+    let client = Arc::new(Client::new(
+        state.next_client_id.fetch_add(1, Ordering::Relaxed),
+    ));
+    println!("New client: {}", client.get_id());
 
     let init = ws.next().await;
     let init = if let Some(Ok(init)) = init {
@@ -48,23 +49,31 @@ async fn client_connected(mut ws: WebSocket, state: Arc<State>) {
         }
         Ok::<(), Box<dyn std::error::Error>>(())
     };
-    let (block_request_tx, mut block_request_rx) = tokio::sync::mpsc::unbounded_channel::<()>();
     let solve_state_clone = solve_state.clone();
+    let client_clone = client.clone();
+    let block_sender_notify = Arc::new(tokio::sync::Notify::new());
+    let notify2 = block_sender_notify.clone();
     let block_request = async move {
-        while let Some(_) = block_request_rx.recv().await {
-            send_block(client_id, solve_state_clone.clone(), &tx).await?
+        loop {
+            notify2.notified().await;
+            let client_buffer_size = state.client_buffer_size.load(Ordering::Relaxed);
+            while client_clone.claimed_len() < client_buffer_size {
+                send_block(&client_clone, solve_state_clone.clone(), &tx).await?
+            }
         }
         Ok::<(), Box<dyn std::error::Error>>(())
     };
+    block_sender_notify.notify_one();
     let solve_state_clone = solve_state.clone();
+    let client_clone = client.clone();
     let input_handler = async move {
-        block_request_tx.send(())?;
         while let Some(next) = ws_rx.next().await {
             if let Ok(next) = next?.to_str() {
                 if next == "request" {
-                    block_request_tx.send(())?;
+                    block_sender_notify.notify_one();
                 } else if let Ok(batch) = serde_json::from_str::<schedule_util::BatchOutput>(next) {
-                    solve_state_clone.add_batch_result(batch);
+                    solve_state_clone.add_batch_result(&client_clone, batch);
+                    block_sender_notify.notify_one();
                 } else {
                     println!("Unknown data: {:?}", next);
                 }
@@ -74,10 +83,10 @@ async fn client_connected(mut ws: WebSocket, state: Arc<State>) {
     };
     let result = futures::future::try_join3(forward_messages, block_request, input_handler).await;
     if result.is_err() {
-        println!("Client {:?} Result: {:?}", client_id, result);
+        println!("Client {} Result: {:?}", client.get_id(), result);
     }
-    println!("Disconnected client");
-    solve_state.free_all_from_client(client_id);
+    println!("Disconnected client: {}", client.get_id());
+    solve_state.free_all_from_client(&client);
 }
 
 pub fn get_api_filter(state: Arc<State>) -> BoxedFilter<(impl Reply,)> {
