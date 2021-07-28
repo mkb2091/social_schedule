@@ -217,7 +217,8 @@ impl<'a> Scheduler<'a> {
             i += 1;
         }
 
-        buffer[self.offsets.empty_table_count_offset] = ((self.rounds - 1) * self.tables.len()) as u64;
+        buffer[self.offsets.empty_table_count_offset] =
+            ((self.rounds - 1) * self.tables.len()) as u64;
         let mut round_range = self.round_range.skip(1);
         while let Some(round) = round_range.next() {
             let mut table_range = self.table_range;
@@ -368,7 +369,7 @@ impl<'a> Scheduler<'a> {
                 'loop_bits_round: while potential_in_row != 0 {
                     let trailing_zeros = potential_in_row.trailing_zeros() as usize;
                     let player = byte * Self::word_size() + trailing_zeros;
-                    let player_bit:  u64 = 1 << trailing_zeros;
+                    let player_bit: u64 = 1 << trailing_zeros;
                     potential_in_row &= !player_bit;
                     if player >= self.player_count {
                         break;

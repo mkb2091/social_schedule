@@ -46,6 +46,7 @@ pub struct Client {
     id: ClientId,
     last_message: Mutex<std::time::Instant>,
     claimed: Mutex<HashSet<Vec<u64>>>,
+    step_counts: Mutex<[(std::time::Instant, usize); 10]>,
 }
 
 impl std::cmp::PartialEq for Client {
@@ -68,6 +69,7 @@ impl Client {
             id: ClientId::new(id),
             last_message: Mutex::new(std::time::Instant::now()),
             claimed: Mutex::new(HashSet::new()),
+            step_counts: Mutex::new([(std::time::Instant::now(), 0); 10]),
         }
     }
     pub fn get_last_updated(&self) -> std::time::Instant {
@@ -85,6 +87,22 @@ impl Client {
     pub fn claim_block(&self, block: Vec<u64>) {
         self.claimed.lock().unwrap().insert(block);
         *self.last_message.lock().unwrap() = std::time::Instant::now();
+    }
+    pub fn add_stats(&self, stats: &schedule_util::Stats) {
+        let mut step_counts = self.step_counts.lock().unwrap();
+        if step_counts[0].0.elapsed().as_secs() >= 1 {
+            step_counts.rotate_right(1);
+            step_counts[0] = (std::time::Instant::now(), 0);
+        }
+        for (_, counter) in step_counts.iter_mut() {
+            *counter += stats.steps;
+        }
+    }
+
+    pub fn get_rate(&self) -> f32 {
+        let step_counts = self.step_counts.lock().unwrap();
+        let (start, amount) = step_counts.last().unwrap();
+        *amount as f32 / start.elapsed().as_secs_f32()
     }
 }
 

@@ -53,17 +53,21 @@ impl Page for Status {
         for (arg, solve_state) in solve_states.iter() {
             let unclaimed = solve_state.get_unclaimed_len();
             let queue = solve_state.get_queue_len();
-            let node: Node<()> = div![format!(
-                "{:?}: {} unclaimed, {} in queue",
-                arg, unclaimed, queue
-            )];
-            let mut clients = Vec::new();
+            let mut clients = vec![td!["Client"], td!["Claimed"], td!["Rate"]];
+            let mut total_rate = 0.0;
             for client in solve_state.get_clients().iter() {
+                let rate = client.get_rate();
+                total_rate += rate;
                 clients.push(tr![
                     td![client.get_id().to_string()],
-                    td![client.claimed_len()]
+                    td![client.claimed_len(), " claimed"],
+                    td![rate.to_string(), " steps/s"],
                 ]);
             }
+            let node: Node<()> = div![format!(
+                "{:?}: {} unclaimed, {} in queue, total rate: {} steps/s",
+                arg, unclaimed, queue, total_rate
+            )];
             nodes.push(div![node, table![clients]]);
         }
         div![nodes]

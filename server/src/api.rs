@@ -73,6 +73,7 @@ async fn client_connected(mut ws: WebSocket, state: Arc<State>) {
                 if next == "request" {
                     block_sender_notify.notify_one();
                 } else if let Ok(batch) = serde_json::from_str::<schedule_util::BatchOutput>(next) {
+                    client_clone.add_stats(&batch.stats);
                     solve_state_clone.add_batch_result(&client_clone, batch);
                     block_sender_notify.notify_one();
                 } else {
