@@ -45,7 +45,7 @@ impl std::fmt::Display for ClientId {
 pub struct Client {
     id: ClientId,
     last_message: Mutex<std::time::Instant>,
-    claimed: Mutex<HashSet<Vec<usize>>>,
+    claimed: Mutex<HashSet<Vec<u64>>>,
 }
 
 impl std::cmp::PartialEq for Client {
@@ -79,10 +79,10 @@ impl Client {
     pub fn claimed_len(&self) -> usize {
         self.claimed.lock().unwrap().len()
     }
-    pub fn get_claimed(&self) -> &Mutex<HashSet<Vec<usize>>> {
+    pub fn get_claimed(&self) -> &Mutex<HashSet<Vec<u64>>> {
         &self.claimed
     }
-    pub fn claim_block(&self, block: Vec<usize>) {
+    pub fn claim_block(&self, block: Vec<u64>) {
         self.claimed.lock().unwrap().insert(block);
         *self.last_message.lock().unwrap() = std::time::Instant::now();
     }

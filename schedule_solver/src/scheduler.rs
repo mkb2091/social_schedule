@@ -181,7 +181,7 @@ impl<'a> Scheduler<'a> {
         Ok(())
     }
 
-    pub fn get_schedule<'b>(&self, buffer: &'b [usize]) -> &'b [usize] {
+    pub fn get_schedule<'b>(&self, buffer: &'b [u64]) -> &'b [u64] {
         &buffer[self.offsets.played_on_table_offset..][..self.offsets.played_on_table_size]
     }
 
@@ -190,7 +190,7 @@ impl<'a> Scheduler<'a> {
     }
 
     #[must_use]
-    pub fn initialise_buffer(&self, buffer: &mut [usize]) -> bool {
+    pub fn initialise_buffer(&self, buffer: &mut [u64]) -> bool {
         if buffer.len() < self.offsets.block_size {
             return false;
         }
@@ -212,12 +212,12 @@ impl<'a> Scheduler<'a> {
             } else if current_byte == max.0 {
                 max.1 - 1
             } else {
-                usize::MAX
+                u64::MAX
             };
             i += 1;
         }
 
-        buffer[self.offsets.empty_table_count_offset] = (self.rounds - 1) * self.tables.len();
+        buffer[self.offsets.empty_table_count_offset] = ((self.rounds - 1) * self.tables.len()) as u64;
         let mut round_range = self.round_range.skip(1);
         while let Some(round) = round_range.next() {
             let mut table_range = self.table_range;
@@ -249,9 +249,9 @@ impl<'a> Scheduler<'a> {
     }
 
     const fn word_size() -> usize {
-        core::mem::size_of::<usize>() * 8
+        core::mem::size_of::<u64>() * 8
     }
-    const fn get_byte_and_mask(player: usize) -> (usize, usize) {
+    const fn get_byte_and_mask(player: usize) -> (usize, u64) {
         let byte = player / Self::word_size();
         let mask = 1 << (player - (byte * Self::word_size()));
         (byte, mask)
@@ -259,7 +259,7 @@ impl<'a> Scheduler<'a> {
 
     fn apply_player(
         &self,
-        buffer: &mut [usize],
+        buffer: &mut [u64],
         round: Round,
         table: Table,
         player: usize,
@@ -349,15 +349,15 @@ impl<'a> Scheduler<'a> {
         Some(())
     }
 
-    pub const fn get_players_placed(&self, buffer: &[usize]) -> usize {
+    pub const fn get_players_placed(&self, buffer: &[u64]) -> u64 {
         buffer[self.offsets.players_placed_counter_offset]
     }
 
-    pub const fn get_empty_table_count(&self, buffer: &[usize]) -> usize {
+    pub const fn get_empty_table_count(&self, buffer: &[u64]) -> u64 {
         buffer[self.offsets.empty_table_count_offset]
     }
 
-    pub fn find_hidden_singles(&self, buffer: &mut [usize]) {
+    pub fn find_hidden_singles(&self, buffer: &mut [u64]) {
         let mut round_range = self.round_range;
         while let Some(round) = round_range.next() {
             let mut byte = 0;
@@ -368,7 +368,7 @@ impl<'a> Scheduler<'a> {
                 'loop_bits_round: while potential_in_row != 0 {
                     let trailing_zeros = potential_in_row.trailing_zeros() as usize;
                     let player = byte * Self::word_size() + trailing_zeros;
-                    let player_bit = 1 << trailing_zeros;
+                    let player_bit:  u64 = 1 << trailing_zeros;
                     potential_in_row &= !player_bit;
                     if player >= self.player_count {
                         break;
@@ -441,7 +441,7 @@ impl<'a> Scheduler<'a> {
         }
     }
 
-    const fn get_fixed_count(&self, buffer: &[usize], round: Round, table: Table) -> u32 {
+    const fn get_fixed_count(&self, buffer: &[u64], round: Round, table: Table) -> u32 {
         let mut fixed_player_count = 0;
         let mut byte = 0;
         while byte < self.player_bit_word_count {
@@ -455,7 +455,7 @@ impl<'a> Scheduler<'a> {
         fixed_player_count
     }
 
-    const fn get_potential_count(&self, buffer: &[usize], round: Round, table: Table) -> u32 {
+    const fn get_potential_count(&self, buffer: &[u64], round: Round, table: Table) -> u32 {
         let mut potential_player_count = 0;
         let mut byte = 0;
         while byte < self.player_bit_word_count {
@@ -471,7 +471,7 @@ impl<'a> Scheduler<'a> {
 
     const fn can_place_player_on_table(
         &self,
-        buffer: &[usize],
+        buffer: &[u64],
         round: Round,
         table: Table,
         player: usize,
@@ -492,7 +492,7 @@ impl<'a> Scheduler<'a> {
         true
     }
 
-    pub fn step(&self, buffer_1: &mut [usize], buffer_2: &mut [usize]) -> Option<bool> {
+    pub fn step(&self, buffer_1: &mut [u64], buffer_2: &mut [u64]) -> Option<bool> {
         let buffer_1 = &mut buffer_1[..self.offsets.block_size];
         let buffer_2 = &mut buffer_2[..self.offsets.block_size];
 

@@ -29,8 +29,8 @@ pub struct Stats {
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, Default)]
 pub struct BatchOutput {
-    pub base: Vec<usize>,
-    pub children: Vec<Vec<usize>>,
-    pub notable: Vec<Vec<usize>>,
+    pub base: Vec<u64>,
+    pub children: Vec<Vec<u64>>,
+    pub notable: Vec<Vec<u64>>,
     pub stats: Stats,
 }

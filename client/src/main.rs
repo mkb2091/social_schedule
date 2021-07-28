@@ -18,18 +18,11 @@ struct Opts {
     iterations_per_sync: usize,
 }
 
-/*type OneShotSender = std::sync::oneshot::Sender<Vec<usize>>;
-
-struct SolvingStorage {
-
-    queue: VecDeque<OneShotSender>,
-}*/
-
 fn solving_thread(
     tables: Vec<usize>,
     rounds: usize,
     steps_per_sync: usize,
-    in_queue: std::sync::mpsc::Receiver<Vec<usize>>,
+    in_queue: std::sync::mpsc::Receiver<Vec<u64>>,
     in_queue_size: Arc<AtomicUsize>,
     sender: tokio::sync::mpsc::UnboundedSender<schedule_util::BatchOutput>,
 ) {
@@ -50,7 +43,7 @@ fn solving_thread(
             if target_size > buffer.len() {
                 buffer.resize(target_size, 0);
             }
-            let buffer: &mut [usize] = &mut buffer[current_depth * scheduler.get_block_size()..];
+            let buffer: &mut [u64] = &mut buffer[current_depth * scheduler.get_block_size()..];
             let (buf_1, buf_2) = buffer.split_at_mut(scheduler.get_block_size());
             if let Some(finished) = scheduler.step(buf_1, buf_2) {
                 if finished {
@@ -61,7 +54,7 @@ fn solving_thread(
                     return;
                 } else {
                     assert_ne!(buf_1, buf_2);
-                    assert!(current_depth <= scheduler.get_players_placed(buf_2));
+                    assert!(current_depth <= scheduler.get_players_placed(buf_2) as usize);
                     current_depth += 1;
                 }
             } else {
