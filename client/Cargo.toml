@@ -7,6 +7,7 @@ edition = "2018"
 
 [dependencies]
 schedule_solver = {path = "../schedule_solver"}
+schedule_util = {path = "../schedule_util"}
 
 clap = { version = "3.0.0-beta.2"}
 
@@ -14,5 +15,5 @@ serde = { version = "1.0", features = ['derive']}
 serde_json = "1.0"
 futures = "0.3"
 tokio-tungstenite = "0.15"
-tokio = {version = "1.9.0", default-features = false, features=['macros', 'rt-multi-thread', 'net']}
+tokio = {version = "1.9.0", default-features = false, features=['macros', 'rt-multi-thread', 'net', 'sync']}
 num_cpus = "1"

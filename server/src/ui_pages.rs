@@ -2,6 +2,8 @@ use crate::*;
 use seed::{prelude::*, *};
 use std::sync::Arc;
 
+use warp::{filters::BoxedFilter, Filter, Reply};
+
 trait Page: std::fmt::Display {
     fn get_path(&self) -> &'static str;
     fn handle_req(&self, state: Arc<State>) -> Node<()>;
@@ -25,7 +27,7 @@ impl Page for SetSchedule {
     fn get_path(&self) -> &'static str {
         "set_schedule"
     }
-    fn handle_req(&self, state: Arc<State>) -> Node<()> {
+    fn handle_req(&self, _state: Arc<State>) -> Node<()> {
         iframe![
             attrs! {At::Src => "/html/iframe/set_schedule"},
             style! {St::Border => "None", St::Width => "100%"}
@@ -33,9 +35,34 @@ impl Page for SetSchedule {
     }
 }
 
-const PAGES: &[&dyn Page] = &[&SetSchedule {}];
+struct Status {}
 
-use warp::{filters::BoxedFilter, Filter, Reply};
+impl std::fmt::Display for Status {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+        write!(f, "Status")
+    }
+}
+
+impl Page for Status {
+    fn get_path(&self) -> &'static str {
+        "status"
+    }
+    fn handle_req(&self, state: Arc<State>) -> Node<()> {
+        let mut nodes = Vec::new();
+        let solve_states = state.all_schedule_solve_states();
+        for (arg, solve_state) in solve_states.iter() {
+            let (unclaimed, claimed, queue) = solve_state.get_counts();
+            let node: Node<()> = div![format!(
+                "{:?}: {} unclaimed, {} claimed, {} in queue",
+                arg, unclaimed, claimed, queue
+            )];
+            nodes.push(node);
+        }
+        div![nodes]
+    }
+}
+
+const PAGES: &[&dyn Page] = &[&SetSchedule {}];
 
 fn set_schedule_frame(state: Arc<State>) -> String {
     let guard = state.scheduler.lock().unwrap();
@@ -123,10 +150,12 @@ pub fn get_html_filter(state: Arc<State>) -> BoxedFilter<(impl Reply,)> {
             ),
         )
         .boxed();
+    let state2 = state.clone();
     warp::path("html")
         .and(
             warp::path("set_schedule")
-                .map(move || SetSchedule {}.view(state.clone()))
+                .map(move || SetSchedule {}.view(state2.clone()))
+                .or(warp::path("status").map(move || Status {}.view(state.clone())))
                 .or(iframe),
         )
         .with(warp::reply::with::header("content-type", "text/html"))

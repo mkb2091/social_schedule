@@ -7,6 +7,8 @@ use std::sync::{
     Arc, Mutex,
 };
 
+use tokio_tungstenite::tungstenite::protocol::Message;
+
 #[derive(Debug, Clap)]
 struct Opts {
     server: String,
@@ -17,10 +19,12 @@ struct Opts {
     iterations_per_sync: usize,
 }
 
-#[derive(Debug)]
-struct Stats {
-    steps: usize,
-}
+/*type OneShotSender = std::sync::oneshot::Sender<Vec<usize>>;
+
+struct SolvingStorage {
+
+    queue: VecDeque<OneShotSender>,
+}*/
 
 fn solving_thread(
     tables: Vec<usize>,
@@ -28,16 +32,17 @@ fn solving_thread(
     steps_per_sync: usize,
     in_queue: std::sync::mpsc::Receiver<Vec<usize>>,
     in_queue_size: Arc<AtomicUsize>,
-    sender: std::sync::mpsc::Sender<(Vec<usize>, Vec<Vec<usize>>, Stats)>,
+    sender: tokio::sync::mpsc::UnboundedSender<schedule_util::BatchOutput>,
 ) {
     let mut buffer = Vec::new();
     let scheduler = schedule_solver::Scheduler::new(&tables, rounds);
-	let scheduler = schedule_solver::Scheduler::new(&[4; 6], 6);
-    'queue: while let Ok(next) = in_queue.recv() {
+    while let Ok(next) = in_queue.recv() {
         in_queue_size.fetch_sub(1, Ordering::Relaxed);
         buffer.extend(&next);
         let mut current_depth = 0;
         let mut steps = 0;
+        let start = std::time::Instant::now();
+        let mut emptied = false;
         'inner_loop: while steps < steps_per_sync {
             let target_size = (current_depth + 2) * scheduler.get_block_size();
             if target_size > buffer.len() {
@@ -59,6 +64,7 @@ fn solving_thread(
                 }
             } else {
                 if current_depth == 0 {
+                    emptied = true;
                     break 'inner_loop;
                 } else {
                     current_depth -= 1;
@@ -68,17 +74,30 @@ fn solving_thread(
             steps += 1;
         }
         let mut output = Vec::with_capacity(current_depth);
-        for i in 0..=current_depth {
-            output.push(
-                buffer[i * scheduler.get_block_size()..(i + 1) * scheduler.get_block_size()]
-                    .to_vec(),
-            );
+        if !emptied {
+            for i in 0..=current_depth {
+                output.push(
+                    buffer[i * scheduler.get_block_size()..(i + 1) * scheduler.get_block_size()]
+                        .to_vec(),
+                );
+            }
         }
-        let stats = Stats { steps };
-        if sender.send((next, output, stats)).is_err() {
+        let stats = schedule_util::Stats {
+            steps,
+            elapsed: start.elapsed(),
+        };
+        let batch_result = schedule_util::BatchOutput {
+            base: next,
+            children: output,
+            notable: Vec::new(),
+            stats,
+        };
+        if let Err(error) = sender.send(batch_result) {
+            println!("Error: {:?}", error);
             return;
         }
     }
+    println!("Thread exiting");
 }
 
 #[tokio::main]
@@ -98,61 +117,78 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tables.sort_unstable();
 
     let mut threads = Vec::new();
-    let (tx, rx) = std::sync::mpsc::channel();
-    for i in 0..num_cpus::get() {
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+    for _ in 0..num_cpus::get() {
         let tables = tables.clone();
         let tx = tx.clone();
         let (local_tx, local_rx) = std::sync::mpsc::channel();
         let queue_size_base = Arc::new(AtomicUsize::new(0));
         let queue_size = queue_size_base.clone();
-        let thread = std::thread::spawn(move || {
-            solving_thread(tables, rounds, 1_000_000, local_rx, queue_size, tx)
+        let _thread = std::thread::spawn(move || {
+            solving_thread(tables, rounds, 100, local_rx, queue_size, tx)
         });
         threads.push((queue_size_base, local_tx));
     }
-
-    let scheduler = schedule_solver::Scheduler::new(&tables, rounds);
-    let mut init = vec![0; scheduler.get_block_size()];
-    scheduler.initialise_buffer(&mut init);
-    threads[0].0.fetch_add(1, Ordering::Relaxed);
-    threads[0].1.send(init.clone());
+    let arg = schedule_util::ScheduleArg::new(&tables, rounds);
     let start = std::time::Instant::now();
-    let mut i: usize = 0;
-    let mut total_steps = 0;
+    let mut total_steps: usize = 0;
     let mut last_print = std::time::Instant::now();
-    while let Ok((_, output, stats)) = rx.recv() {
-        for block in output.into_iter() {
-            if i >= threads.len() {
-                i = 0;
+    let (mut ws_stream, _response) = tokio_tungstenite::connect_async(&opts.server).await?;
+
+    let encoded = serde_json::to_string(&arg)?;
+    ws_stream
+        .send(tokio_tungstenite::tungstenite::protocol::Message::Text(
+            encoded.clone(),
+        ))
+        .await?;
+
+    let (mut ws_tx, mut ws_rx) = ws_stream.split();
+    let handle_batches = async {
+        while let Some(batch_result) = rx.recv().await {
+            let encoded = serde_json::to_string(&batch_result).unwrap();
+            ws_tx.send(Message::Text(encoded)).await?;
+            for (queue_size, _queue) in threads.iter() {
+                if queue_size.load(Ordering::Relaxed) < 20 {
+                    ws_tx.send(Message::Text("request".to_string())).await?;
+                }
             }
-            threads[i].0.fetch_add(1, Ordering::Relaxed);
-            threads[i].1.send(block);
-            i += 1;
+            total_steps += batch_result.stats.steps;
+            if last_print.elapsed().as_millis() > 300 {
+                println!(
+                    "Total Steps: {} Rate: {}",
+                    total_steps,
+                    total_steps as f32 / start.elapsed().as_secs_f32()
+                );
+                for (queue_size, _) in threads.iter() {
+                    println!("Queue size: {}", queue_size.load(Ordering::Relaxed));
+                }
+                last_print = std::time::Instant::now();
+            }
         }
-        total_steps += stats.steps;
-        if last_print.elapsed().as_millis() > 300 {
-            println!(
-                "Total Steps: {} Rate: {}",
-                total_steps,
-                total_steps as f32 / start.elapsed().as_secs_f32()
-            );
-            last_print = std::time::Instant::now();
+        Ok::<(), Box<dyn std::error::Error>>(())
+    };
+
+    let handle_blocks = async {
+        while let Some(next) = ws_rx.next().await {
+            if let Ok(next) = next?.into_text() {
+                if let Ok(decoded) = serde_json::from_str(&next) {
+                    let (queue_size, queue) = threads
+                        .iter()
+                        .min_by_key(|(queue_size, _queue)| queue_size.load(Ordering::Relaxed))
+                        .unwrap();
+                    queue_size.fetch_add(1, Ordering::Relaxed);
+                    queue.send(decoded)?;
+                } else {
+                    println!("Failed to decode: {:?}", next);
+                }
+            } else {
+                println!("Failed to decode");
+            }
         }
-    }
+        println!("Disconnected");
+        Ok::<(), Box<dyn std::error::Error>>(())
+    };
 
-    println!("{:?}", opts);
-
-    let encoded = serde_json::to_string(&(tables, rounds))?;
-
-    loop {
-        let (mut ws_stream, _response) = tokio_tungstenite::connect_async(&opts.server).await?;
-
-        ws_stream
-            .send(tokio_tungstenite::tungstenite::protocol::Message::Text(
-                encoded.clone(),
-            ))
-            .await;
-    }
-
+    futures::future::try_join(handle_batches, handle_blocks).await?;
     Ok(())
 }
