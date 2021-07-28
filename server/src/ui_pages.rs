@@ -59,7 +59,10 @@ impl Page for Status {
             )];
             let mut clients = Vec::new();
             for client in solve_state.get_clients().iter() {
-                clients.push(tr![td![client.get_id().to_string()], td![client.claimed_len()]]);
+                clients.push(tr![
+                    td![client.get_id().to_string()],
+                    td![client.claimed_len()]
+                ]);
             }
             nodes.push(div![node, table![clients]]);
         }

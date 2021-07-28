@@ -53,10 +53,11 @@ async fn client_connected(mut ws: WebSocket, state: Arc<State>) {
     let client_clone = client.clone();
     let block_sender_notify = Arc::new(tokio::sync::Notify::new());
     let notify2 = block_sender_notify.clone();
+    let state_clone = state.clone();
     let block_request = async move {
         loop {
             notify2.notified().await;
-            let client_buffer_size = state.client_buffer_size.load(Ordering::Relaxed);
+            let client_buffer_size = state_clone.client_buffer_size.load(Ordering::Relaxed);
             while client_clone.claimed_len() < client_buffer_size {
                 send_block(&client_clone, solve_state_clone.clone(), &tx).await?
             }
@@ -81,7 +82,19 @@ async fn client_connected(mut ws: WebSocket, state: Arc<State>) {
         }
         Ok::<(), Box<dyn std::error::Error>>(())
     };
-    let result = futures::future::try_join3(forward_messages, block_request, input_handler).await;
+    let client_clone = client.clone();
+    let timeout = async move {
+        loop {
+            let timeout = state.timeout.load(Ordering::Relaxed);
+            let timeout = std::time::Duration::from_secs(timeout);
+            tokio::time::sleep(timeout).await;
+            if client_clone.get_last_updated().elapsed() > timeout {
+                return Err::<(), Box<dyn std::error::Error>>(Box::new(ApiError::Timeout));
+            }
+        }
+    };
+    let result =
+        futures::future::try_join4(forward_messages, block_request, input_handler, timeout).await;
     if result.is_err() {
         println!("Client {} Result: {:?}", client.get_id(), result);
     }

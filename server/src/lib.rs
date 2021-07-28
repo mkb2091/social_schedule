@@ -11,15 +11,18 @@ pub use seed;
 pub use warp;
 
 #[derive(Debug)]
-pub struct Completed {}
+pub enum ApiError {
+    Completed,
+    Timeout,
+}
 
-impl std::fmt::Display for Completed {
+impl std::fmt::Display for ApiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-        write!(f, "Completed")
+        write!(f, "{:?}", self)
     }
 }
 
-impl std::error::Error for Completed {}
+impl std::error::Error for ApiError {}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ClientId {
@@ -67,6 +70,9 @@ impl Client {
             claimed: Mutex::new(HashSet::new()),
         }
     }
+    pub fn get_last_updated(&self) -> std::time::Instant {
+        *self.last_message.lock().unwrap()
+    }
     pub fn get_id(&self) -> ClientId {
         self.id
     }
@@ -87,6 +93,7 @@ pub struct State {
     schedule_solve_states: Mutex<HashMap<Arc<schedule_util::ScheduleArg>, Arc<ScheduleState>>>,
     pub next_client_id: AtomicUsize,
     pub client_buffer_size: AtomicUsize,
+    pub timeout: AtomicU64,
 }
 
 impl State {
@@ -95,11 +102,13 @@ impl State {
         let schedule_solve_states = Mutex::new(HashMap::new());
         let next_client_id = AtomicUsize::new(0);
         let client_buffer_size = AtomicUsize::new(100);
+        let timeout = AtomicU64::new(10);
         State {
             scheduler,
             schedule_solve_states,
             next_client_id,
             client_buffer_size,
+            timeout,
         }
     }
 
