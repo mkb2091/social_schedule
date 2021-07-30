@@ -30,15 +30,9 @@ impl ScheduleState {
                 clients.insert(client.clone());
             }
         }
-        {
-            let mut unclaimed = self.unclaimed.lock().unwrap();
-            if let Some((_, next)) = unclaimed.pop() {
-                client.claim_block(next.clone());
-                return Ok(next);
-            }
-            if self.clients.lock().unwrap().is_empty() {
-                return Err(ApiError::Completed);
-            }
+        if let Some((_, next)) = self.unclaimed.lock().unwrap().pop() {
+            client.claim_block(next.clone());
+            return Ok(next);
         }
 
         let (tx, rx) = tokio::sync::oneshot::channel();
@@ -56,25 +50,18 @@ impl ScheduleState {
         let scheduler =
             schedule_solver::Scheduler::new(self.arg.get_tables(), self.arg.get_rounds());
         let mut unclaimed = self.unclaimed.lock().unwrap();
-        unclaimed.push((scheduler.get_players_placed(&block) as usize, block));
-        unclaimed.sort_unstable_by_key(|(players_placed, _block)| *players_placed);
+        let block = (scheduler.get_players_placed(&block) as usize, block);
+        if let Err(index) = unclaimed.binary_search(&block) {
+            unclaimed.insert(index, block);
+        }
     }
 
     pub fn add_batch_result(&self, client: &Arc<Client>, result: schedule_util::BatchOutput) {
         if self.clients.lock().unwrap().contains(client) {
             if client.get_claimed().lock().unwrap().remove(&result.base) {
-                if result.children.len() == 0
-                    && self.clients.lock().unwrap().is_empty()
-                    && self.unclaimed.lock().unwrap().is_empty()
-                {
-                    self.queue.lock().unwrap().clear();
-                }
                 for child in result.children.into_iter() {
-                    if &child != &result.base {
-                        self.add_single_block(child);
-                    } else {
-                        panic!();
-                    }
+                    debug_assert!(&child != &result.base);
+                    self.add_single_block(child);
                 }
                 // TODO: Handle notable
             } else {
@@ -90,6 +77,10 @@ impl ScheduleState {
             for block in client.get_claimed().lock().unwrap().drain() {
                 self.add_single_block(block);
             }
+            self.queue
+                .lock()
+                .unwrap()
+                .retain(|(other_client, _)| other_client != client);
         }
     }
 

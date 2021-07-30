@@ -139,9 +139,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut last_print = std::time::Instant::now();
     let (mut ws_stream, _response) = tokio_tungstenite::connect_async(&opts.server).await?;
 
-    let encoded = serde_json::to_string(&arg)?;
+    let encoded = bincode::serialize(&arg)?;
     ws_stream
-        .send(tokio_tungstenite::tungstenite::protocol::Message::Text(
+        .send(tokio_tungstenite::tungstenite::protocol::Message::Binary(
             encoded.clone(),
         ))
         .await?;
@@ -149,8 +149,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (mut ws_tx, mut ws_rx) = ws_stream.split();
     let handle_batches = async {
         while let Some(batch_result) = rx.recv().await {
-            let encoded = serde_json::to_string(&batch_result).unwrap();
-            ws_tx.send(Message::Text(encoded)).await?;
+            let encoded = bincode::serialize(&batch_result).unwrap();
+            ws_tx.send(Message::Binary(encoded)).await?;
             total_steps += batch_result.stats.steps;
             if last_print.elapsed().as_millis() > 300 {
                 println!(
@@ -169,19 +169,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let handle_blocks = async {
         while let Some(next) = ws_rx.next().await {
-            if let Ok(next) = next?.into_text() {
-                if let Ok(decoded) = serde_json::from_str(&next) {
-                    let (queue_size, queue) = threads
-                        .iter()
-                        .min_by_key(|(queue_size, _queue)| queue_size.load(Ordering::Relaxed))
-                        .unwrap();
-                    queue_size.fetch_add(1, Ordering::Relaxed);
-                    queue.send(decoded)?;
-                } else {
-                    println!("Failed to decode: {:?}", next);
-                }
+            let next = next?.into_data();
+            if let Ok(decoded) = bincode::deserialize(&next) {
+                let (queue_size, queue) = threads
+                    .iter()
+                    .min_by_key(|(queue_size, _queue)| queue_size.load(Ordering::Relaxed))
+                    .unwrap();
+                queue_size.fetch_add(1, Ordering::Relaxed);
+                queue.send(decoded)?;
             } else {
-                println!("Failed to decode");
+                println!("Failed to decode: {:?}", &next);
             }
         }
         println!("Disconnected");

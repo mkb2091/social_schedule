@@ -12,8 +12,8 @@ async fn send_block(
     tx: &tokio::sync::mpsc::UnboundedSender<Message>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let block = solve_state.get_block(client).await?;
-    let message = serde_json::to_string(&block)?;
-    tx.send(Message::text(message))?;
+    let message = bincode::serialize(&block)?;
+    tx.send(Message::binary(message))?;
     Ok(())
 }
 
@@ -29,12 +29,8 @@ async fn client_connected(mut ws: WebSocket, state: Arc<State>) {
     } else {
         return;
     };
-    let init = if let Ok(init) = init.to_str() {
-        init
-    } else {
-        return;
-    };
-    let arg: schedule_util::ScheduleArg = if let Some(init) = serde_json::from_str(init).ok() {
+    let init = init.as_bytes();
+    let arg: schedule_util::ScheduleArg = if let Some(init) = bincode::deserialize(init).ok() {
         init
     } else {
         return;
@@ -69,16 +65,17 @@ async fn client_connected(mut ws: WebSocket, state: Arc<State>) {
     let client_clone = client.clone();
     let input_handler = async move {
         while let Some(next) = ws_rx.next().await {
-            if let Ok(next) = next?.to_str() {
-                if next == "request" {
-                    block_sender_notify.notify_one();
-                } else if let Ok(batch) = serde_json::from_str::<schedule_util::BatchOutput>(next) {
-                    client_clone.add_stats(&batch.stats);
-                    solve_state_clone.add_batch_result(&client_clone, batch);
-                    block_sender_notify.notify_one();
-                } else {
-                    println!("Unknown data: {:?}", next);
-                }
+            let next = next?;
+            if next.to_str() == Ok("request") {
+                block_sender_notify.notify_one();
+            } else if let Ok(batch) =
+                bincode::deserialize::<schedule_util::BatchOutput>(next.as_bytes())
+            {
+                client_clone.add_stats(&batch.stats);
+                solve_state_clone.add_batch_result(&client_clone, batch);
+                block_sender_notify.notify_one();
+            } else {
+                println!("Unknown data: {:?}", next);
             }
         }
         Ok::<(), Box<dyn std::error::Error>>(())
