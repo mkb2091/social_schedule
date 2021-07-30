@@ -42,11 +42,39 @@ impl std::fmt::Display for ClientId {
 }
 
 #[derive(Debug)]
+struct RateStats {
+    data: [(std::time::Instant, usize); 10],
+}
+
+impl RateStats {
+    fn new() -> Self {
+        Self {
+            data: [(std::time::Instant::now(), 0); 10],
+        }
+    }
+    fn add(&mut self, amount: usize) {
+        if self.data[0].0.elapsed().as_secs() >= 1 {
+            self.data.rotate_right(1);
+            self.data[0] = (std::time::Instant::now(), 0);
+        }
+        for (_, counter) in self.data.iter_mut() {
+            *counter += amount;
+        }
+    }
+    fn rate(&self) -> f32 {
+        let (start, amount) = self.data.last().unwrap();
+        *amount as f32 / start.elapsed().as_secs_f32()
+    }
+}
+
+#[derive(Debug)]
 pub struct Client {
     id: ClientId,
     last_message: Mutex<std::time::Instant>,
     claimed: Mutex<HashSet<Vec<u64>>>,
-    step_counts: Mutex<[(std::time::Instant, usize); 10]>,
+    step_counts: Mutex<RateStats>,
+    data_sent: Mutex<RateStats>,
+    data_recieved: Mutex<RateStats>,
 }
 
 impl std::cmp::PartialEq for Client {
@@ -69,7 +97,9 @@ impl Client {
             id: ClientId::new(id),
             last_message: Mutex::new(std::time::Instant::now()),
             claimed: Mutex::new(HashSet::new()),
-            step_counts: Mutex::new([(std::time::Instant::now(), 0); 10]),
+            step_counts: Mutex::new(RateStats::new()),
+            data_sent: Mutex::new(RateStats::new()),
+            data_recieved: Mutex::new(RateStats::new()),
         }
     }
     pub fn get_last_updated(&self) -> std::time::Instant {
@@ -89,20 +119,26 @@ impl Client {
         *self.last_message.lock().unwrap() = std::time::Instant::now();
     }
     pub fn add_stats(&self, stats: &schedule_util::Stats) {
-        let mut step_counts = self.step_counts.lock().unwrap();
-        if step_counts[0].0.elapsed().as_secs() >= 1 {
-            step_counts.rotate_right(1);
-            step_counts[0] = (std::time::Instant::now(), 0);
-        }
-        for (_, counter) in step_counts.iter_mut() {
-            *counter += stats.steps;
-        }
+        self.step_counts.lock().unwrap().add(stats.steps);
     }
 
     pub fn get_rate(&self) -> f32 {
-        let step_counts = self.step_counts.lock().unwrap();
-        let (start, amount) = step_counts.last().unwrap();
-        *amount as f32 / start.elapsed().as_secs_f32()
+        self.step_counts.lock().unwrap().rate()
+    }
+
+    pub fn add_recieved_bytes(&self, amount: usize) {
+        self.data_recieved.lock().unwrap().add(amount)
+    }
+
+    pub fn add_sent_bytes(&self, amount: usize) {
+        self.data_sent.lock().unwrap().add(amount)
+    }
+
+    pub fn get_recieved_rate(&self) -> f32 {
+        self.data_recieved.lock().unwrap().rate()
+    }
+    pub fn get_sent_rate(&self) -> f32 {
+        self.data_sent.lock().unwrap().rate()
     }
 }
 

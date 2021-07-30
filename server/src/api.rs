@@ -3,18 +3,27 @@ use std::sync::{atomic::Ordering, Arc};
 use warp::ws::{Message, WebSocket};
 use warp::{filters::BoxedFilter, Filter, Reply};
 
+use futures::stream::SplitSink;
 use futures::SinkExt;
 use futures::StreamExt;
 
-async fn send_block(
-    client: &Arc<Client>,
+async fn send_blocks(
+    client: Arc<Client>,
+    state: Arc<State>,
     solve_state: Arc<ScheduleState>,
-    tx: &tokio::sync::mpsc::UnboundedSender<Message>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let block = solve_state.get_block(client).await?;
-    let message = bincode::serialize(&block)?;
-    tx.send(Message::binary(message))?;
-    Ok(())
+    mut ws_tx: SplitSink<warp::ws::WebSocket, warp::ws::Message>,
+    notify: Arc<tokio::sync::Notify>,
+) -> Result<std::convert::Infallible, Box<dyn std::error::Error>> {
+    loop {
+        notify.notified().await;
+        let client_buffer_size = state.client_buffer_size.load(Ordering::Relaxed);
+        for _ in 0..(client_buffer_size - client.claimed_len()) {
+            let block = solve_state.get_block(&client).await?;
+            let message = bincode::serialize(&block)?;
+            client.add_sent_bytes(message.len());
+            ws_tx.send(Message::binary(message)).await?;
+        }
+    }
 }
 
 async fn client_connected(mut ws: WebSocket, state: Arc<State>) {
@@ -30,6 +39,7 @@ async fn client_connected(mut ws: WebSocket, state: Arc<State>) {
         return;
     };
     let init = init.as_bytes();
+    client.add_recieved_bytes(init.len());
     let arg: schedule_util::ScheduleArg = if let Some(init) = bincode::deserialize(init).ok() {
         init
     } else {
@@ -37,40 +47,26 @@ async fn client_connected(mut ws: WebSocket, state: Arc<State>) {
     };
     let arg = Arc::new(arg);
     let solve_state = state.get_schedule_solve_state(arg);
-    let (mut ws_tx, mut ws_rx) = ws.split();
-    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
-    let forward_messages = async move {
-        while let Some(next) = rx.recv().await {
-            ws_tx.send(next).await?;
-        }
-        Ok::<(), Box<dyn std::error::Error>>(())
-    };
-    let solve_state_clone = solve_state.clone();
-    let client_clone = client.clone();
+    let (ws_tx, mut ws_rx) = ws.split();
     let block_sender_notify = Arc::new(tokio::sync::Notify::new());
-    let notify2 = block_sender_notify.clone();
-    let state_clone = state.clone();
-    let block_request = async move {
-        loop {
-            notify2.notified().await;
-            let client_buffer_size = state_clone.client_buffer_size.load(Ordering::Relaxed);
-            while client_clone.claimed_len() < client_buffer_size {
-                send_block(&client_clone, solve_state_clone.clone(), &tx).await?
-            }
-        }
-        Ok::<(), Box<dyn std::error::Error>>(())
-    };
+    let block_request = send_blocks(
+        client.clone(),
+        state.clone(),
+        solve_state.clone(),
+        ws_tx,
+        block_sender_notify.clone(),
+    );
     block_sender_notify.notify_one();
     let solve_state_clone = solve_state.clone();
     let client_clone = client.clone();
     let input_handler = async move {
         while let Some(next) = ws_rx.next().await {
             let next = next?;
-            if next.to_str() == Ok("request") {
+            let next = next.as_bytes();
+            client_clone.add_recieved_bytes(next.len());
+            if next == b"request" {
                 block_sender_notify.notify_one();
-            } else if let Ok(batch) =
-                bincode::deserialize::<schedule_util::BatchOutput>(next.as_bytes())
-            {
+            } else if let Ok(batch) = bincode::deserialize::<schedule_util::BatchOutput>(&next) {
                 client_clone.add_stats(&batch.stats);
                 solve_state_clone.add_batch_result(&client_clone, batch);
                 block_sender_notify.notify_one();
@@ -91,8 +87,7 @@ async fn client_connected(mut ws: WebSocket, state: Arc<State>) {
             }
         }
     };
-    let result =
-        futures::future::try_join4(forward_messages, block_request, input_handler, timeout).await;
+    let result = futures::future::try_join3(block_request, input_handler, timeout).await;
     if result.is_err() {
         println!("Client {} Result: {:?}", client.get_id(), result);
     }

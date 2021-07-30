@@ -43,5 +43,5 @@ members = ["server", "client", "schedule_solver"]
 [profile.release]
 #lto = 'thin'
 opt-level = 3
-#debug = true
+debug = true
 debug-assertions = false

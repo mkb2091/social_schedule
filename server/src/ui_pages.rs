@@ -8,9 +8,16 @@ trait Page: std::fmt::Display {
     fn get_path(&self) -> &'static str;
     fn handle_req(&self, state: Arc<State>) -> Node<()>;
     fn view(&self, state: Arc<State>) -> String {
-        let heading = h1![self.to_string()];
+        let title = h1![self.to_string()];
+        let mut heading = Vec::new();
+        for page in PAGES.iter() {
+            heading.push(a![
+                attrs! {At::Href => page.get_path()},
+                h2![page.to_string()]
+            ]);
+        }
         let body = self.handle_req(state);
-        let html = div![heading, body];
+        let html = div![title, heading, body];
         html.to_string()
     }
 }
@@ -35,6 +42,28 @@ impl Page for SetSchedule {
     }
 }
 
+struct Config {}
+
+impl std::fmt::Display for Config {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+        write!(f, "Config")
+    }
+}
+
+impl Page for Config {
+    fn get_path(&self) -> &'static str {
+        "config"
+    }
+    fn handle_req(&self, state: Arc<State>) -> Node<()> {
+        form![
+            input![
+                attrs! {At::Name => "client_buffer_size", At::Value => state.client_buffer_size.load(Ordering::Relaxed)}
+            ],
+            button![attrs! {At::Action => "submit"}, "Set"]
+        ]
+    }
+}
+
 struct Status {}
 
 impl std::fmt::Display for Status {
@@ -48,33 +77,60 @@ impl Page for Status {
         "status"
     }
     fn handle_req(&self, state: Arc<State>) -> Node<()> {
+        fn to_appropriate_unit(bytes: u128) -> String {
+            let bytes = byte_unit::Byte::from_bytes(bytes);
+            let adjusted_byte = bytes.get_appropriate_unit(false);
+            adjusted_byte.to_string()
+        }
         let mut nodes = Vec::new();
         let solve_states = state.all_schedule_solve_states();
         for (arg, solve_state) in solve_states.iter() {
             let unclaimed = solve_state.get_unclaimed_len();
             let queue = solve_state.get_queue_len();
-            let mut clients = vec![td!["Client"], td!["Claimed"], td!["Rate"]];
+            let mut clients = Vec::new();
             let mut total_rate = 0.0;
+            let mut total_recieved_rate = 0.0;
+            let mut total_sent_rate = 0.0;
             for client in solve_state.get_clients().iter() {
                 let rate = client.get_rate();
                 total_rate += rate;
+                let recieved_rate = client.get_recieved_rate();
+                total_recieved_rate += recieved_rate;
+                let sent_rate = client.get_sent_rate();
+                total_sent_rate += sent_rate;
                 clients.push(tr![
                     td![client.get_id().to_string()],
                     td![client.claimed_len(), " claimed"],
                     td![rate.to_string(), " steps/s"],
+                    td![to_appropriate_unit(recieved_rate as u128), " bytes/s"],
+                    td![to_appropriate_unit(sent_rate as u128), " bytes/s"],
                 ]);
             }
+            let total = tr![
+                td!["Total"],
+                td![],
+                td![total_rate.to_string(), " steps/s"],
+                td![to_appropriate_unit(total_recieved_rate as u128), " /s"],
+                td![to_appropriate_unit(total_sent_rate as u128), " /s"],
+            ];
             let node: Node<()> = div![format!(
                 "{:?}: {} unclaimed, {} in queue, total rate: {} steps/s",
                 arg, unclaimed, queue, total_rate
             )];
-            nodes.push(div![node, table![clients]]);
+            let heading = tr![
+                td!["Client"],
+                td!["Claimed"],
+                td!["Rate"],
+                td!["Recieved"],
+                td!["Sent"],
+            ];
+            nodes.push(div![node, table![heading, total, clients]]);
         }
         div![nodes]
     }
 }
 
-const PAGES: &[&dyn Page] = &[&SetSchedule {}];
+const PAGES: &[&dyn Page] = &[&SetSchedule {}, &Status {}, &Config {}];
 
 fn set_schedule_frame(state: Arc<State>) -> String {
     let guard = state.scheduler.lock().unwrap();
@@ -137,6 +193,11 @@ fn set_schedule_frame_set_rounds(state: Arc<State>, arg: SetRoundsArg) -> String
     set_schedule_frame(state)
 }
 
+#[derive(serde::Deserialize)]
+struct SetConfig {
+    client_buffer_size: usize,
+}
+
 pub fn get_html_filter(state: Arc<State>) -> BoxedFilter<(impl Reply,)> {
     let state2 = state.clone();
     let add_filter = warp::path("add")
@@ -150,6 +211,18 @@ pub fn get_html_filter(state: Arc<State>) -> BoxedFilter<(impl Reply,)> {
     let set_rounds_filter = warp::path("set_rounds")
         .and(warp::query())
         .map(move |param: SetRoundsArg| set_schedule_frame_set_rounds(state2.clone(), param));
+    let state2 = state.clone();
+    let state3 = state.clone();
+    let config_filter = warp::path("config").and(
+        warp::query()
+            .map(move |param: SetConfig| {
+                state3
+                    .client_buffer_size
+                    .store(param.client_buffer_size, Ordering::Relaxed);
+                Config {}.view(state3.clone())
+            })
+            .or(warp::any().map(move || Config {}.view(state2.clone()))),
+    );
 
     let state2 = state.clone();
     let iframe = warp::path("iframe")
@@ -168,6 +241,7 @@ pub fn get_html_filter(state: Arc<State>) -> BoxedFilter<(impl Reply,)> {
             warp::path("set_schedule")
                 .map(move || SetSchedule {}.view(state2.clone()))
                 .or(warp::path("status").map(move || Status {}.view(state.clone())))
+                .or(config_filter)
                 .or(iframe),
         )
         .with(warp::reply::with::header("content-type", "text/html"))
