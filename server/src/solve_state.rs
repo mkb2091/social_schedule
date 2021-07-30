@@ -1,14 +1,16 @@
 use crate::*;
+use schedule_util::{Batch, BatchData, BatchId};
 use std::collections::HashSet;
 
 pub struct ScheduleState {
     arg: Arc<schedule_util::ScheduleArg>,
-    unclaimed: Mutex<Vec<(usize, Vec<u64>)>>,
+    unclaimed: Mutex<Vec<(usize, Batch)>>,
     clients: Mutex<HashSet<Arc<Client>>>,
     queue: Mutex<VecDeque<(Arc<Client>, OneShotSender)>>,
+    next_block_id: AtomicU64,
 }
 
-type OneShotSender = tokio::sync::oneshot::Sender<Vec<u64>>;
+type OneShotSender = tokio::sync::oneshot::Sender<Batch>;
 
 impl ScheduleState {
     pub fn new(arg: Arc<schedule_util::ScheduleArg>) -> Self {
@@ -17,13 +19,14 @@ impl ScheduleState {
         let _ = scheduler.initialise_buffer(&mut init);
         Self {
             arg,
-            unclaimed: Mutex::new(vec![(0, init)]),
+            unclaimed: Mutex::new(vec![(0, Batch::new(BatchId::new(0), BatchData::new(init)))]),
             clients: Mutex::new(HashSet::new()),
             queue: Mutex::new(Default::default()),
+            next_block_id: AtomicU64::new(1),
         }
     }
 
-    pub async fn get_block(&self, client: &Arc<Client>) -> Result<Vec<u64>, ApiError> {
+    pub async fn get_block(&self, client: &Arc<Client>) -> Result<schedule_util::Batch, ApiError> {
         {
             let mut clients = self.clients.lock().unwrap();
             if !clients.contains(client) {
@@ -40,28 +43,38 @@ impl ScheduleState {
         rx.await.map_err(|_| ApiError::Completed)
     }
 
-    fn add_single_block(&self, block: Vec<u64>) {
+    fn add_single_block(&self, batch: Batch) {
         if let Some((client, listener)) = self.queue.lock().unwrap().pop_front() {
-            if listener.send(block.clone()).is_ok() {
-                client.claim_block(block);
+            if listener.send(batch.clone()).is_ok() {
+                client.claim_block(batch);
                 return;
             }
         }
         let scheduler =
             schedule_solver::Scheduler::new(self.arg.get_tables(), self.arg.get_rounds());
         let mut unclaimed = self.unclaimed.lock().unwrap();
-        let block = (scheduler.get_players_placed(&block) as usize, block);
-        if let Err(index) = unclaimed.binary_search(&block) {
-            unclaimed.insert(index, block);
-        }
+        let block = (
+            scheduler.get_players_placed(&batch.get_data().get_ref()) as usize,
+            batch,
+        );
+        let index = unclaimed
+            .binary_search_by_key(&block.0, |(players_placed, _)| *players_placed)
+            .unwrap_or_else(|index| index);
+        unclaimed.insert(index, block);
     }
 
     pub fn add_batch_result(&self, client: &Arc<Client>, result: schedule_util::BatchOutput) {
         if self.clients.lock().unwrap().contains(client) {
-            if client.get_claimed().lock().unwrap().remove(&result.base) {
+            if client
+                .get_claimed()
+                .lock()
+                .unwrap()
+                .remove(&result.base)
+                .is_some()
+            {
                 for child in result.children.into_iter() {
-                    debug_assert!(&child != &result.base);
-                    self.add_single_block(child);
+                    let id = self.next_block_id.fetch_add(1, Ordering::Relaxed);
+                    self.add_single_block(Batch::new(BatchId::new(id), BatchData::new(child)));
                 }
                 // TODO: Handle notable
             } else {
@@ -74,8 +87,8 @@ impl ScheduleState {
     }
     pub fn free_all_from_client(&self, client: &Arc<Client>) {
         if self.clients.lock().unwrap().remove(client) {
-            for block in client.get_claimed().lock().unwrap().drain() {
-                self.add_single_block(block);
+            for (id, data) in client.get_claimed().lock().unwrap().drain() {
+                self.add_single_block(Batch::new(id, data));
             }
             self.queue
                 .lock()

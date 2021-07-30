@@ -2,9 +2,10 @@ pub mod api;
 pub mod solve_state;
 pub mod ui_pages;
 
+use schedule_util::{Batch, BatchData, BatchId};
 pub use solve_state::ScheduleState;
 
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, VecDeque};
 use std::sync::{atomic::*, Arc, Mutex};
 
 pub use seed;
@@ -71,7 +72,7 @@ impl RateStats {
 pub struct Client {
     id: ClientId,
     last_message: Mutex<std::time::Instant>,
-    claimed: Mutex<HashSet<Vec<u64>>>,
+    claimed: Mutex<HashMap<BatchId, BatchData>>,
     step_counts: Mutex<RateStats>,
     data_sent: Mutex<RateStats>,
     data_recieved: Mutex<RateStats>,
@@ -96,7 +97,7 @@ impl Client {
         Self {
             id: ClientId::new(id),
             last_message: Mutex::new(std::time::Instant::now()),
-            claimed: Mutex::new(HashSet::new()),
+            claimed: Mutex::new(HashMap::new()),
             step_counts: Mutex::new(RateStats::new()),
             data_sent: Mutex::new(RateStats::new()),
             data_recieved: Mutex::new(RateStats::new()),
@@ -111,11 +112,12 @@ impl Client {
     pub fn claimed_len(&self) -> usize {
         self.claimed.lock().unwrap().len()
     }
-    pub fn get_claimed(&self) -> &Mutex<HashSet<Vec<u64>>> {
+    pub fn get_claimed(&self) -> &Mutex<HashMap<BatchId, BatchData>> {
         &self.claimed
     }
-    pub fn claim_block(&self, block: Vec<u64>) {
-        self.claimed.lock().unwrap().insert(block);
+    pub fn claim_block(&self, batch: Batch) {
+        let (id, data) = batch.split();
+        self.claimed.lock().unwrap().insert(id, data);
         *self.last_message.lock().unwrap() = std::time::Instant::now();
     }
     pub fn add_stats(&self, stats: &schedule_util::Stats) {

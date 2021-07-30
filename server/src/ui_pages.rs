@@ -101,15 +101,15 @@ impl Page for Status {
                 clients.push(tr![
                     td![client.get_id().to_string()],
                     td![client.claimed_len(), " claimed"],
-                    td![rate.to_string(), " steps/s"],
-                    td![to_appropriate_unit(recieved_rate as u128), " bytes/s"],
-                    td![to_appropriate_unit(sent_rate as u128), " bytes/s"],
+                    td![rate.to_string(), " ops/s"],
+                    td![to_appropriate_unit(recieved_rate as u128), " /s"],
+                    td![to_appropriate_unit(sent_rate as u128), " /s"],
                 ]);
             }
             let total = tr![
                 td!["Total"],
                 td![],
-                td![total_rate.to_string(), " steps/s"],
+                td![total_rate.to_string(), " ops/s"],
                 td![to_appropriate_unit(total_recieved_rate as u128), " /s"],
                 td![to_appropriate_unit(total_sent_rate as u128), " /s"],
             ];

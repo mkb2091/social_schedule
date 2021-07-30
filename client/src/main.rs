@@ -6,6 +6,8 @@ use std::sync::{
     Arc,
 };
 
+use schedule_util::{Batch, BatchOutput};
+
 use tokio_tungstenite::tungstenite::protocol::Message;
 
 #[derive(Debug, Clap)]
@@ -22,18 +24,20 @@ fn solving_thread(
     tables: Vec<usize>,
     rounds: usize,
     steps_per_sync: usize,
-    in_queue: std::sync::mpsc::Receiver<Vec<u64>>,
+    in_queue: std::sync::mpsc::Receiver<Batch>,
     in_queue_size: Arc<AtomicUsize>,
-    sender: tokio::sync::mpsc::UnboundedSender<schedule_util::BatchOutput>,
+    sender: tokio::sync::mpsc::UnboundedSender<BatchOutput>,
 ) {
     let mut buffer = Vec::new();
     let scheduler = schedule_solver::Scheduler::new(&tables, rounds);
     while let Ok(next) = in_queue.recv() {
+        let (id, data) = next.split();
+        let data = data.get_ref();
         in_queue_size.fetch_sub(1, Ordering::Relaxed);
-        if buffer.len() < next.len() {
-            buffer.resize(next.len(), 0);
+        if buffer.len() < data.len() {
+            buffer.resize(data.len(), 0);
         }
-        buffer[..next.len()].copy_from_slice(&next);
+        buffer[..data.len()].copy_from_slice(&data);
         let mut current_depth = 0;
         let mut steps = 0;
         let start = std::time::Instant::now();
@@ -83,7 +87,7 @@ fn solving_thread(
             elapsed: start.elapsed(),
         };
         let batch_result = schedule_util::BatchOutput {
-            base: next,
+            base: id,
             children: output,
             notable: Vec::new(),
             stats,
@@ -170,7 +174,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let handle_blocks = async {
         while let Some(next) = ws_rx.next().await {
             let next = next?.into_data();
-            if let Ok(decoded) = bincode::deserialize(&next) {
+            if let Ok(decoded) = bincode::deserialize::<Batch>(&next) {
                 let (queue_size, queue) = threads
                     .iter()
                     .min_by_key(|(queue_size, _queue)| queue_size.load(Ordering::Relaxed))
