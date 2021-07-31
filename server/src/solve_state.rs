@@ -2,6 +2,8 @@ use crate::*;
 use schedule_util::{Batch, BatchData, BatchId};
 use std::collections::HashSet;
 
+use futures::TryFutureExt;
+
 pub struct ScheduleState {
     arg: Arc<schedule_util::ScheduleArg>,
     unclaimed: Mutex<Vec<(usize, Arc<Batch>)>>,
@@ -29,10 +31,13 @@ impl ScheduleState {
         }
     }
 
-    pub async fn get_block(
+    pub fn get_block(
         &self,
         client: &Arc<Client>,
-    ) -> Result<Arc<schedule_util::Batch>, ApiError> {
+    ) -> Result<
+        Arc<schedule_util::Batch>,
+        impl std::future::Future<Output = Result<Arc<schedule_util::Batch>, ApiError>>,
+    > {
         {
             let mut clients = self.clients.lock().unwrap();
             if !clients.contains(client) {
@@ -46,7 +51,7 @@ impl ScheduleState {
 
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.queue.lock().unwrap().push_back((client.clone(), tx));
-        rx.await.map_err(|_| ApiError::Completed)
+        Err(rx.map_err(|_| ApiError::Completed))
     }
 
     fn add_single_block(&self, batch: Arc<Batch>) {

@@ -21,12 +21,26 @@ async fn send_blocks(
         let client_buffer_size = state.client_buffer_size.load(Ordering::Relaxed);
         let claimed = client.claimed_len();
         if claimed < client_buffer_size {
+            let mut sent = false;
             for _ in 0..(client_buffer_size - claimed) {
-                let block = solve_state.get_block(&client).await?;
+                let block = match solve_state.get_block(&client) {
+                    Ok(block) => block,
+                    Err(fut) => {
+                        if sent {
+                            ws_tx.flush().await?;
+                            sent = false;
+                        }
+                        fut.await?
+                    }
+                };
                 let block: &Batch = &block;
                 let message = bincode::serialize(block)?;
                 client.add_sent_bytes(message.len());
-                ws_tx.send(Message::binary(message)).await?;
+                ws_tx.feed(Message::binary(message)).await?;
+                sent = true;
+            }
+            if sent {
+                ws_tx.flush().await?;
             }
         }
     }
