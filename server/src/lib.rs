@@ -14,6 +14,7 @@ pub use warp;
 #[derive(Debug)]
 pub enum ApiError {
     Completed,
+    StreamFinished,
     Timeout,
 }
 

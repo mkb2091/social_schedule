@@ -3,7 +3,9 @@ use std::sync::{atomic::Ordering, Arc};
 use warp::ws::{Message, WebSocket};
 use warp::{filters::BoxedFilter, Filter, Reply};
 
-use futures::stream::SplitSink;
+use futures::pin_mut;
+use futures::stream::{SplitSink, SplitStream};
+use futures::FutureExt;
 use futures::SinkExt;
 use futures::StreamExt;
 
@@ -13,7 +15,7 @@ async fn send_blocks(
     solve_state: Arc<ScheduleState>,
     mut ws_tx: SplitSink<warp::ws::WebSocket, warp::ws::Message>,
     notify: Arc<tokio::sync::Notify>,
-) -> Result<std::convert::Infallible, Box<dyn std::error::Error>> {
+) -> Result<std::convert::Infallible, Box<dyn std::error::Error + Send + Sync>> {
     loop {
         notify.notified().await;
         let client_buffer_size = state.client_buffer_size.load(Ordering::Relaxed);
@@ -22,6 +24,28 @@ async fn send_blocks(
             let message = bincode::serialize(&block)?;
             client.add_sent_bytes(message.len());
             ws_tx.send(Message::binary(message)).await?;
+        }
+    }
+}
+
+async fn input_handler(
+    client: Arc<Client>,
+    solve_state: Arc<ScheduleState>,
+    mut ws_rx: SplitStream<warp::ws::WebSocket>,
+    block_sender_notify: Arc<tokio::sync::Notify>,
+) -> Result<std::convert::Infallible, Box<dyn std::error::Error + Send + Sync>> {
+    loop {
+        let next = ws_rx.next().await.ok_or(ApiError::StreamFinished)??;
+        let next = next.as_bytes();
+        client.add_recieved_bytes(next.len());
+        if next == b"request" {
+            block_sender_notify.notify_one();
+        } else if let Ok(batch) = bincode::deserialize::<schedule_util::BatchOutput>(&next) {
+            client.add_stats(&batch.stats);
+            solve_state.add_batch_result(&client, batch);
+            block_sender_notify.notify_one();
+        } else {
+            println!("Unknown data: {:?}", next);
         }
     }
 }
@@ -47,35 +71,22 @@ async fn client_connected(mut ws: WebSocket, state: Arc<State>) {
     };
     let arg = Arc::new(arg);
     let solve_state = state.get_schedule_solve_state(arg);
-    let (ws_tx, mut ws_rx) = ws.split();
+    let (ws_tx, ws_rx) = ws.split();
     let block_sender_notify = Arc::new(tokio::sync::Notify::new());
-    let block_request = send_blocks(
+    let block_request = tokio::spawn(send_blocks(
         client.clone(),
         state.clone(),
         solve_state.clone(),
         ws_tx,
         block_sender_notify.clone(),
-    );
+    ));
     block_sender_notify.notify_one();
-    let solve_state_clone = solve_state.clone();
-    let client_clone = client.clone();
-    let input_handler = async move {
-        while let Some(next) = ws_rx.next().await {
-            let next = next?;
-            let next = next.as_bytes();
-            client_clone.add_recieved_bytes(next.len());
-            if next == b"request" {
-                block_sender_notify.notify_one();
-            } else if let Ok(batch) = bincode::deserialize::<schedule_util::BatchOutput>(&next) {
-                client_clone.add_stats(&batch.stats);
-                solve_state_clone.add_batch_result(&client_clone, batch);
-                block_sender_notify.notify_one();
-            } else {
-                println!("Unknown data: {:?}", next);
-            }
-        }
-        Ok::<(), Box<dyn std::error::Error>>(())
-    };
+    let input_handler = tokio::spawn(input_handler(
+        client.clone(),
+        solve_state.clone(),
+        ws_rx,
+        block_sender_notify.clone(),
+    ));
     let client_clone = client.clone();
     let timeout = async move {
         loop {
@@ -83,14 +94,30 @@ async fn client_connected(mut ws: WebSocket, state: Arc<State>) {
             let timeout = std::time::Duration::from_secs(timeout);
             tokio::time::sleep(timeout).await;
             if client_clone.get_last_updated().elapsed() > timeout {
-                return Err::<(), Box<dyn std::error::Error>>(Box::new(ApiError::Timeout));
+                return Err::<std::convert::Infallible, Box<dyn std::error::Error + Send + Sync>>(
+                    Box::new(ApiError::Timeout),
+                );
             }
         }
     };
-    let result = futures::future::try_join3(block_request, input_handler, timeout).await;
-    if result.is_err() {
-        println!("Client {} Result: {:?}", client.get_id(), result);
-    }
+    pin_mut!(block_request);
+    pin_mut!(input_handler);
+    let result = futures::future::select(&mut block_request, &mut input_handler)
+        .map(|either| either.factor_first().0)
+        .map(|result| {
+            let result = result.map_err(|join_err| {
+                let err: Box<dyn std::error::Error + Send + Sync> = Box::new(join_err);
+                err
+            });
+            result.unwrap_or_else(|err| Err(err))
+        });
+    pin_mut!(timeout);
+    let result = futures::future::select(result, timeout)
+        .map(|either| either.factor_first().0)
+        .await;
+    block_request.abort();
+    input_handler.abort();
+    println!("Client {} Result: {:?}", client.get_id(), result);
     println!("Disconnected client: {}", client.get_id());
     solve_state.free_all_from_client(&client);
 }

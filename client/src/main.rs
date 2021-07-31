@@ -1,6 +1,10 @@
 use clap::Clap;
 
+use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, StreamExt};
+use futures::future::Either;
+use futures::FutureExt;
+use futures::pin_mut;
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
     Arc,
@@ -100,6 +104,56 @@ fn solving_thread(
     println!("Thread exiting");
 }
 
+type WebSocketStream =
+    tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>;
+
+async fn handle_send(
+    mut rx: tokio::sync::mpsc::UnboundedReceiver<BatchOutput>,
+    mut ws_tx: SplitSink<WebSocketStream, Message>,
+    threads: Vec<(Arc<AtomicUsize>, std::sync::mpsc::Sender<Batch>)>,
+) -> Result<std::convert::Infallible, Box<dyn std::error::Error + Send + Sync>> {
+    let start = std::time::Instant::now();
+    let mut total_steps: usize = 0;
+    let mut last_print = std::time::Instant::now();
+    loop {
+        let batch_result = rx.recv().await.ok_or(std::sync::mpsc::RecvError)?;
+        let encoded = bincode::serialize(&batch_result).unwrap();
+        ws_tx.send(Message::Binary(encoded)).await?;
+        total_steps += batch_result.stats.steps;
+        if last_print.elapsed().as_millis() > 300 {
+            println!(
+                "Total Steps: {} Rate: {}",
+                total_steps,
+                total_steps as f32 / start.elapsed().as_secs_f32()
+            );
+            for (queue_size, _) in threads.iter() {
+                println!("Queue size: {}", queue_size.load(Ordering::Relaxed));
+            }
+            last_print = std::time::Instant::now();
+        }
+    }
+}
+
+async fn handle_recv(
+    mut ws_rx: SplitStream<WebSocketStream>,
+    threads: Vec<(Arc<AtomicUsize>, std::sync::mpsc::Sender<Batch>)>,
+) -> Result<std::convert::Infallible, Box<dyn std::error::Error + Send + Sync>> {
+    loop {
+        let next = ws_rx.next().await.ok_or(std::sync::mpsc::RecvError)?;
+        let next = next?.into_data();
+        if let Ok(decoded) = bincode::deserialize::<Batch>(&next) {
+            let (queue_size, queue) = threads
+                .iter()
+                .min_by_key(|(queue_size, _queue)| queue_size.load(Ordering::Relaxed))
+                .unwrap();
+            queue_size.fetch_add(1, Ordering::Relaxed);
+            queue.send(decoded)?;
+        } else {
+            println!("Failed to decode: {:?}", &next);
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opts = Opts::parse();
@@ -117,7 +171,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tables.sort_unstable();
 
     let mut threads = Vec::new();
-    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     for _ in 0..num_cpus::get() {
         let tables = tables.clone();
         let tx = tx.clone();
@@ -138,9 +192,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         threads.push((queue_size_base, local_tx));
     }
     let arg = schedule_util::ScheduleArg::new(&tables, rounds);
-    let start = std::time::Instant::now();
-    let mut total_steps: usize = 0;
-    let mut last_print = std::time::Instant::now();
     let (mut ws_stream, _response) = tokio_tungstenite::connect_async(&opts.server).await?;
 
     let encoded = bincode::serialize(&arg)?;
@@ -150,45 +201,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ))
         .await?;
 
-    let (mut ws_tx, mut ws_rx) = ws_stream.split();
-    let handle_batches = async {
-        while let Some(batch_result) = rx.recv().await {
-            let encoded = bincode::serialize(&batch_result).unwrap();
-            ws_tx.send(Message::Binary(encoded)).await?;
-            total_steps += batch_result.stats.steps;
-            if last_print.elapsed().as_millis() > 300 {
-                println!(
-                    "Total Steps: {} Rate: {}",
-                    total_steps,
-                    total_steps as f32 / start.elapsed().as_secs_f32()
-                );
-                for (queue_size, _) in threads.iter() {
-                    println!("Queue size: {}", queue_size.load(Ordering::Relaxed));
-                }
-                last_print = std::time::Instant::now();
-            }
-        }
-        Ok::<(), Box<dyn std::error::Error>>(())
-    };
-
-    let handle_blocks = async {
-        while let Some(next) = ws_rx.next().await {
-            let next = next?.into_data();
-            if let Ok(decoded) = bincode::deserialize::<Batch>(&next) {
-                let (queue_size, queue) = threads
-                    .iter()
-                    .min_by_key(|(queue_size, _queue)| queue_size.load(Ordering::Relaxed))
-                    .unwrap();
-                queue_size.fetch_add(1, Ordering::Relaxed);
-                queue.send(decoded)?;
-            } else {
-                println!("Failed to decode: {:?}", &next);
-            }
-        }
-        println!("Disconnected");
-        Ok::<(), Box<dyn std::error::Error>>(())
-    };
-
-    futures::future::try_join(handle_batches, handle_blocks).await?;
+    let (ws_tx, ws_rx) = ws_stream.split();
+    let handle_batches = tokio::spawn(handle_send(rx, ws_tx, threads.clone()));
+    let handle_blocks = tokio::spawn(handle_recv(ws_rx, threads.clone()));
+	pin_mut!(handle_batches);
+	pin_mut!(handle_blocks);
+	let result = futures::future::select(&mut handle_batches, &mut handle_blocks)
+        .map(|either| either.factor_first().0)
+        .map(|result| {
+            let result = result.map_err(|join_err| {
+                let err: Box<dyn std::error::Error + Send + Sync> = Box::new(join_err);
+                err
+            });
+            result.unwrap_or_else(|err| Err(err))
+        }).await;
+	handle_batches.abort();
+	handle_blocks.abort();
+    println!("Error {:?}", result);
     Ok(())
 }
