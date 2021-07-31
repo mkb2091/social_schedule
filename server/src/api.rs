@@ -56,8 +56,10 @@ async fn input_handler(
         let next = ws_rx.next().await.ok_or(ApiError::StreamFinished)??;
         let next = next.as_bytes();
         client.add_recieved_bytes(next.len());
-        if let Ok(batch) = bincode::deserialize::<schedule_util::BatchOutput>(&next) {
-            client.add_stats(&batch.stats);
+        if let Ok(batch) =
+            schedule_util::BatchOutputDeserialize::deserialize(solve_state.get_block_size(), &next)
+        {
+            client.add_stats(&batch.get_stats());
             solve_state.add_batch_result(&client, batch);
             block_sender_notify.notify_one();
         } else {

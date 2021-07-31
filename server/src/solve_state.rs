@@ -10,6 +10,7 @@ pub struct ScheduleState {
     clients: Mutex<HashSet<Arc<Client>>>,
     queue: Mutex<VecDeque<(Arc<Client>, OneShotSender)>>,
     next_block_id: AtomicU64,
+    block_size: usize,
 }
 
 type OneShotSender = tokio::sync::oneshot::Sender<Arc<Batch>>;
@@ -17,7 +18,8 @@ type OneShotSender = tokio::sync::oneshot::Sender<Arc<Batch>>;
 impl ScheduleState {
     pub fn new(arg: Arc<schedule_util::ScheduleArg>) -> Self {
         let scheduler = schedule_solver::Scheduler::new(arg.get_tables(), arg.get_rounds());
-        let mut init = vec![0; scheduler.get_block_size()];
+        let block_size = scheduler.get_block_size();
+        let mut init = vec![0; block_size];
         let _ = scheduler.initialise_buffer(&mut init);
         Self {
             arg,
@@ -28,6 +30,7 @@ impl ScheduleState {
             clients: Mutex::new(HashSet::new()),
             queue: Mutex::new(Default::default()),
             next_block_id: AtomicU64::new(1),
+            block_size,
         }
     }
 
@@ -74,20 +77,24 @@ impl ScheduleState {
         unclaimed.insert(index, block);
     }
 
-    pub fn add_batch_result(&self, client: &Arc<Client>, result: schedule_util::BatchOutput) {
+    pub fn add_batch_result(
+        &self,
+        client: &Arc<Client>,
+        result: schedule_util::BatchOutputDeserialize,
+    ) {
         if self.clients.lock().unwrap().contains(client) {
             if client
                 .get_claimed()
                 .lock()
                 .unwrap()
-                .remove(&result.base)
+                .remove(&result.get_base())
                 .is_some()
             {
-                for child in result.children.into_iter() {
+                for child in result.get_children() {
                     let id = self.next_block_id.fetch_add(1, Ordering::Relaxed);
                     self.add_single_block(Arc::new(Batch::new(
                         BatchId::new(id),
-                        BatchData::new(child),
+                        BatchData::new(child.collect()),
                     )));
                 }
                 // TODO: Handle notable
@@ -134,5 +141,8 @@ impl ScheduleState {
                 .sum(),
             self.queue.lock().unwrap().len(),
         )
+    }
+    pub fn get_block_size(&self) -> usize {
+        self.block_size
     }
 }

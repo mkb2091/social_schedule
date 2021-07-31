@@ -121,7 +121,7 @@ impl Client {
         *self.last_message.lock().unwrap() = std::time::Instant::now();
     }
     pub fn add_stats(&self, stats: &schedule_util::Stats) {
-        self.step_counts.lock().unwrap().add(stats.steps);
+        self.step_counts.lock().unwrap().add(stats.steps as usize);
     }
 
     pub fn get_rate(&self) -> f32 {

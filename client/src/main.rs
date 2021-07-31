@@ -9,7 +9,7 @@ use std::sync::{
     Arc,
 };
 
-use schedule_util::{Batch, BatchOutput};
+use schedule_util::{Batch, BatchOutputDeserialize, BatchOutputSerialize};
 
 use tokio_tungstenite::tungstenite::protocol::Message;
 
@@ -20,7 +20,7 @@ struct Opts {
     #[clap(short, long)]
     rounds: Option<usize>,
     #[clap(short, long, default_value = "10000")]
-    iterations_per_sync: usize,
+    iterations_per_sync: u64,
     #[clap(short, long)]
     jobs: Option<std::num::NonZeroUsize>,
 }
@@ -28,10 +28,10 @@ struct Opts {
 fn solving_thread(
     tables: Vec<usize>,
     rounds: usize,
-    steps_per_sync: usize,
+    steps_per_sync: u64,
     in_queue: std::sync::mpsc::Receiver<Batch>,
     in_queue_size: Arc<AtomicUsize>,
-    sender: tokio::sync::mpsc::UnboundedSender<BatchOutput>,
+    sender: tokio::sync::mpsc::UnboundedSender<(Vec<u8>, schedule_util::Stats)>,
 ) {
     let mut buffer = Vec::new();
     let scheduler = schedule_solver::Scheduler::new(&tables, rounds);
@@ -42,10 +42,14 @@ fn solving_thread(
         if buffer.len() < data.len() {
             buffer.resize(data.len(), 0);
         }
+        if data.len() != scheduler.get_block_size() {
+            println!("Bad data: {:?}", data);
+            continue;
+        }
         assert_eq!(data.len(), scheduler.get_block_size());
         buffer[..data.len()].copy_from_slice(&data);
         let mut current_depth = 0;
-        let mut steps = 0;
+        let mut steps: u64 = 0;
         let start = std::time::Instant::now();
         let mut emptied = false;
         'inner_loop: while steps <= steps_per_sync {
@@ -79,27 +83,20 @@ fn solving_thread(
 
             steps += 1;
         }
-        let mut output = Vec::with_capacity(current_depth);
-        if !emptied {
-            for i in 0..=current_depth {
-                output.push(
-                    buffer[i * scheduler.get_block_size()..(i + 1) * scheduler.get_block_size()]
-                        .to_vec(),
-                );
-            }
-            assert_eq!(output.len(), current_depth + 1);
-        }
+        let output = if !emptied {
+            &buffer[..(current_depth + 1) * scheduler.get_block_size()]
+        } else {
+            &[]
+        };
         let stats = schedule_util::Stats {
             steps,
             elapsed: start.elapsed(),
         };
-        let batch_result = schedule_util::BatchOutput {
-            base: id,
-            children: output,
-            notable: Vec::new(),
-            stats,
-        };
-        if let Err(error) = sender.send(batch_result) {
+        let batch_result =
+            BatchOutputSerialize::new(id, scheduler.get_block_size(), output, &[], stats);
+        let mut buf = vec![0; batch_result.get_size()];
+        batch_result.serialize(&mut buf).unwrap();
+        if let Err(error) = sender.send((buf, stats)) {
             println!("Error: {:?}", error);
             return;
         }
@@ -111,18 +108,17 @@ type WebSocketStream =
     tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>;
 
 async fn handle_send(
-    mut rx: tokio::sync::mpsc::UnboundedReceiver<BatchOutput>,
+    mut rx: tokio::sync::mpsc::UnboundedReceiver<(Vec<u8>, schedule_util::Stats)>,
     mut ws_tx: SplitSink<WebSocketStream, Message>,
     threads: Vec<(Arc<AtomicUsize>, std::sync::mpsc::Sender<Batch>)>,
 ) -> Result<std::convert::Infallible, Box<dyn std::error::Error + Send + Sync>> {
     let start = std::time::Instant::now();
-    let mut total_steps: usize = 0;
+    let mut total_steps: u64 = 0;
     let mut last_print = std::time::Instant::now();
     loop {
-        let batch_result = rx.recv().await.ok_or(std::sync::mpsc::RecvError)?;
-        let encoded = bincode::serialize(&batch_result).unwrap();
-        ws_tx.send(Message::Binary(encoded)).await?;
-        total_steps += batch_result.stats.steps;
+        let (batch_result, stats) = rx.recv().await.ok_or(std::sync::mpsc::RecvError)?;
+        ws_tx.send(Message::Binary(batch_result)).await?;
+        total_steps += stats.steps;
         if last_print.elapsed().as_millis() > 300 {
             println!(
                 "Total Steps: {} Rate: {}",
