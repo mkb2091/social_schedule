@@ -1,10 +1,9 @@
 use clap::Clap;
 
-use futures::stream::{SplitSink, SplitStream};
-use futures::{SinkExt, StreamExt};
-use futures::future::Either;
-use futures::FutureExt;
 use futures::pin_mut;
+use futures::stream::{SplitSink, SplitStream};
+use futures::FutureExt;
+use futures::{SinkExt, StreamExt};
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
     Arc,
@@ -55,13 +54,14 @@ fn solving_thread(
             let (buf_1, buf_2) = buffer.split_at_mut(scheduler.get_block_size());
             if let Some(finished) = scheduler.step(buf_1, buf_2) {
                 if finished {
-                    assert_eq!(scheduler.get_players_placed(buf_1), 4 * 6 * 6);
-                    assert_eq!(scheduler.get_empty_table_count(buf_1), 0);
                     println!("Found a solution: {:?}", buf_1);
-                    //current_depth -= 1;
-                    return;
+                    if current_depth == 0 {
+                        emptied = true;
+                        break 'inner_loop;
+                    } else {
+                        current_depth -= 1;
+                    }
                 } else {
-                    assert_ne!(buf_1, buf_2);
                     assert!(current_depth <= scheduler.get_players_placed(buf_2) as usize);
                     current_depth += 1;
                 }
@@ -204,9 +204,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (ws_tx, ws_rx) = ws_stream.split();
     let handle_batches = tokio::spawn(handle_send(rx, ws_tx, threads.clone()));
     let handle_blocks = tokio::spawn(handle_recv(ws_rx, threads.clone()));
-	pin_mut!(handle_batches);
-	pin_mut!(handle_blocks);
-	let result = futures::future::select(&mut handle_batches, &mut handle_blocks)
+    pin_mut!(handle_batches);
+    pin_mut!(handle_blocks);
+    let result = futures::future::select(&mut handle_batches, &mut handle_blocks)
         .map(|either| either.factor_first().0)
         .map(|result| {
             let result = result.map_err(|join_err| {
@@ -214,9 +214,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 err
             });
             result.unwrap_or_else(|err| Err(err))
-        }).await;
-	handle_batches.abort();
-	handle_blocks.abort();
+        })
+        .await;
+    handle_batches.abort();
+    handle_blocks.abort();
     println!("Error {:?}", result);
     Ok(())
 }
