@@ -4,13 +4,13 @@ use std::collections::HashSet;
 
 pub struct ScheduleState {
     arg: Arc<schedule_util::ScheduleArg>,
-    unclaimed: Mutex<Vec<(usize, Batch)>>,
+    unclaimed: Mutex<Vec<(usize, Arc<Batch>)>>,
     clients: Mutex<HashSet<Arc<Client>>>,
     queue: Mutex<VecDeque<(Arc<Client>, OneShotSender)>>,
     next_block_id: AtomicU64,
 }
 
-type OneShotSender = tokio::sync::oneshot::Sender<Batch>;
+type OneShotSender = tokio::sync::oneshot::Sender<Arc<Batch>>;
 
 impl ScheduleState {
     pub fn new(arg: Arc<schedule_util::ScheduleArg>) -> Self {
@@ -19,14 +19,20 @@ impl ScheduleState {
         let _ = scheduler.initialise_buffer(&mut init);
         Self {
             arg,
-            unclaimed: Mutex::new(vec![(0, Batch::new(BatchId::new(0), BatchData::new(init)))]),
+            unclaimed: Mutex::new(vec![(
+                0,
+                Arc::new(Batch::new(BatchId::new(0), BatchData::new(init))),
+            )]),
             clients: Mutex::new(HashSet::new()),
             queue: Mutex::new(Default::default()),
             next_block_id: AtomicU64::new(1),
         }
     }
 
-    pub async fn get_block(&self, client: &Arc<Client>) -> Result<schedule_util::Batch, ApiError> {
+    pub async fn get_block(
+        &self,
+        client: &Arc<Client>,
+    ) -> Result<Arc<schedule_util::Batch>, ApiError> {
         {
             let mut clients = self.clients.lock().unwrap();
             if !clients.contains(client) {
@@ -43,7 +49,7 @@ impl ScheduleState {
         rx.await.map_err(|_| ApiError::Completed)
     }
 
-    fn add_single_block(&self, batch: Batch) {
+    fn add_single_block(&self, batch: Arc<Batch>) {
         if let Some((client, listener)) = self.queue.lock().unwrap().pop_front() {
             if listener.send(batch.clone()).is_ok() {
                 client.claim_block(batch);
@@ -74,7 +80,10 @@ impl ScheduleState {
             {
                 for child in result.children.into_iter() {
                     let id = self.next_block_id.fetch_add(1, Ordering::Relaxed);
-                    self.add_single_block(Batch::new(BatchId::new(id), BatchData::new(child)));
+                    self.add_single_block(Arc::new(Batch::new(
+                        BatchId::new(id),
+                        BatchData::new(child),
+                    )));
                 }
                 // TODO: Handle notable
             } else {
@@ -87,8 +96,8 @@ impl ScheduleState {
     }
     pub fn free_all_from_client(&self, client: &Arc<Client>) {
         if self.clients.lock().unwrap().remove(client) {
-            for (id, data) in client.get_claimed().lock().unwrap().drain() {
-                self.add_single_block(Batch::new(id, data));
+            for (_id, data) in client.get_claimed().lock().unwrap().drain() {
+                self.add_single_block(data);
             }
             self.queue
                 .lock()

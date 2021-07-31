@@ -2,7 +2,7 @@ pub mod api;
 pub mod solve_state;
 pub mod ui_pages;
 
-use schedule_util::{Batch, BatchData, BatchId};
+use schedule_util::{Batch, BatchId};
 pub use solve_state::ScheduleState;
 
 use std::collections::{HashMap, VecDeque};
@@ -73,7 +73,7 @@ impl RateStats {
 pub struct Client {
     id: ClientId,
     last_message: Mutex<std::time::Instant>,
-    claimed: Mutex<HashMap<BatchId, BatchData>>,
+    claimed: Mutex<HashMap<BatchId, Arc<Batch>>>,
     step_counts: Mutex<RateStats>,
     data_sent: Mutex<RateStats>,
     data_recieved: Mutex<RateStats>,
@@ -113,12 +113,11 @@ impl Client {
     pub fn claimed_len(&self) -> usize {
         self.claimed.lock().unwrap().len()
     }
-    pub fn get_claimed(&self) -> &Mutex<HashMap<BatchId, BatchData>> {
+    pub fn get_claimed(&self) -> &Mutex<HashMap<BatchId, Arc<Batch>>> {
         &self.claimed
     }
-    pub fn claim_block(&self, batch: Batch) {
-        let (id, data) = batch.split();
-        self.claimed.lock().unwrap().insert(id, data);
+    pub fn claim_block(&self, batch: Arc<Batch>) {
+        self.claimed.lock().unwrap().insert(batch.get_id(), batch);
         *self.last_message.lock().unwrap() = std::time::Instant::now();
     }
     pub fn add_stats(&self, stats: &schedule_util::Stats) {

@@ -19,11 +19,15 @@ async fn send_blocks(
     loop {
         notify.notified().await;
         let client_buffer_size = state.client_buffer_size.load(Ordering::Relaxed);
-        for _ in 0..(client_buffer_size - client.claimed_len()) {
-            let block = solve_state.get_block(&client).await?;
-            let message = bincode::serialize(&block)?;
-            client.add_sent_bytes(message.len());
-            ws_tx.send(Message::binary(message)).await?;
+        let claimed = client.claimed_len();
+        if claimed < client_buffer_size {
+            for _ in 0..(client_buffer_size - claimed) {
+                let block = solve_state.get_block(&client).await?;
+                let block: &Batch = &block;
+                let message = bincode::serialize(block)?;
+                client.add_sent_bytes(message.len());
+                ws_tx.send(Message::binary(message)).await?;
+            }
         }
     }
 }

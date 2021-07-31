@@ -42,14 +42,16 @@ impl BatchId {
 
 #[derive(serde::Deserialize, serde::Serialize, Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub struct BatchData {
-    data: Vec<u64>,
+    data: Box<[u64]>,
 }
 
 impl BatchData {
     pub fn new(data: Vec<u64>) -> Self {
-        Self { data }
+        Self {
+            data: data.into_boxed_slice(),
+        }
     }
-    pub fn get_ref(&self) -> &'_ Vec<u64> {
+    pub fn get_ref(&self) -> &[u64] {
         &self.data
     }
 }
