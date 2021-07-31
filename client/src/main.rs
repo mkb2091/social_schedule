@@ -40,6 +40,7 @@ fn solving_thread(
         if buffer.len() < data.len() {
             buffer.resize(data.len(), 0);
         }
+        assert_eq!(data.len(), scheduler.get_block_size());
         buffer[..data.len()].copy_from_slice(&data);
         let mut current_depth = 0;
         let mut steps = 0;
