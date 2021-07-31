@@ -21,6 +21,8 @@ struct Opts {
     rounds: Option<usize>,
     #[clap(short, long, default_value = "10000")]
     iterations_per_sync: usize,
+    #[clap(short, long)]
+    jobs: Option<std::num::NonZeroUsize>,
 }
 
 fn solving_thread(
@@ -173,7 +175,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut threads = Vec::new();
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-    for _ in 0..num_cpus::get() {
+    for _ in 0..opts
+        .jobs
+        .map(|jobs| jobs.get())
+        .unwrap_or_else(|| num_cpus::get())
+    {
         let tables = tables.clone();
         let tx = tx.clone();
         let (local_tx, local_rx) = std::sync::mpsc::channel();
