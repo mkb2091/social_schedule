@@ -26,9 +26,8 @@ async fn send_blocks(
                 let block = match solve_state.get_block(&client) {
                     Ok(block) => block,
                     Err(fut) => {
-                        if sent {
+                        if sent { // Don't flush for first block
                             ws_tx.flush().await?;
-                            sent = false;
                         }
                         fut.await?
                     }
