@@ -107,28 +107,14 @@ type WebSocketStream =
     tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>;
 
 async fn handle_send(
+    total_steps: Arc<AtomicUsize>,
     mut rx: tokio::sync::mpsc::UnboundedReceiver<(Vec<u8>, schedule_util::Stats)>,
     mut ws_tx: SplitSink<WebSocketStream, Message>,
-    threads: Vec<(Arc<AtomicUsize>, std::sync::mpsc::Sender<Vec<u8>>)>,
 ) -> Result<std::convert::Infallible, Box<dyn std::error::Error + Send + Sync>> {
-    let start = std::time::Instant::now();
-    let mut total_steps: u64 = 0;
-    let mut last_print = std::time::Instant::now();
     loop {
         let (batch_result, stats) = rx.recv().await.ok_or(std::sync::mpsc::RecvError)?;
         ws_tx.send(Message::Binary(batch_result)).await?;
-        total_steps += stats.steps;
-        if last_print.elapsed().as_millis() > 300 {
-            println!(
-                "Total Steps: {} Rate: {}",
-                total_steps,
-                total_steps as f32 / start.elapsed().as_secs_f32()
-            );
-            for (queue_size, _) in threads.iter() {
-                println!("Queue size: {}", queue_size.load(Ordering::Relaxed));
-            }
-            last_print = std::time::Instant::now();
-        }
+        total_steps.fetch_add(stats.steps as usize, Ordering::Relaxed);
     }
 }
 
@@ -145,6 +131,25 @@ async fn handle_recv(
             .unwrap();
         queue_size.fetch_add(1, Ordering::Relaxed);
         queue.send(next)?;
+    }
+}
+
+async fn handle_display(
+    total_steps: Arc<AtomicUsize>,
+    threads: Vec<(Arc<AtomicUsize>, std::sync::mpsc::Sender<Vec<u8>>)>,
+) {
+    let start = std::time::Instant::now();
+    loop {
+        let total_steps = total_steps.load(Ordering::Relaxed);
+        println!(
+            "Total Steps: {} Rate: {}",
+            total_steps,
+            total_steps as f32 / start.elapsed().as_secs_f32()
+        );
+        for (queue_size, _) in threads.iter() {
+            println!("Queue size: {}", queue_size.load(Ordering::Relaxed));
+        }
+		tokio::time::sleep(std::time::Duration::from_millis(300)).await;
     }
 }
 
@@ -200,8 +205,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     let (ws_tx, ws_rx) = ws_stream.split();
-    let handle_batches = tokio::spawn(handle_send(rx, ws_tx, threads.clone()));
+	let total_steps = Arc::new(AtomicUsize::new(0));
+    let handle_batches = tokio::spawn(handle_send(total_steps.clone(), rx, ws_tx));
     let handle_blocks = tokio::spawn(handle_recv(ws_rx, threads.clone()));
+	let handle_display = tokio::spawn(handle_display(total_steps.clone(), threads.clone()));
     pin_mut!(handle_batches);
     pin_mut!(handle_blocks);
     let result = futures::future::select(&mut handle_batches, &mut handle_blocks)

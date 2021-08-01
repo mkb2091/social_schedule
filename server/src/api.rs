@@ -34,7 +34,7 @@ async fn send_blocks(
                         ws_tx.flush().await?;
                     }
                     let result = fut.await?;
-					i = 0;
+                    i = 0;
                     amount = client_buffer_size.saturating_sub(client.claimed_len());
                     result
                 }
