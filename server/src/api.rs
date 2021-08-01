@@ -62,17 +62,23 @@ async fn input_handler(
 ) -> Result<std::convert::Infallible, Box<dyn std::error::Error + Send + Sync>> {
     loop {
         let next = ws_rx.next().await.ok_or(ApiError::StreamFinished)??;
-        let next = next.as_bytes();
-        client.add_recieved_bytes(next.len());
-        if let Ok(batch) =
-            schedule_util::BatchOutputDeserialize::deserialize(solve_state.get_block_size(), &next)
-        {
-            client.add_stats(&batch.get_stats());
-            solve_state.add_batch_result(&client, batch);
-            block_sender_notify.notify_one();
-        } else {
-            println!("Unknown data: {:?}", next);
-        }
+        let client = client.clone();
+        let solve_state = solve_state.clone();
+        let block_sender_notify = block_sender_notify.clone();
+        tokio::spawn(async move {
+            let next = next.as_bytes();
+            client.add_recieved_bytes(next.len());
+            if let Ok(batch) = schedule_util::BatchOutputDeserialize::deserialize(
+                solve_state.get_block_size(),
+                &next,
+            ) {
+                client.add_stats(&batch.get_stats());
+                solve_state.add_batch_result(&client, batch);
+                block_sender_notify.notify_one();
+            } else {
+                println!("Unknown data: {:?}", next);
+            }
+        });
     }
 }
 
