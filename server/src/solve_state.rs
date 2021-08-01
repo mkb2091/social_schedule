@@ -108,7 +108,7 @@ impl ScheduleState {
     }
     pub fn free_all_from_client(&self, client: &Arc<Client>) {
         if self.clients.lock().unwrap().remove(client) {
-            for (_id, data) in client.get_claimed().lock().unwrap().drain() {
+            for (_id, (data, _instant)) in client.get_claimed().lock().unwrap().drain() {
                 self.add_single_block(data);
             }
             self.queue

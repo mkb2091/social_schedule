@@ -73,7 +73,7 @@ impl RateStats {
 pub struct Client {
     id: ClientId,
     last_message: Mutex<std::time::Instant>,
-    claimed: Mutex<HashMap<BatchId, Arc<Batch>>>,
+    claimed: Mutex<HashMap<BatchId, (Arc<Batch>, std::time::Instant)>>,
     step_counts: Mutex<RateStats>,
     data_sent: Mutex<RateStats>,
     data_recieved: Mutex<RateStats>,
@@ -113,12 +113,16 @@ impl Client {
     pub fn claimed_len(&self) -> usize {
         self.claimed.lock().unwrap().len()
     }
-    pub fn get_claimed(&self) -> &Mutex<HashMap<BatchId, Arc<Batch>>> {
+    pub fn get_claimed(&self) -> &Mutex<HashMap<BatchId, (Arc<Batch>, std::time::Instant)>> {
         &self.claimed
     }
     pub fn claim_block(&self, batch: Arc<Batch>) {
-        self.claimed.lock().unwrap().insert(batch.get_id(), batch);
-        *self.last_message.lock().unwrap() = std::time::Instant::now();
+        let now = std::time::Instant::now();
+        self.claimed
+            .lock()
+            .unwrap()
+            .insert(batch.get_id(), (batch, now));
+        *self.last_message.lock().unwrap() = now;
     }
     pub fn add_stats(&self, stats: &schedule_util::Stats) {
         self.step_counts.lock().unwrap().add(stats.steps as usize);

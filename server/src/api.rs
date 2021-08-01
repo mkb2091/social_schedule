@@ -21,31 +21,35 @@ async fn send_blocks(
     loop {
         notify.notified().await;
         let client_buffer_size = state.client_buffer_size.load(Ordering::Relaxed);
-        let claimed = client.claimed_len();
-        if claimed < client_buffer_size {
-            let mut sent = false;
-            for _ in 0..(client_buffer_size - claimed) {
-                let block = match solve_state.get_block(&client) {
-                    Ok(block) => block,
-                    Err(fut) => {
-                        if sent {
-                            // Don't flush for first block
-                            ws_tx.flush().await?;
-                        }
-                        fut.await?
+        let mut amount = client_buffer_size.saturating_sub(client.claimed_len());
+        let mut sent = false;
+        let mut i = 0;
+        while i < amount {
+            i += 1;
+            let block = match solve_state.get_block(&client) {
+                Ok(block) => block,
+                Err(fut) => {
+                    if sent {
+                        // Don't flush for first block
+                        ws_tx.flush().await?;
                     }
-                };
-                let block: &Batch = &block;
-                let serialized = BatchSerialize::new(block.get_id(), &block.get_data().get_ref());
-                let mut buf = vec![0; serialized.get_size()];
-                serialized.serialize(&mut buf)?;
-                client.add_sent_bytes(buf.len());
-                ws_tx.feed(Message::binary(buf)).await?;
-                sent = true;
-            }
-            if sent {
-                ws_tx.flush().await?;
-            }
+                    let result = fut.await?;
+					i = 0;
+                    amount = client_buffer_size.saturating_sub(client.claimed_len());
+                    result
+                }
+            };
+            let block: &Batch = &block;
+            let serialized = BatchSerialize::new(block.get_id(), &block.get_data().get_ref());
+            let mut buf = Vec::with_capacity(serialized.get_size());
+            buf.resize(serialized.get_size(), 0);
+            serialized.serialize(&mut buf)?;
+            client.add_sent_bytes(buf.len());
+            ws_tx.feed(Message::binary(buf)).await?;
+            sent = true;
+        }
+        if sent {
+            ws_tx.flush().await?;
         }
     }
 }
