@@ -9,6 +9,8 @@ use futures::FutureExt;
 use futures::SinkExt;
 use futures::StreamExt;
 
+use schedule_util::BatchSerialize;
+
 async fn send_blocks(
     client: Arc<Client>,
     state: Arc<State>,
@@ -34,9 +36,11 @@ async fn send_blocks(
                     }
                 };
                 let block: &Batch = &block;
-                let message = bincode::serialize(block)?;
-                client.add_sent_bytes(message.len());
-                ws_tx.feed(Message::binary(message)).await?;
+                let serialized = BatchSerialize::new(block.get_id(), &block.get_data().get_ref());
+                let mut buf = vec![0; serialized.get_size()];
+                serialized.serialize(&mut buf)?;
+                client.add_sent_bytes(buf.len());
+                ws_tx.feed(Message::binary(buf)).await?;
                 sent = true;
             }
             if sent {

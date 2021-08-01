@@ -9,7 +9,7 @@ use std::sync::{
     Arc,
 };
 
-use schedule_util::{Batch, BatchOutputDeserialize, BatchOutputSerialize};
+use schedule_util::{BatchDeserialize, BatchOutputSerialize};
 
 use tokio_tungstenite::tungstenite::protocol::Message;
 
@@ -29,25 +29,24 @@ fn solving_thread(
     tables: Vec<usize>,
     rounds: usize,
     steps_per_sync: u64,
-    in_queue: std::sync::mpsc::Receiver<Batch>,
+    in_queue: std::sync::mpsc::Receiver<Vec<u8>>,
     in_queue_size: Arc<AtomicUsize>,
     sender: tokio::sync::mpsc::UnboundedSender<(Vec<u8>, schedule_util::Stats)>,
 ) {
-    let mut buffer = Vec::new();
     let scheduler = schedule_solver::Scheduler::new(&tables, rounds);
+    let mut buffer = vec![0; scheduler.get_block_size()];
     while let Ok(next) = in_queue.recv() {
-        let (id, data) = next.split();
-        let data = data.get_ref();
         in_queue_size.fetch_sub(1, Ordering::Relaxed);
-        if buffer.len() < data.len() {
-            buffer.resize(data.len(), 0);
-        }
-        if data.len() != scheduler.get_block_size() {
-            println!("Bad data: {:?}", data);
+        let deserialized = if let Ok(de) = BatchDeserialize::deserialize(&next) {
+            de
+        } else {
             continue;
+        };
+        let id = deserialized.get_id();
+        assert_eq!(deserialized.get_length(), scheduler.get_block_size());
+        for (ptr, val) in buffer.iter_mut().zip(deserialized.get_data()) {
+            *ptr = val;
         }
-        assert_eq!(data.len(), scheduler.get_block_size());
-        buffer[..data.len()].copy_from_slice(&data);
         let mut current_depth = 0;
         let mut steps: u64 = 0;
         let start = std::time::Instant::now();
@@ -110,7 +109,7 @@ type WebSocketStream =
 async fn handle_send(
     mut rx: tokio::sync::mpsc::UnboundedReceiver<(Vec<u8>, schedule_util::Stats)>,
     mut ws_tx: SplitSink<WebSocketStream, Message>,
-    threads: Vec<(Arc<AtomicUsize>, std::sync::mpsc::Sender<Batch>)>,
+    threads: Vec<(Arc<AtomicUsize>, std::sync::mpsc::Sender<Vec<u8>>)>,
 ) -> Result<std::convert::Infallible, Box<dyn std::error::Error + Send + Sync>> {
     let start = std::time::Instant::now();
     let mut total_steps: u64 = 0;
@@ -135,21 +134,17 @@ async fn handle_send(
 
 async fn handle_recv(
     mut ws_rx: SplitStream<WebSocketStream>,
-    threads: Vec<(Arc<AtomicUsize>, std::sync::mpsc::Sender<Batch>)>,
+    threads: Vec<(Arc<AtomicUsize>, std::sync::mpsc::Sender<Vec<u8>>)>,
 ) -> Result<std::convert::Infallible, Box<dyn std::error::Error + Send + Sync>> {
     loop {
         let next = ws_rx.next().await.ok_or(std::sync::mpsc::RecvError)?;
         let next = next?.into_data();
-        if let Ok(decoded) = bincode::deserialize::<Batch>(&next) {
-            let (queue_size, queue) = threads
-                .iter()
-                .min_by_key(|(queue_size, _queue)| queue_size.load(Ordering::Relaxed))
-                .unwrap();
-            queue_size.fetch_add(1, Ordering::Relaxed);
-            queue.send(decoded)?;
-        } else {
-            println!("Failed to decode: {:?}", &next);
-        }
+        let (queue_size, queue) = threads
+            .iter()
+            .min_by_key(|(queue_size, _queue)| queue_size.load(Ordering::Relaxed))
+            .unwrap();
+        queue_size.fetch_add(1, Ordering::Relaxed);
+        queue.send(next)?;
     }
 }
 

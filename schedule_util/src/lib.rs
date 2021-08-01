@@ -27,7 +27,7 @@ impl ScheduleArg {
     }
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Debug, Default, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone)]
 pub struct Stats {
     pub steps: u64,
     pub elapsed: std::time::Duration,
@@ -46,7 +46,7 @@ impl BatchId {
     }
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Clone, Debug, Default, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub struct BatchData {
     data: Box<[u64]>,
 }
@@ -62,7 +62,7 @@ impl BatchData {
     }
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Debug, Default, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct Batch {
     id: BatchId,
     data: BatchData,
@@ -87,6 +87,14 @@ pub struct InnerBlockIter<'a> {
     data: std::slice::ChunksExact<'a, u8>,
 }
 
+impl<'a> InnerBlockIter<'a> {
+    pub fn new(data: &'a [u8]) -> Self {
+        Self {
+            data: data.chunks_exact(8),
+        }
+    }
+}
+
 impl<'a> Iterator for InnerBlockIter<'a> {
     type Item = u64;
     fn next(&mut self) -> Option<Self::Item> {
@@ -105,9 +113,7 @@ pub struct BlockIter<'a> {
 impl<'a> Iterator for BlockIter<'a> {
     type Item = InnerBlockIter<'a>;
     fn next(&mut self) -> Option<Self::Item> {
-        self.data.next().map(|chunk| InnerBlockIter {
-            data: chunk.chunks_exact(8),
-        })
+        self.data.next().map(|chunk| InnerBlockIter::new(chunk))
     }
 }
 
@@ -121,6 +127,69 @@ impl std::fmt::Display for ConvertError {
 }
 
 impl std::error::Error for ConvertError {}
+
+pub struct BatchSerialize<'a> {
+    id: BatchId,
+    data: &'a [u64],
+}
+
+impl<'a> BatchSerialize<'a> {
+    pub fn new(id: BatchId, data: &'a [u64]) -> Self {
+        Self { id, data }
+    }
+    pub fn get_size(&self) -> usize {
+        16 + self.data.len() * 8
+    }
+    pub fn serialize(&self, buf: &mut [u8]) -> Result<(), ConvertError> {
+        if buf.len() >= self.get_size() {
+            buf[0..8].copy_from_slice(&self.id.id.to_le_bytes());
+            buf[8..16].copy_from_slice(&(self.data.len() as u64).to_le_bytes());
+            let offset = 16;
+            for (i, value) in self.data.iter().enumerate() {
+                buf[offset + i * 8..offset + (i + 1) * 8].copy_from_slice(&value.to_le_bytes());
+            }
+            Ok(())
+        } else {
+            Err(ConvertError {})
+        }
+    }
+}
+
+pub struct BatchDeserialize<'a> {
+    id: BatchId,
+    data: &'a [u8],
+}
+
+impl<'a> BatchDeserialize<'a> {
+    pub fn deserialize(buf: &'a [u8]) -> Result<Self, ConvertError> {
+        if buf.len() >= 16 {
+            let mut array = [0; 8];
+            array.copy_from_slice(&buf[0..8]);
+            let id = u64::from_le_bytes(array);
+            array.copy_from_slice(&buf[8..16]);
+            let len = u64::from_le_bytes(array) as usize * 8;
+            if buf.len() >= 16 + len {
+                return Ok(Self {
+                    id: BatchId::new(id),
+                    data: &buf[16..16 + len],
+                });
+            }
+        }
+        Err(ConvertError {})
+    }
+
+    pub fn get_id(&self) -> BatchId {
+        self.id
+    }
+
+    pub fn get_length(&self) -> usize {
+        self.data.len() / 8
+    }
+
+    pub fn get_data(&self) -> InnerBlockIter<'a> {
+        InnerBlockIter::new(self.data)
+    }
+}
 
 #[derive(Debug)]
 pub struct BatchOutputSerialize<'a> {
@@ -154,8 +223,8 @@ impl<'a> BatchOutputSerialize<'a> {
     pub fn serialize(&self, buf: &mut [u8]) -> Result<(), ConvertError> {
         if buf.len() >= self.get_size() {
             buf[0..8].copy_from_slice(&self.base.id.to_le_bytes());
-            buf[8..16].copy_from_slice(&self.children.len().to_le_bytes());
-            buf[16..24].copy_from_slice(&self.notable.len().to_le_bytes());
+            buf[8..16].copy_from_slice(&(self.children.len() as u64).to_le_bytes());
+            buf[16..24].copy_from_slice(&(self.notable.len() as u64).to_le_bytes());
             buf[24..32].copy_from_slice(&self.stats.steps.to_le_bytes());
             buf[32..40].copy_from_slice(&self.stats.elapsed.as_secs().to_le_bytes());
             buf[40..44].copy_from_slice(&self.stats.elapsed.subsec_nanos().to_le_bytes());
