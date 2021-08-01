@@ -321,6 +321,10 @@ mod tests {
             vec![0]
         );
     }
+    #[quickcheck]
+    fn deserialize_does_not_panic(block_size: std::num::NonZeroUsize, data: Vec<u8>) {
+        let _ = BatchOutputDeserialize::deserialize(block_size.get(), &data);
+    }
 
     #[quickcheck]
     fn decodes_to_self(
