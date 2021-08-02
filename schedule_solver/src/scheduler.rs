@@ -1,4 +1,5 @@
 use crate::util::*;
+use crate::word::*;
 
 #[derive(Debug)]
 pub enum SchedulerErrors {
@@ -6,6 +7,108 @@ pub enum SchedulerErrors {
     PlayerCountOverflow,
     TooSmallBuffer,
     RoundsTooLarge,
+}
+
+pub struct Sizes {
+    player_bit_word_count: usize,
+    to_explore_size: usize,
+    played_with_size: usize,
+    played_on_table_size: usize,
+    played_in_round_size: usize,
+    played_in_game_size: usize,
+}
+
+impl Sizes {
+    const fn new(tables: &[usize], rounds: usize, t_bit_count: usize) -> Self {
+        let mut player_count: usize = 0;
+        let mut i = 0;
+        while i < tables.len() {
+            player_count += tables[i];
+            i += 1;
+        }
+        let player_bit_word_count =
+            player_count / t_bit_count + (player_count % t_bit_count != 0) as usize;
+        let played_with_size = player_bit_word_count * player_count;
+        let played_on_table_size = player_bit_word_count * tables.len();
+        let played_in_round_size = player_bit_word_count * rounds;
+        let played_in_game_size = player_bit_word_count * tables.len() * rounds;
+        let mut to_explore_size = rounds * tables.len() * 2;
+        to_explore_size =
+            to_explore_size / t_bit_count + (to_explore_size % t_bit_count != 0) as usize;
+        Self {
+            player_bit_word_count,
+            to_explore_size,
+            played_with_size,
+            played_on_table_size,
+            played_in_round_size,
+            played_in_game_size,
+        }
+    }
+    pub const fn get_player_bit_word_count(&self) -> usize {
+        self.player_bit_word_count
+    }
+    pub const fn get_to_explore_size(&self) -> usize {
+        self.to_explore_size
+    }
+    pub const fn get_played_with_size(&self) -> usize {
+        self.played_with_size
+    }
+    pub const fn get_played_on_table_size(&self) -> usize {
+        self.played_on_table_size
+    }
+    pub const fn get_played_in_round_size(&self) -> usize {
+        self.played_in_round_size
+    }
+    pub const fn get_played_in_game_size(&self) -> usize {
+        self.played_in_game_size
+    }
+    pub const fn get_potential_in_game_size(&self) -> usize {
+        self.played_in_game_size
+    }
+    pub const fn get_total_size(&self) -> usize {
+        self.to_explore_size
+            + self.played_with_size
+            + self.played_on_table_size
+            + self.played_in_round_size
+            + self.played_in_game_size
+    }
+}
+pub const fn bit_length<T>() -> usize {
+    core::mem::size_of::<T>() * 8
+}
+
+pub trait Schedule<T: Word> {
+    fn new(sizes: Sizes) -> Option<Self>
+    where
+        Self: Sized;
+    fn get_to_explore(&self) -> &[T];
+    fn get_to_explore_mut(&mut self) -> &mut [T];
+    fn get_played_with(&self) -> &[T];
+    fn get_played_with_mut(&mut self) -> &mut [T];
+    fn get_played_on_table(&self) -> &[T];
+    fn get_played_on_table_mut(&mut self) -> &mut [T];
+    fn get_played_in_round(&self) -> &[T];
+    fn get_played_in_round_mut(&mut self) -> &mut [T];
+    fn get_played_in_game(&self) -> &[T];
+    fn get_played_in_game_mut(&mut self) -> &mut [T];
+    fn get_potential_in_game(&self) -> &[T];
+    fn get_potential_in_game_mut(&mut self) -> &mut [T];
+}
+
+pub trait SchedulerTrait {
+    type S;
+}
+
+pub struct Scheduler2 {
+    sizes: Sizes,
+}
+
+impl Scheduler2 {
+    const fn new() {}
+}
+
+struct DynSchedule {
+    a: Box<dyn Schedule<usize>>,
 }
 
 #[derive(Debug)]

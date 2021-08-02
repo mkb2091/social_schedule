@@ -149,7 +149,7 @@ async fn handle_display(
         for (queue_size, _) in threads.iter() {
             println!("Queue size: {}", queue_size.load(Ordering::Relaxed));
         }
-		tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
     }
 }
 
@@ -205,10 +205,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     let (ws_tx, ws_rx) = ws_stream.split();
-	let total_steps = Arc::new(AtomicUsize::new(0));
+    let total_steps = Arc::new(AtomicUsize::new(0));
     let handle_batches = tokio::spawn(handle_send(total_steps.clone(), rx, ws_tx));
     let handle_blocks = tokio::spawn(handle_recv(ws_rx, threads.clone()));
-	let handle_display = tokio::spawn(handle_display(total_steps.clone(), threads.clone()));
+    let handle_display = tokio::spawn(handle_display(total_steps.clone(), threads.clone()));
     pin_mut!(handle_batches);
     pin_mut!(handle_blocks);
     let result = futures::future::select(&mut handle_batches, &mut handle_blocks)
