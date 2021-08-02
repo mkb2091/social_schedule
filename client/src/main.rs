@@ -208,7 +208,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let total_steps = Arc::new(AtomicUsize::new(0));
     let handle_batches = tokio::spawn(handle_send(total_steps.clone(), rx, ws_tx));
     let handle_blocks = tokio::spawn(handle_recv(ws_rx, threads.clone()));
-    let handle_display = tokio::spawn(handle_display(total_steps.clone(), threads.clone()));
+    let _handle_display = tokio::spawn(handle_display(total_steps.clone(), threads.clone()));
     pin_mut!(handle_batches);
     pin_mut!(handle_blocks);
     let result = futures::future::select(&mut handle_batches, &mut handle_blocks)
