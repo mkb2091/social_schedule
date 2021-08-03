@@ -68,7 +68,11 @@ impl ScheduleState {
             schedule_solver::Scheduler::new(self.arg.get_tables(), self.arg.get_rounds());
         let mut unclaimed = self.unclaimed.lock().unwrap();
         let block = (
-            scheduler.get_players_placed(&batch.get_data().get_ref()) as usize,
+            scheduler.get_players_placed(
+                scheduler
+                    .import_buffer((*batch).clone().get_data_mut().get_mut())
+                    .unwrap(),
+            ) as usize,
             batch,
         );
         let index = unclaimed

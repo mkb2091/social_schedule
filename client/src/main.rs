@@ -68,7 +68,12 @@ fn solving_thread(
                         current_depth -= 1;
                     }
                 } else {
-                    assert!(current_depth <= scheduler.get_players_placed(buf_2) as usize);
+                    debug_assert!(
+                        current_depth
+                            <= scheduler.get_players_placed(
+                                scheduler.import_buffer(&mut buf_2.to_vec()).unwrap()
+                            ) as usize
+                    );
                     current_depth += 1;
                 }
             } else {

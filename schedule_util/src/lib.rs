@@ -60,6 +60,10 @@ impl BatchData {
     pub fn get_ref(&self) -> &[u64] {
         &self.data
     }
+
+    pub fn get_mut(&mut self) -> &mut [u64] {
+        &mut self.data
+    }
 }
 
 #[derive(Debug, Default, Clone)]
@@ -80,6 +84,10 @@ impl Batch {
     }
     pub fn get_data(&self) -> &'_ BatchData {
         &self.data
+    }
+
+    pub fn get_data_mut(&mut self) -> &'_ mut BatchData {
+        &mut self.data
     }
 }
 

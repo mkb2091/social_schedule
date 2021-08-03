@@ -1277,6 +1277,10 @@ dependencies = [
 [[package]]
 name = "schedule_solver"
 version = "0.1.0"
+dependencies = [
+ "quickcheck",
+ "quickcheck_macros",
+]
 
 [[package]]
 name = "schedule_util"

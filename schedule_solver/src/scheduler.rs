@@ -1,4 +1,5 @@
 use crate::util::*;
+use crate::word::Word;
 use crate::word::*;
 
 #[derive(Debug)]
@@ -77,7 +78,201 @@ pub const fn bit_length<T>() -> usize {
     core::mem::size_of::<T>() * 8
 }
 
-pub trait Schedule<T: Word> {
+const fn get_byte_and_mask<T>(bit: usize) -> (usize, u64) {
+    let byte = bit / bit_length::<T>();
+    let mask = 1 << (bit - (byte * bit_length::<T>()));
+    (byte, mask)
+}
+
+trait Block<'a, T: Word>:
+    std::ops::Index<usize, Output = T> + std::ops::IndexMut<usize, Output = T>
+{
+    fn len(&self) -> usize;
+    fn fill(&mut self);
+    fn clear(&mut self);
+}
+
+struct Single<'a, T: Word> {
+    block: &'a mut T,
+}
+
+impl<'a, T: Word> std::ops::Index<usize> for Single<'a, T> {
+    type Output = T;
+    fn index(&self, index: usize) -> &Self::Output {
+        self.block
+    }
+}
+
+impl<'a, T: Word> std::ops::IndexMut<usize> for Single<'a, T> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        self.block
+    }
+}
+
+impl<'a, T: Word> Block<'a, T> for Single<'a, T> {
+    fn len(&self) -> usize {
+        0
+    }
+    fn fill(&mut self) {
+        *self.block = T::ONE;
+    }
+
+    fn clear(&mut self) {
+        *self.block = T::ZERO;
+    }
+}
+
+struct Multiple<'a, T: Word> {
+    block: &'a mut [T],
+}
+
+impl<'a, T: Word> std::ops::Index<usize> for Multiple<'a, T> {
+    type Output = T;
+    fn index(&self, index: usize) -> &Self::Output {
+        self.block.index(index)
+    }
+}
+
+impl<'a, T: Word> std::ops::IndexMut<usize> for Multiple<'a, T> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        self.block.index_mut(index)
+    }
+}
+
+impl<'a, T: Word> Block<'a, T> for Multiple<'a, T> {
+    fn len(&self) -> usize {
+        self.block.len()
+    }
+    fn fill(&mut self) {
+        self.block.fill(T::ONE);
+    }
+
+    fn clear(&mut self) {
+        self.block.fill(T::ZERO);
+    }
+}
+
+impl<'a, T: Word> Multiple<'a, T> {
+    fn new(data: &'a mut [T]) -> Self {
+        Self { block: data }
+    }
+}
+
+struct ToExplore<'a, T> {
+    data: &'a mut [T],
+    divisor: u32,
+}
+
+impl<'a, T> ToExplore<'a, T> {
+    const fn calc_divisor(tables: usize) -> u32 {
+        tables.next_power_of_two().trailing_zeros()
+    }
+}
+
+impl<'a, T: Word> ToExplore<'a, T> {
+    fn new(block: &'a mut [T], tables: usize) -> Self {
+        let divisor = Self::calc_divisor(tables);
+        Self::new_with_power(block, divisor)
+    }
+
+    fn new_with_power(block: &'a mut [T], divisor: u32) -> Self {
+        Self {
+            data: block,
+            divisor,
+        }
+    }
+
+    fn copy(&'a mut self) -> Self {
+        Self {
+            data: self.data,
+            divisor: self.divisor,
+        }
+    }
+
+    fn get_data(&'a mut self) -> &'a mut [T] {
+        self.data
+    }
+
+    fn set(&mut self, round: usize, table: usize, state: bool) {
+        let number = (round << self.divisor as usize) + table;
+        let index = number / bit_length::<T>();
+        let mask = T::ONE << (number - (index * bit_length::<T>()));
+        if state {
+            self.data[index] |= mask;
+        } else {
+            self.data[index] ^= mask;
+        }
+    }
+
+    fn iter_mut(&'a mut self) -> ToExploreIter<'a, T> {
+        ToExploreIter::new(self)
+    }
+}
+
+struct ToExploreIter<'a, T: Word> {
+    to_explore: ToExplore<'a, T>,
+    current_block: Option<T>,
+    index: usize,
+}
+
+impl<'a, T: Word> Iterator for ToExploreIter<'a, T> {
+    type Item = (usize, usize);
+    fn next(&mut self) -> Option<Self::Item> {
+        let current = self.current_block.as_mut()?;
+        while *current == T::ZERO {
+            self.index += 1;
+            *current = *self.to_explore.data.get(self.index)?;
+        }
+
+        let trailing_zeros = current.trailing_zeros();
+        *current ^= T::ONE << trailing_zeros as usize;
+        let number = self.index * bit_length::<T>() + trailing_zeros as usize;
+        let round = number >> self.to_explore.divisor as usize;
+        let table = number ^ (round << self.to_explore.divisor as usize);
+
+        return Some((round, table));
+
+        None
+    }
+}
+
+impl<'a, T: Word> ToExploreIter<'a, T> {
+    fn new(to_explore: &'a mut ToExplore<'a, T>) -> Self {
+        Self {
+            current_block: Some(to_explore.data[0]),
+            to_explore: to_explore.copy(),
+            index: 0,
+        }
+    }
+
+    fn remove(&mut self, round: usize, table: usize) {
+        self.to_explore.set(round, table, false);
+    }
+
+    fn get_data(&'a mut self) -> &'a mut [T] {
+        self.to_explore.get_data()
+    }
+}
+
+#[test]
+fn test_to_explore_words() {
+    let mut data = vec![0_u8; 16];
+    let mut to_explore = ToExplore::new(&mut data, 8);
+    for round in 0..8 {
+        for table in 0..8 {
+            to_explore.set(round, table, true);
+        }
+    }
+    let iter = &mut to_explore.iter_mut();
+    println!("data: {:?}", iter.to_explore.data);
+    let result = iter.take(3).collect::<Vec<_>>();
+    println!("data: {:?}", iter.to_explore.data);
+    assert_eq!(result, vec![(0, 0), (0, 1), (0, 2)]);
+    let result = iter.skip(4).take(4).collect::<Vec<_>>();
+    assert_eq!(result, vec![(0, 7), (1, 0), (1, 1), (1, 2)]);
+}
+
+pub trait ScheduleT<T: Word> {
     fn new(sizes: Sizes) -> Option<Self>
     where
         Self: Sized;
@@ -108,11 +303,47 @@ impl Scheduler2 {
 }
 
 struct DynSchedule {
-    a: Box<dyn Schedule<usize>>,
+    a: Box<dyn ScheduleT<usize>>,
 }
 
 #[derive(Debug)]
 pub enum SchedulerResult {}
+
+pub struct Schedule<'a> {
+    to_explore: ToExplore<'a, u64>,
+    rest: &'a mut [u64],
+}
+
+impl<'a> Schedule<'a> {
+    pub fn import_buffer<'b>(buffer: &'a mut [u64], scheduler: &Scheduler<'b>) -> Option<Self> {
+        if buffer.len() < scheduler.get_block_size() {
+            None
+        } else {
+            let (to_explore, buffer) = buffer.split_at_mut(scheduler.offsets.to_explore_size);
+            let to_explore = ToExplore::new(to_explore, scheduler.offsets.divisor);
+            Some(Schedule {
+                to_explore,
+                rest: buffer,
+            })
+        }
+    }
+
+    pub fn copy(&'a mut self) -> Self {
+        Self {
+            to_explore: self.to_explore.copy(),
+            rest: self.rest,
+        }
+    }
+
+    fn extract_to_explore(&'a mut self) -> (&'a mut Self, ToExplore<'a, u64>) {
+        let to_explore = std::mem::replace(&mut self.to_explore, ToExplore::new(&mut [], 0));
+        (self, to_explore)
+    }
+
+    fn import_to_explore(&'a mut self, to_explore: ToExplore<'a, u64>) {
+        self.to_explore = to_explore;
+    }
+}
 
 #[derive(Debug)]
 struct Offsets {
@@ -120,6 +351,7 @@ struct Offsets {
     empty_table_count_offset: usize,
     to_explore_offset: usize,
     to_explore_size: usize,
+    divisor: usize,
     played_with_offset: usize,
     played_on_table_total_offset: usize,
     played_in_round_offset: usize,
@@ -132,25 +364,27 @@ struct Offsets {
 impl Offsets {
     const fn new(
         to_explore_size: usize,
+        divisor: usize,
         played_with_size: usize,
         played_on_table_total_size: usize,
         played_in_round_size: usize,
         played_on_table_size: usize,
     ) -> Self {
+        let to_explore_offset = 0;
         let players_placed_counter_offset = 0;
         let empty_table_count_offset = players_placed_counter_offset + 1;
-        let to_explore_offset = empty_table_count_offset + 1;
-        let played_with_offset = to_explore_offset + to_explore_size;
+        let played_with_offset = empty_table_count_offset + 1;
         let played_on_table_total_offset = played_with_offset + played_with_size;
         let played_in_round_offset = played_on_table_total_offset + played_on_table_total_size;
         let played_on_table_offset = played_in_round_offset + played_in_round_size;
         let potential_on_table_offset = played_on_table_offset + played_on_table_size;
-        let block_size = potential_on_table_offset + played_on_table_size;
+        let block_size = potential_on_table_offset + played_on_table_size + to_explore_size;
         Self {
             players_placed_counter_offset,
             empty_table_count_offset,
             to_explore_offset,
             to_explore_size,
+            divisor,
             played_with_offset,
             played_on_table_total_offset,
             played_in_round_offset,
@@ -176,6 +410,8 @@ pub struct Scheduler<'a> {
     offsets: Offsets,
 }
 
+type ST = u64;
+
 impl<'a> Scheduler<'a> {
     pub const fn new(tables: &'a [usize], rounds: usize) -> Self {
         let mut player_count: usize = 0;
@@ -190,11 +426,13 @@ impl<'a> Scheduler<'a> {
         let played_on_table_total_size = player_bit_word_count * tables.len();
         let played_in_round_size = player_bit_word_count * rounds;
         let played_on_table_size = player_bit_word_count * tables.len() * rounds;
-        let mut to_explore_size = rounds * tables.len() * 2;
+        let divisor = ToExplore::<ST>::calc_divisor(tables.len()) as usize;
+        let mut to_explore_size = rounds * divisor * 2;
         to_explore_size = to_explore_size / Self::word_size()
             + (to_explore_size % Self::word_size() != 0) as usize;
         let offsets = Offsets::new(
             to_explore_size,
+            divisor,
             played_with_size,
             played_on_table_total_size,
             played_in_round_size,
@@ -212,9 +450,13 @@ impl<'a> Scheduler<'a> {
         }
     }
 
-    pub fn format_schedule<W: core::fmt::Write>(
+    pub fn import_buffer<'b>(&self, buffer: &'b mut [u64]) -> Option<Schedule<'b>> {
+        Schedule::import_buffer(buffer, self)
+    }
+
+    pub fn format_schedule<'b, W: core::fmt::Write>(
         &self,
-        buffer: &[usize],
+        buffer: Schedule<'b>,
         output: &mut W,
     ) -> core::fmt::Result {
         fn base_10_length(n: usize) -> usize {
@@ -256,7 +498,7 @@ impl<'a> Scheduler<'a> {
                     output.write_char('|')?;
                     let mut counter = 0;
                     for byte in 0..self.player_bit_word_count {
-                        let mut temp = buffer[self.offsets.played_on_table_offset
+                        let mut temp = buffer.rest[self.offsets.played_on_table_offset
                             + self.player_bit_word_count * (round * self.tables.len() + table)
                             + byte];
                         while temp != 0 {
@@ -284,8 +526,8 @@ impl<'a> Scheduler<'a> {
         Ok(())
     }
 
-    pub fn get_schedule<'b>(&self, buffer: &'b [u64]) -> &'b [u64] {
-        &buffer[self.offsets.played_on_table_offset..][..self.offsets.played_on_table_size]
+    pub fn get_schedule<'b>(&self, buffer: Schedule<'b>) -> &'b [u64] {
+        &buffer.rest[self.offsets.played_on_table_offset..][..self.offsets.played_on_table_size]
     }
 
     pub const fn get_block_size(&self) -> usize {
@@ -294,14 +536,12 @@ impl<'a> Scheduler<'a> {
 
     #[must_use]
     pub fn initialise_buffer(&self, buffer: &mut [u64]) -> bool {
-        if buffer.len() < self.offsets.block_size {
+        buffer.fill(0);
+        let mut buffer = if let Some(buffer) = self.import_buffer(buffer) {
+            buffer
+        } else {
             return false;
-        }
-        let mut i = 0;
-        while i < self.offsets.block_size {
-            buffer[i] = 0;
-            i += 1;
-        }
+        };
 
         let max = Self::get_byte_and_mask(self.player_count);
         let start =
@@ -310,7 +550,7 @@ impl<'a> Scheduler<'a> {
         let mut i = 0;
         while start + i < end {
             let current_byte = i % self.player_bit_word_count;
-            buffer[start + i] = if current_byte > 0 {
+            buffer.rest[start + i] = if current_byte > 0 {
                 0
             } else if current_byte == max.0 {
                 max.1 - 1
@@ -320,16 +560,15 @@ impl<'a> Scheduler<'a> {
             i += 1;
         }
 
-        buffer[self.offsets.empty_table_count_offset] =
+        buffer.rest[self.offsets.empty_table_count_offset] =
             ((self.rounds - 1) * self.tables.len()) as u64;
         let mut round_range = self.round_range.skip(1);
         while let Some(round) = round_range.next() {
             let mut table_range = self.table_range;
             while let Some(table) = table_range.next() {
-                let number = round.as_usize() * self.tables.len() + table.as_usize();
-                let byte = number / Self::word_size();
-                let mask = 1 << (number - (byte * Self::word_size()));
-                buffer[self.offsets.to_explore_offset] |= mask;
+                buffer
+                    .to_explore
+                    .set(round.as_usize(), table.as_usize(), true);
             }
         }
 
@@ -344,7 +583,7 @@ impl<'a> Scheduler<'a> {
                 return false;
             };
             while player < pos + size {
-                self.apply_player(buffer, zero, table_number, player);
+                self.apply_player(&mut buffer, zero, table_number, player);
                 player += 1;
             }
             pos += size;
@@ -361,9 +600,9 @@ impl<'a> Scheduler<'a> {
         (byte, mask)
     }
 
-    fn apply_player(
+    fn apply_player<'b>(
         &self,
-        buffer: &mut [u64],
+        buffer: &mut Schedule<'b>,
         round: Round,
         table: Table,
         player: usize,
@@ -376,12 +615,12 @@ impl<'a> Scheduler<'a> {
         }
         let (byte, player_mask) = Self::get_byte_and_mask(player);
         let remove_player_mask = !player_mask;
-        buffer[self.offsets.players_placed_counter_offset] += 1; // Will double count if called multiple times
+        buffer.rest[self.offsets.players_placed_counter_offset] += 1; // Will double count if called multiple times
         {
             let mut r2 = 0;
             while r2 < self.rounds {
                 // Remove player from the table in other rounds
-                buffer[self.offsets.potential_on_table_offset
+                buffer.rest[self.offsets.potential_on_table_offset
                     + self.player_bit_word_count * (r2 * self.tables.len() + table.as_usize())
                     + byte] &= remove_player_mask;
                 r2 += 1;
@@ -391,38 +630,38 @@ impl<'a> Scheduler<'a> {
             let mut t2 = 0;
             while t2 < self.tables.len() {
                 // Remove player from other tables in the same round
-                buffer[self.offsets.potential_on_table_offset
+                buffer.rest[self.offsets.potential_on_table_offset
                     + self.player_bit_word_count * (round.as_usize() * self.tables.len() + t2)
                     + byte] &= remove_player_mask;
                 t2 += 1;
             }
         }
         // Add player to played in round
-        buffer[self.offsets.played_in_round_offset
+        buffer.rest[self.offsets.played_in_round_offset
             + self.player_bit_word_count * round.as_usize()
             + byte] |= player_mask;
         // Add player to played on table
-        buffer[self.offsets.played_on_table_total_offset
+        buffer.rest[self.offsets.played_on_table_total_offset
             + self.player_bit_word_count * table.as_usize()
             + byte] |= player_mask;
 
         {
             let mut other_byte = 0;
             while other_byte < self.player_bit_word_count {
-                let mut other_players = buffer[self.offsets.played_on_table_offset
+                let mut other_players = buffer.rest[self.offsets.played_on_table_offset
                     + self.player_bit_word_count
                         * (round.as_usize() * self.tables.len() + table.as_usize())
                     + other_byte];
 
-                buffer[self.offsets.potential_on_table_offset
+                buffer.rest[self.offsets.potential_on_table_offset
                     + self.player_bit_word_count
                         * (round.as_usize() * self.tables.len() + table.as_usize())
-                    + other_byte] &= !buffer[self.offsets.played_with_offset
+                    + other_byte] &= !buffer.rest[self.offsets.played_with_offset
                     + self.player_bit_word_count * player
                     + other_byte];
 
                 // Add other players to players played with
-                buffer[self.offsets.played_with_offset
+                buffer.rest[self.offsets.played_with_offset
                     + self.player_bit_word_count * player
                     + other_byte] |= other_players;
                 while other_players != 0 {
@@ -432,7 +671,7 @@ impl<'a> Scheduler<'a> {
                     other_players &= !other_player_bit;
 
                     // Add player to other players played with
-                    buffer[self.offsets.played_with_offset
+                    buffer.rest[self.offsets.played_with_offset
                         + self.player_bit_word_count * other_player
                         + byte] |= player_mask;
                 }
@@ -442,31 +681,31 @@ impl<'a> Scheduler<'a> {
         }
 
         // Add player to their own table+round
-        buffer[self.offsets.potential_on_table_offset
+        buffer.rest[self.offsets.potential_on_table_offset
             + self.player_bit_word_count
                 * (round.as_usize() * self.tables.len() + table.as_usize())
             + byte] |= player_mask;
-        buffer[self.offsets.played_on_table_offset
+        buffer.rest[self.offsets.played_on_table_offset
             + self.player_bit_word_count
                 * (round.as_usize() * self.tables.len() + table.as_usize())
             + byte] |= player_mask;
         Some(())
     }
 
-    pub const fn get_players_placed(&self, buffer: &[u64]) -> u64 {
-        buffer[self.offsets.players_placed_counter_offset]
+    pub const fn get_players_placed<'b>(&self, buffer: Schedule<'b>) -> u64 {
+        buffer.rest[self.offsets.players_placed_counter_offset]
     }
 
-    pub const fn get_empty_table_count(&self, buffer: &[u64]) -> u64 {
-        buffer[self.offsets.empty_table_count_offset]
+    pub const fn get_empty_table_count<'b>(&self, buffer: Schedule<'b>) -> u64 {
+        buffer.rest[self.offsets.empty_table_count_offset]
     }
 
-    pub fn find_hidden_singles(&self, buffer: &mut [u64]) {
+    pub fn find_hidden_singles<'b>(&self, buffer: &mut Schedule<'b>) {
         let mut round_range = self.round_range;
         while let Some(round) = round_range.next() {
             let mut byte = 0;
             while byte < self.player_bit_word_count {
-                let mut potential_in_row = !buffer[self.offsets.played_in_round_offset
+                let mut potential_in_row = !buffer.rest[self.offsets.played_in_round_offset
                     + self.player_bit_word_count * round.as_usize()
                     + byte];
                 'loop_bits_round: while potential_in_row != 0 {
@@ -480,7 +719,7 @@ impl<'a> Scheduler<'a> {
                     let mut only_position = None;
                     let mut table_range = self.table_range;
                     while let Some(table) = table_range.next() {
-                        if buffer[self.offsets.potential_on_table_offset
+                        if buffer.rest[self.offsets.potential_on_table_offset
                             + self.player_bit_word_count
                                 * (round.as_usize() * self.tables.len() + table.as_usize())
                             + byte]
@@ -507,9 +746,10 @@ impl<'a> Scheduler<'a> {
         while let Some(table) = table_range.next() {
             let mut byte = 0;
             while byte < self.player_bit_word_count {
-                let mut potential_in_column = !buffer[self.offsets.played_on_table_total_offset
-                    + self.player_bit_word_count * table.as_usize()
-                    + byte];
+                let mut potential_in_column =
+                    !buffer.rest[self.offsets.played_on_table_total_offset
+                        + self.player_bit_word_count * table.as_usize()
+                        + byte];
                 'loop_bits_table: while potential_in_column != 0 {
                     let trailing_zeros = potential_in_column.trailing_zeros() as usize;
                     let player = byte * Self::word_size() + trailing_zeros;
@@ -521,7 +761,7 @@ impl<'a> Scheduler<'a> {
                     let mut only_position = None;
                     let mut round_range = self.round_range;
                     while let Some(round) = round_range.next() {
-                        if buffer[self.offsets.potential_on_table_offset
+                        if buffer.rest[self.offsets.potential_on_table_offset
                             + self.player_bit_word_count
                                 * (round.as_usize() * self.tables.len() + table.as_usize())
                             + byte]
@@ -545,11 +785,11 @@ impl<'a> Scheduler<'a> {
         }
     }
 
-    const fn get_fixed_count(&self, buffer: &[u64], round: Round, table: Table) -> u32 {
+    const fn get_fixed_count<'b>(&self, buffer: &Schedule<'b>, round: Round, table: Table) -> u32 {
         let mut fixed_player_count = 0;
         let mut byte = 0;
         while byte < self.player_bit_word_count {
-            fixed_player_count += buffer[self.offsets.played_on_table_offset
+            fixed_player_count += buffer.rest[self.offsets.played_on_table_offset
                 + self.player_bit_word_count
                     * (round.as_usize() * self.tables.len() + table.as_usize())
                 + byte]
@@ -559,11 +799,16 @@ impl<'a> Scheduler<'a> {
         fixed_player_count
     }
 
-    const fn get_potential_count(&self, buffer: &[u64], round: Round, table: Table) -> u32 {
+    const fn get_potential_count<'b>(
+        &self,
+        buffer: &Schedule<'b>,
+        round: Round,
+        table: Table,
+    ) -> u32 {
         let mut potential_player_count = 0;
         let mut byte = 0;
         while byte < self.player_bit_word_count {
-            potential_player_count += buffer[self.offsets.potential_on_table_offset
+            potential_player_count += buffer.rest[self.offsets.potential_on_table_offset
                 + self.player_bit_word_count
                     * (round.as_usize() * self.tables.len() + table.as_usize())
                 + byte]
@@ -573,17 +818,18 @@ impl<'a> Scheduler<'a> {
         potential_player_count
     }
 
-    const fn can_place_player_on_table(
+    const fn can_place_player_on_table<'b>(
         &self,
-        buffer: &[u64],
+        buffer: &Schedule<'b>,
         round: Round,
         table: Table,
         player: usize,
     ) -> bool {
         let mut byte = 0;
         while byte < self.player_bit_word_count {
-            if buffer[self.offsets.played_with_offset + self.player_bit_word_count * player + byte]
-                & buffer[self.offsets.played_on_table_offset
+            if buffer.rest
+                [self.offsets.played_with_offset + self.player_bit_word_count * player + byte]
+                & buffer.rest[self.offsets.played_on_table_offset
                     + self.player_bit_word_count
                         * (round.as_usize() * self.tables.len() + table.as_usize())
                     + byte]
@@ -600,102 +846,103 @@ impl<'a> Scheduler<'a> {
         let buffer_1 = &mut buffer_1[..self.offsets.block_size];
         let buffer_2 = &mut buffer_2[..self.offsets.block_size];
 
-        self.find_hidden_singles(buffer_1);
+        let mut buffer_1 = self.import_buffer(buffer_1)?;
+        let mut buffer_2 = self.import_buffer(buffer_2)?;
+
+        self.find_hidden_singles(&mut buffer_1);
         let offset = self.offsets.potential_on_table_offset;
 
         let mut lowest: Option<(u32, Round, Table)> = None;
-        for to_explore_byte in 0..self.offsets.to_explore_size {
-            let mut to_explore = buffer_1[self.offsets.to_explore_offset + to_explore_byte];
-            while to_explore != 0 {
-                let trailing_zeros = to_explore.trailing_zeros();
-                let number = to_explore_byte * Self::word_size() + trailing_zeros as usize;
-                to_explore &= !(1 << trailing_zeros);
-                let (round, table) = if let Some(val) = self
-                    .round_range
-                    .convert_usize(number / self.tables.len())
-                    .zip(self.table_range.convert_usize(number % self.tables.len()))
-                {
-                    val
-                } else {
-                    buffer_1[self.offsets.to_explore_offset + to_explore_byte] &=
-                        !(1 << trailing_zeros);
-                    // If round or table is out of bounds, then remove
-                    continue;
-                };
-                let table_size = self.tables[table.as_usize()] as u32;
+        let (mut buffer_1, mut to_explore) = buffer_1.extract_to_explore();
+        let (mut buffer_2, mut to_explore_2) = buffer_2.extract_to_explore();
+        let mut to_explore = to_explore.iter_mut();
+        while let Some((round, table)) = to_explore.next() {
+            let (round, table) = if let Some(val) = self
+                .round_range
+                .convert_usize(round)
+                .zip(self.table_range.convert_usize(table))
+            {
+                val
+            } else {
+                to_explore.remove(round, table);
+                // If round or table is out of bounds, then remove
+                continue;
+            };
+            let table_size = self.tables[table.as_usize()] as u32;
 
-                let fixed_player_count = self.get_fixed_count(buffer_1, round, table);
+            let fixed_player_count = self.get_fixed_count(&mut buffer_1, round, table);
 
-                match fixed_player_count.cmp(&table_size) {
-                    core::cmp::Ordering::Less => {
-                        if self.get_potential_count(buffer_1, round, table) == table_size {
-                            let potential_index = self.offsets.potential_on_table_offset
-                                + self.player_bit_word_count
-                                    * (round.as_usize() * self.tables.len() + table.as_usize());
-                            let fixed_index = self.offsets.played_on_table_offset
-                                + self.player_bit_word_count
-                                    * (round.as_usize() * self.tables.len() + table.as_usize());
-                            for byte in 0..self.player_bit_word_count {
-                                loop {
-                                    let potential = buffer_1[potential_index + byte]
-                                        & !buffer_1[fixed_index + byte];
-                                    if potential != 0 {
-                                        let trailing_zeros = potential.trailing_zeros() as usize;
-                                        let player = byte * Self::word_size() + trailing_zeros;
-                                        let player_bit = 1 << trailing_zeros;
-                                        if self.can_place_player_on_table(
-                                            buffer_1, round, table, player,
-                                        ) {
-                                            self.apply_player(buffer_1, round, table, player);
-                                        } else {
-                                            buffer_1[potential_index + byte] &= !player_bit;
-                                        }
+            match fixed_player_count.cmp(&table_size) {
+                core::cmp::Ordering::Less => {
+                    if self.get_potential_count(&mut buffer_1, round, table) == table_size {
+                        let potential_index = self.offsets.potential_on_table_offset
+                            + self.player_bit_word_count
+                                * (round.as_usize() * self.tables.len() + table.as_usize());
+                        let fixed_index = self.offsets.played_on_table_offset
+                            + self.player_bit_word_count
+                                * (round.as_usize() * self.tables.len() + table.as_usize());
+                        for byte in 0..self.player_bit_word_count {
+                            loop {
+                                let potential = buffer_1.rest[potential_index + byte]
+                                    & !buffer_1.rest[fixed_index + byte];
+                                if potential != 0 {
+                                    let trailing_zeros = potential.trailing_zeros() as usize;
+                                    let player = byte * Self::word_size() + trailing_zeros;
+                                    let player_bit = 1 << trailing_zeros;
+                                    if self.can_place_player_on_table(
+                                        &mut buffer_1,
+                                        round,
+                                        table,
+                                        player,
+                                    ) {
+                                        self.apply_player(&mut buffer_1, round, table, player);
                                     } else {
-                                        break;
+                                        buffer_1.rest[potential_index + byte] &= !player_bit;
                                     }
+                                } else {
+                                    break;
                                 }
                             }
-                        } else {
-                            lowest = Some(if let Some(lowest) = lowest {
-                                if fixed_player_count < lowest.0 {
-                                    (fixed_player_count, round, table)
-                                } else {
-                                    lowest
-                                }
-                            } else {
+                        }
+                    } else {
+                        lowest = Some(if let Some(lowest) = lowest {
+                            if fixed_player_count < lowest.0 {
                                 (fixed_player_count, round, table)
-                            });
-                        }
+                            } else {
+                                lowest
+                            }
+                        } else {
+                            (fixed_player_count, round, table)
+                        });
                     }
-                    core::cmp::Ordering::Equal => {
-                        buffer_1[self.offsets.to_explore_offset + to_explore_byte] &=
-                            !(1 << trailing_zeros);
-
-                        buffer_1[self.offsets.empty_table_count_offset] -= 1;
-                        for byte in 0..self.player_bit_word_count {
-                            // Set potential to fixed players
-                            buffer_1[self.offsets.potential_on_table_offset
-                                + self.player_bit_word_count
-                                    * (round.as_usize() * self.tables.len() + table.as_usize())
-                                + byte] = buffer_1[self.offsets.played_on_table_offset
-                                + self.player_bit_word_count
-                                    * (round.as_usize() * self.tables.len() + table.as_usize())
-                                + byte]
-                        }
-                        continue;
-                    }
-                    core::cmp::Ordering::Greater => return None,
                 }
+                core::cmp::Ordering::Equal => {
+                    to_explore.remove(round.as_usize(), table.as_usize());
+
+                    buffer_1.rest[self.offsets.empty_table_count_offset] -= 1;
+                    for byte in 0..self.player_bit_word_count {
+                        // Set potential to fixed players
+                        buffer_1.rest[self.offsets.potential_on_table_offset
+                            + self.player_bit_word_count
+                                * (round.as_usize() * self.tables.len() + table.as_usize())
+                            + byte] = buffer_1.rest[self.offsets.played_on_table_offset
+                            + self.player_bit_word_count
+                                * (round.as_usize() * self.tables.len() + table.as_usize())
+                            + byte]
+                    }
+                    continue;
+                }
+                core::cmp::Ordering::Greater => return None,
             }
         }
 
         if let Some((_, round, table)) = lowest {
             for byte in 0..self.player_bit_word_count {
-                let fixed = buffer_1[self.offsets.played_on_table_offset
+                let fixed = buffer_1.rest[self.offsets.played_on_table_offset
                     + self.player_bit_word_count
                         * (round.as_usize() * self.tables.len() + table.as_usize())
                     + byte];
-                let potential = buffer_1[offset
+                let potential = buffer_1.rest[offset
                     + self.player_bit_word_count
                         * (round.as_usize() * self.tables.len() + table.as_usize())
                     + byte]
@@ -706,9 +953,9 @@ impl<'a> Scheduler<'a> {
                     let player = byte * Self::word_size() + trailing_zeros;
                     let player_bit = 1 << trailing_zeros;
                     temp &= !player_bit;
-                    if !self.can_place_player_on_table(buffer_1, round, table, player) {
+                    if !self.can_place_player_on_table(&mut buffer_1, round, table, player) {
                         // If player has already played with any of the players then remove the player from the potential
-                        buffer_1[offset
+                        buffer_1.rest[offset
                             + self.player_bit_word_count
                                 * (round.as_usize() * self.tables.len() + table.as_usize())
                             + byte] &= !player_bit;
@@ -716,14 +963,17 @@ impl<'a> Scheduler<'a> {
                     }
 
                     //buffer_2.copy_from_slice(buffer_1);
-                    for i in 0..self.offsets.block_size {
-                        buffer_2[i] = buffer_1[i];
+                    for i in 0..self.offsets.block_size - self.offsets.to_explore_size {
+                        buffer_2.rest[i] = buffer_1.rest[i];
                     }
-                    buffer_1[offset
+                    to_explore_2
+                        .get_data()
+                        .copy_from_slice(to_explore.get_data());
+                    buffer_1.rest[offset
                         + self.player_bit_word_count
                             * (round.as_usize() * self.tables.len() + table.as_usize())
                         + byte] &= !player_bit;
-                    self.apply_player(buffer_2, round, table, player);
+                    self.apply_player(&mut buffer_2, round, table, player);
                     return Some(false);
                 }
             }
