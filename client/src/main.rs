@@ -160,6 +160,28 @@ async fn handle_display(
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut stack = vec![schedule_solver::State::new()];
+    let mut max_get_players_played_count = 0;
+    loop {
+        println!(
+            "Stack size: {}, max_get_players_played_count: {}, last: {:?}",
+            stack.len(),
+            max_get_players_played_count,
+            stack.last()
+        );
+        for _ in 0..1000_000 {
+            let mut state = stack.pop().unwrap();
+            if let Ok(res) = state.step() {
+                let played = state.get_players_played_count();
+                if played > max_get_players_played_count {
+                    max_get_players_played_count = played;
+                }
+                stack.push(state);
+                stack.push(res.unwrap());
+            }
+        }
+    }
+
     let opts = Opts::parse();
     let rounds = if let Some(rounds) = opts.rounds {
         if rounds > opts.tables.len() {

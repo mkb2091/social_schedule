@@ -398,6 +398,182 @@ impl Offsets {
         self.potential_on_table_offset
     }
 }
+const ROUND_COUNT: usize = 6;
+const TABLE_COUNT: usize = 6;
+const PLAYERS_PER_TABLE: usize = 4;
+const TO_EXPLORE_SHIFT: usize = 3;
+const PLAYER_COUNT: usize = TABLE_COUNT * PLAYERS_PER_TABLE;
+
+#[derive(Copy, Clone, Debug)]
+pub struct State {
+    tables_to_explore: u64,
+    players_played_count: u8,
+    empty_table_count: u8,
+    players_played_with: [u32; PLAYER_COUNT],
+    played_in_round: [u32; ROUND_COUNT],
+    played_on_table: [u32; ROUND_COUNT * TABLE_COUNT],
+    potential_on_table: [u32; ROUND_COUNT * TABLE_COUNT],
+    played_on_table_total: [u32; TABLE_COUNT],
+}
+
+impl State {
+    pub fn new() -> Self {
+        let mut tables_to_explore = 0;
+        let mut potential_on_table = [0; ROUND_COUNT * TABLE_COUNT];
+        for round in 0..ROUND_COUNT {
+            for table in 0..TABLE_COUNT {
+                tables_to_explore |= 1 << ((round << TO_EXPLORE_SHIFT) + table);
+                potential_on_table[round * TABLE_COUNT + table] = (1 << 24) - 1;
+            }
+        }
+        let mut state = Self {
+            tables_to_explore,
+            players_played_count: 0,
+            empty_table_count: (ROUND_COUNT * TABLE_COUNT) as u8,
+            players_played_with: [0; PLAYER_COUNT],
+            played_in_round: [0; ROUND_COUNT],
+            played_on_table: [0; ROUND_COUNT * TABLE_COUNT],
+            potential_on_table,
+            played_on_table_total: [0; TABLE_COUNT],
+        };
+        let mut player = 0;
+        for table in 0..TABLE_COUNT {
+            for _ in 0..PLAYERS_PER_TABLE {
+                state.apply_player(0, table, player);
+                player += 1;
+            }
+        }
+        state
+    }
+
+    fn can_place_player_on_table<'b>(&mut self, round: usize, table: usize, player: usize) -> bool {
+        self.players_played_with[player] & self.played_on_table[round * TABLE_COUNT + table] == 0
+    }
+
+    fn apply_player(&mut self, round: usize, table: usize, player: usize) {
+        if round >= ROUND_COUNT || table >= TABLE_COUNT || player >= PLAYER_COUNT {
+            unreachable!();
+        }
+        self.players_played_count += 1;
+        let player_mask: u32 = 1 << player;
+        let remove_player_mask: u32 = !player_mask;
+        for r2 in 0..ROUND_COUNT {
+            // Remove player from the table in other rounds
+            self.potential_on_table[r2 * TABLE_COUNT + table] &= remove_player_mask;
+        }
+        for t2 in 0..TABLE_COUNT {
+            // Remove player from other tables in the same round
+            self.potential_on_table[round * TABLE_COUNT + t2] &= remove_player_mask;
+        }
+
+        // Add player to played in round
+        self.played_in_round[round] |= player_mask;
+        // Add player to played on table
+        self.played_on_table_total[table] |= player_mask;
+
+        let mut other_players = self.played_on_table[round * TABLE_COUNT + table];
+        // Remove players current player has previously played with from tables potential
+        self.potential_on_table[round * TABLE_COUNT + table] &= !self.players_played_with[player];
+        // Add other players on table to current players played with list
+        self.players_played_with[player] |= other_players;
+        while other_players != 0 {
+            let trailing_zeros = other_players.trailing_zeros() as usize;
+            other_players &= !(1 << trailing_zeros);
+            // Add current player to each other players played with list
+            self.players_played_with[trailing_zeros] |= player_mask;
+        }
+
+        self.potential_on_table[round * TABLE_COUNT + table] |= player_mask;
+        self.played_on_table[round * TABLE_COUNT + table] |= player_mask;
+    }
+
+    pub fn get_players_played_count(&self) -> u8 {
+        self.players_played_count
+    }
+
+    pub fn step(&mut self) -> Result<Option<Self>, ()> {
+        //self.find_hidden_singles(&mut buffer_1);
+
+        let mut lowest: Option<(u32, usize, usize)> = None;
+        let mut to_explore = self.tables_to_explore;
+        while to_explore != 0 {
+            let trailing_zeros = to_explore.trailing_zeros();
+            to_explore &= !(1 << trailing_zeros);
+            let round = trailing_zeros >> TO_EXPLORE_SHIFT;
+            let table = trailing_zeros - (round << TO_EXPLORE_SHIFT);
+            let round = round as usize;
+            let table = table as usize;
+            if table >= TABLE_COUNT || round >= ROUND_COUNT {
+                self.tables_to_explore &= !(1 << trailing_zeros);
+                continue;
+            }
+
+            let fixed_player_count = self.played_on_table[round * TABLE_COUNT + table].count_ones();
+            match fixed_player_count.cmp(&(PLAYERS_PER_TABLE as u32)) {
+                core::cmp::Ordering::Less => {
+                    if self.potential_on_table[round * TABLE_COUNT + table].count_ones() as usize
+                        == PLAYERS_PER_TABLE
+                    {
+                        loop {
+                            let potential = self.potential_on_table[round * TABLE_COUNT + table]
+                                & !self.played_on_table[round * TABLE_COUNT + table];
+                            if potential != 0 {
+                                let player = potential.trailing_zeros() as usize;
+                                if self.can_place_player_on_table(round, table, player) {
+                                    self.apply_player(round, table, player);
+                                } else {
+                                    self.potential_on_table[round * TABLE_COUNT + table] &=
+                                        !(1 << player);
+                                }
+                            } else {
+                                break;
+                            };
+                        }
+                    } else {
+                        lowest = Some(if let Some(lowest) = lowest {
+                            if fixed_player_count < lowest.0 {
+                                (fixed_player_count, round, table)
+                            } else {
+                                lowest
+                            }
+                        } else {
+                            (fixed_player_count, round, table)
+                        });
+                    }
+                }
+                core::cmp::Ordering::Equal => {
+                    self.tables_to_explore &= !(1 << trailing_zeros);
+                    self.empty_table_count = self.empty_table_count.checked_sub(1).unwrap();
+                    self.potential_on_table[round * TABLE_COUNT + table] =
+                        self.played_on_table[round * TABLE_COUNT + table];
+                    continue;
+                }
+                core::cmp::Ordering::Greater => return Err(()),
+            }
+        }
+        if let Some((_, round, table)) = lowest {
+            let potential = self.potential_on_table[round * TABLE_COUNT + table]
+                & !self.played_on_table[round * TABLE_COUNT + table];
+            let mut temp = potential;
+            'played_iter: while temp != 0 {
+                let player = temp.trailing_zeros() as usize;
+                let player_bit = 1 << player;
+                temp &= !player_bit;
+                if !self.can_place_player_on_table(round, table, player) {
+                    self.potential_on_table[round * TABLE_COUNT + table] &= !player_bit;
+                    continue 'played_iter;
+                }
+
+                let mut state2 = *self;
+                self.potential_on_table[round * TABLE_COUNT + table] &= !player_bit;
+                state2.apply_player(round, table, player);
+                return Ok(Some(state2));
+            }
+            return Err(());
+        }
+        Ok(None)
+    }
+}
 
 #[derive(Debug)]
 pub struct Scheduler<'a> {
