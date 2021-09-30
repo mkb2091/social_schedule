@@ -446,7 +446,7 @@ impl State {
         state
     }
 
-    fn can_place_player_on_table<'b>(&mut self, round: usize, table: usize, player: usize) -> bool {
+    fn can_place_player_on_table(&mut self, round: usize, table: usize, player: usize) -> bool {
         self.players_played_with[player] & self.played_on_table[round * TABLE_COUNT + table] == 0
     }
 
