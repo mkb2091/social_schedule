@@ -9,7 +9,7 @@ edition = "2018"
 schedule_solver = {path = "../schedule_solver"}
 schedule_util = {path = "../schedule_util"}
 
-clap = { version = "3.0.0-beta.2"}
+clap = { version = "4.0.18"}
 
 serde = { version = "1.0", features = ['derive']}
 bincode = "1.3"
