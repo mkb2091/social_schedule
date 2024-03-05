@@ -14,6 +14,6 @@ clap = { version = "3.0.0-beta.2"}
 serde = { version = "1.0", features = ['derive']}
 bincode = "1.3"
 futures = "0.3"
-tokio-tungstenite = "0.15"
+tokio-tungstenite = "0.21"
 tokio = {version = "1.9.0", default-features = false, features=['macros', 'rt-multi-thread', 'net', 'sync', 'time']}
 num_cpus = "1"
